@@ -36,6 +36,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -51,6 +53,13 @@ enum class AppScreen {
     TASK_DETAIL,
     COMPLETED_TASK_DETAIL
 }
+
+private val LoginPoppins = FontFamily(
+    Font(R.font.poppins_regular, FontWeight.Normal),
+    Font(R.font.poppins_medium, FontWeight.Medium),
+    Font(R.font.poppins_semibold, FontWeight.SemiBold),
+    Font(R.font.poppins_bold, FontWeight.Bold)
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,7 +79,6 @@ fun SmartFeatherApp() {
     var selectedCompletedTask by remember {
         mutableStateOf<CompletedTaskDetailUiState?>(null)
     }
-
 
     when (currentScreen) {
         AppScreen.LOGIN -> LoginScreen(
@@ -118,7 +126,6 @@ fun SmartFeatherApp() {
             }
         )
 
-
         AppScreen.TASK_DETAIL -> {
             selectedPendingTask?.let { task ->
                 PendingTaskDetailScreen(
@@ -157,7 +164,6 @@ fun SmartFeatherApp() {
         }
     }
 }
-
 
 @Composable
 fun LoginScreen(
@@ -241,6 +247,7 @@ fun LoginScreen(
                 ) {
                     Text(
                         text = "Log In",
+                        fontFamily = LoginPoppins,
                         color = white,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
@@ -251,6 +258,7 @@ fun LoginScreen(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = "ID",
+                            fontFamily = LoginPoppins,
                             color = mutedWhite,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
@@ -270,6 +278,7 @@ fun LoginScreen(
                             placeholder = {
                                 Text(
                                     text = "Enter your ID",
+                                    fontFamily = LoginPoppins,
                                     color = Color(0xFF8C8C8C),
                                     fontSize = 16.sp
                                 )
@@ -291,6 +300,7 @@ fun LoginScreen(
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
                             text = "Password",
+                            fontFamily = LoginPoppins,
                             color = mutedWhite,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold
@@ -309,6 +319,7 @@ fun LoginScreen(
                             placeholder = {
                                 Text(
                                     text = "Enter your password",
+                                    fontFamily = LoginPoppins,
                                     color = Color(0xFF8C8C8C),
                                     fontSize = 16.sp
                                 )
@@ -350,6 +361,7 @@ fun LoginScreen(
                         ) {
                             Text(
                                 text = "Go",
+                                fontFamily = LoginPoppins,
                                 color = white,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Medium,

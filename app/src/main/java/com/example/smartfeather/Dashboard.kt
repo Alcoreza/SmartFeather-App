@@ -48,6 +48,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,6 +97,13 @@ data class DashboardUiState(
     val quickAccess: List<QuickAccessItem>
 )
 
+private val DashboardPoppins = FontFamily(
+    Font(R.font.poppins_regular, FontWeight.Normal),
+    Font(R.font.poppins_medium, FontWeight.Medium),
+    Font(R.font.poppins_semibold, FontWeight.SemiBold),
+    Font(R.font.poppins_bold, FontWeight.Bold)
+)
+
 private fun placeholderDashboardState(): DashboardUiState {
     return DashboardUiState(
         welcomeText = "Welcome!",
@@ -140,8 +149,7 @@ private fun formatValue(value: Float, unit: String): String {
 fun DashboardScreen(
     onNavigateToTasks: () -> Unit,
     uiState: DashboardUiState = remember { placeholderDashboardState() }
-)
- {
+) {
     Scaffold(
         containerColor = Color(0xFFF6F3EF),
         bottomBar = {
@@ -180,6 +188,7 @@ fun DashboardScreen(
             ) {
                 Text(
                     text = uiState.welcomeText,
+                    fontFamily = DashboardPoppins,
                     fontSize = if (isTablet) 32.sp else 26.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color(0xFF171717)
@@ -211,6 +220,7 @@ fun DashboardScreen(
 
                 Text(
                     text = "Quick Access",
+                    fontFamily = DashboardPoppins,
                     fontSize = if (isTablet) 22.sp else 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFF181818)
@@ -327,7 +337,6 @@ private fun QuickAccessSection(
     }
 }
 
-
 @Composable
 private fun FarmOverviewCard(
     stats: List<DashboardStat>,
@@ -344,6 +353,7 @@ private fun FarmOverviewCard(
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp)) {
             Text(
                 text = "Daily Farm Overview",
+                fontFamily = DashboardPoppins,
                 color = Color(0xFF72F07C),
                 fontSize = if (isTablet) 20.sp else 18.sp,
                 fontWeight = FontWeight.Bold
@@ -375,6 +385,7 @@ private fun FarmOverviewCard(
                             ) {
                                 Text(
                                     text = stat.value.take(1),
+                                    fontFamily = DashboardPoppins,
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = if (isTablet) 12.sp else 11.sp
@@ -386,12 +397,14 @@ private fun FarmOverviewCard(
                             Column {
                                 Text(
                                     text = stat.value,
+                                    fontFamily = DashboardPoppins,
                                     fontSize = if (isTablet) 13.sp else 12.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = Color(0xFF111111)
                                 )
                                 Text(
                                     text = stat.title,
+                                    fontFamily = DashboardPoppins,
                                     fontSize = if (isTablet) 10.sp else 9.sp,
                                     color = Color(0xFF444444),
                                     lineHeight = if (isTablet) 12.sp else 11.sp
@@ -421,6 +434,7 @@ private fun MonitoringCard(
         Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
             Text(
                 text = title,
+                fontFamily = DashboardPoppins,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF171717),
@@ -466,6 +480,7 @@ private fun GaugeBlock(
 
         Text(
             text = data.label,
+            fontFamily = DashboardPoppins,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center,
@@ -514,6 +529,7 @@ private fun ResourceBlock(
 
         Text(
             text = formatValue(data.value, data.unit),
+            fontFamily = DashboardPoppins,
             fontSize = 14.sp,
             fontWeight = FontWeight.ExtraBold,
             color = data.color
@@ -521,6 +537,7 @@ private fun ResourceBlock(
 
         Text(
             text = data.label,
+            fontFamily = DashboardPoppins,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = Color(0xFF1B1B1B)
@@ -568,6 +585,7 @@ private fun CircularGauge(
         ) {
             Text(
                 text = centerText,
+                fontFamily = DashboardPoppins,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color(0xFF1A1A1A),
@@ -623,6 +641,7 @@ private fun PendingTaskBanner(
         ) {
             Text(
                 text = count,
+                fontFamily = DashboardPoppins,
                 fontSize = if (isTablet) 62.sp else 54.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color.White
@@ -632,6 +651,7 @@ private fun PendingTaskBanner(
 
             Text(
                 text = "Pending Tasks",
+                fontFamily = DashboardPoppins,
                 fontSize = if (isTablet) 26.sp else 23.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color.White
@@ -639,7 +659,6 @@ private fun PendingTaskBanner(
         }
     }
 }
-
 
 @Composable
 private fun QuickAccessCard(
@@ -681,6 +700,7 @@ private fun QuickAccessCard(
 
             Text(
                 text = item.title,
+                fontFamily = DashboardPoppins,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF171717),
@@ -737,7 +757,6 @@ private fun BottomNavBar(
     }
 }
 
-
 @Composable
 private fun BottomNavItem(
     icon: ImageVector,
@@ -760,6 +779,7 @@ private fun BottomNavItem(
 
         Text(
             text = label,
+            fontFamily = DashboardPoppins,
             fontSize = 10.sp,
             color = if (selected) Color.White else Color(0xFFD7ECD9),
             textAlign = TextAlign.Center,
@@ -768,7 +788,6 @@ private fun BottomNavItem(
     }
 }
 
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun DashboardScreenPreview() {
@@ -776,4 +795,3 @@ fun DashboardScreenPreview() {
         onNavigateToTasks = {}
     )
 }
-
