@@ -122,7 +122,13 @@ private fun placeholderTasks(): List<TaskItem> {
 }
 
 @Composable
-fun TasksScreen(onNavigateToDashboard: () -> Unit) {
+fun TasksScreen(
+    onNavigateToDashboard: () -> Unit,
+    onPendingTaskClick: (TaskItem) -> Unit,
+    onCompletedTaskClick: (TaskItem) -> Unit
+) {
+
+
     val tasks = remember {
         mutableStateListOf<TaskItem>().apply {
             addAll(placeholderTasks())
@@ -176,8 +182,11 @@ fun TasksScreen(onNavigateToDashboard: () -> Unit) {
                 TaskListSection(
                     items = pendingTasks,
                     emptyText = "No pending tasks right now.",
-                    isPending = true
+                    isPending = true,
+                    onPendingTaskClick = onPendingTaskClick,
+                    onCompletedTaskClick = onCompletedTaskClick
                 )
+
 
 
                 Spacer(modifier = Modifier.height(26.dp))
@@ -192,8 +201,11 @@ fun TasksScreen(onNavigateToDashboard: () -> Unit) {
                 TaskListSection(
                     items = completedTasks,
                     emptyText = "No completed tasks yet.",
-                    isPending = false
+                    isPending = false,
+                    onPendingTaskClick = onPendingTaskClick,
+                    onCompletedTaskClick = onCompletedTaskClick
                 )
+
 
 
                 Spacer(modifier = Modifier.height(20.dp))
@@ -227,8 +239,11 @@ private fun SectionChip(
 private fun TaskListSection(
     items: List<TaskItem>,
     emptyText: String,
-    isPending: Boolean
+    isPending: Boolean,
+    onPendingTaskClick: (TaskItem) -> Unit,
+    onCompletedTaskClick: (TaskItem) -> Unit
 ) {
+
     if (items.isEmpty()) {
         Card(
             shape = RoundedCornerShape(22.dp),
@@ -259,8 +274,11 @@ private fun TaskListSection(
             items.forEachIndexed { index, item ->
                 TaskRow(
                     item = item,
-                    isPending = isPending
+                    isPending = isPending,
+                    onPendingTaskClick = onPendingTaskClick,
+                    onCompletedTaskClick = onCompletedTaskClick
                 )
+
 
                 if (index != items.lastIndex) {
                     Box(
@@ -279,14 +297,26 @@ private fun TaskListSection(
 @Composable
 private fun TaskRow(
     item: TaskItem,
-    isPending: Boolean
+    isPending: Boolean,
+    onPendingTaskClick: (TaskItem) -> Unit,
+    onCompletedTaskClick: (TaskItem) -> Unit
 ) {
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable {
+                if (isPending) {
+                    onPendingTaskClick(item)
+                } else {
+                    onCompletedTaskClick(item)
+                }
+            }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.Bottom
-    ) {
+    )
+
+    {
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -350,8 +380,8 @@ private fun TaskRow(
 
 private fun priorityColor(priority: TaskPriority): Color {
     return when (priority) {
-        TaskPriority.LOW -> Color(0xFF2FA34A)
-        TaskPriority.MID -> Color(0xFFD88913)
+        TaskPriority.LOW -> Color(0xFFFA7A1F)
+        TaskPriority.MID -> Color(0xFFC4420B)
         TaskPriority.HIGH -> Color(0xFFC51E1E)
     }
 }
@@ -439,7 +469,11 @@ private fun BottomNavItem(
 @Composable
 fun TasksScreenPreview() {
     TasksScreen(
-        onNavigateToDashboard = {}
+        onNavigateToDashboard = {},
+        onPendingTaskClick = {},
+        onCompletedTaskClick = {}
     )
 }
+
+
 

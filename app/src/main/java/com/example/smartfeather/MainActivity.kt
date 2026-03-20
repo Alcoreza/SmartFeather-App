@@ -47,7 +47,9 @@ import androidx.compose.ui.unit.sp
 enum class AppScreen {
     LOGIN,
     DASHBOARD,
-    TASKS
+    TASKS,
+    TASK_DETAIL,
+    COMPLETED_TASK_DETAIL
 }
 
 class MainActivity : ComponentActivity() {
@@ -62,6 +64,13 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SmartFeatherApp() {
     var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
+    var selectedPendingTask by remember {
+        mutableStateOf<PendingTaskDetailUiState?>(null)
+    }
+    var selectedCompletedTask by remember {
+        mutableStateOf<CompletedTaskDetailUiState?>(null)
+    }
+
 
     when (currentScreen) {
         AppScreen.LOGIN -> LoginScreen(
@@ -79,10 +88,76 @@ fun SmartFeatherApp() {
         AppScreen.TASKS -> TasksScreen(
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
+            },
+            onPendingTaskClick = { task ->
+                selectedPendingTask = PendingTaskDetailUiState(
+                    title = task.title,
+                    description = task.description,
+                    timeAssigned = "11:58 AM",
+                    finishBy = task.timeLabel.replace("Finish by: ", "").replace("\n", " "),
+                    priorityLabel = task.priority.name.lowercase()
+                        .replaceFirstChar { it.uppercase() },
+                    priority = task.priority
+                )
+                currentScreen = AppScreen.TASK_DETAIL
+            },
+            onCompletedTaskClick = { task ->
+                selectedCompletedTask = CompletedTaskDetailUiState(
+                    title = task.title,
+                    description = task.description,
+                    timeAssigned = "9:21 AM",
+                    finishBy = "5:00 PM",
+                    timeCompleted = task.timeLabel.replace("Completed: ", "").replace("\n", " "),
+                    priorityLabel = task.priority.name.lowercase()
+                        .replaceFirstChar { it.uppercase() },
+                    priority = task.priority,
+                    notes = "Worker notes will appear here from the database.",
+                    hasPhoto = true
+                )
+                currentScreen = AppScreen.COMPLETED_TASK_DETAIL
             }
         )
+
+
+        AppScreen.TASK_DETAIL -> {
+            selectedPendingTask?.let { task ->
+                PendingTaskDetailScreen(
+                    task = task,
+                    onBackClick = {
+                        currentScreen = AppScreen.TASKS
+                    },
+                    onNavigateToDashboard = {
+                        currentScreen = AppScreen.DASHBOARD
+                    },
+                    onNavigateToTasks = {
+                        currentScreen = AppScreen.TASKS
+                    },
+                    onSubmit = { _, _ ->
+                        currentScreen = AppScreen.TASKS
+                    }
+                )
+            }
+        }
+
+        AppScreen.COMPLETED_TASK_DETAIL -> {
+            selectedCompletedTask?.let { task ->
+                CompletedTaskDetailScreen(
+                    task = task,
+                    onBackClick = {
+                        currentScreen = AppScreen.TASKS
+                    },
+                    onNavigateToDashboard = {
+                        currentScreen = AppScreen.DASHBOARD
+                    },
+                    onNavigateToTasks = {
+                        currentScreen = AppScreen.TASKS
+                    }
+                )
+            }
+        }
     }
 }
+
 
 @Composable
 fun LoginScreen(
