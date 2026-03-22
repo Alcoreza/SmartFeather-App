@@ -50,8 +50,18 @@ enum class AppScreen {
     LOGIN,
     DASHBOARD,
     TASKS,
+    FARM_MANAGEMENT,
     TASK_DETAIL,
-    COMPLETED_TASK_DETAIL
+    COMPLETED_TASK_DETAIL,
+    POPULATION,
+    WEIGHT,
+    FEEDS_REFILL,
+    VITAMINS_REFILL,
+    BIOSECURITY,
+    DISINFECTION,
+    PERSONNEL_LOGS,
+    VISITOR,
+    NEW_BIRD_BATCH,
 }
 
 private val LoginPoppins = FontFamily(
@@ -90,12 +100,19 @@ fun SmartFeatherApp() {
         AppScreen.DASHBOARD -> DashboardScreen(
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
-            }
+            },
+            onNavigateToFarmManagement = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            uiState = placeholderDashboardState()
         )
 
         AppScreen.TASKS -> TasksScreen(
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToFarmManagement = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
             },
             onPendingTaskClick = { task ->
                 selectedPendingTask = PendingTaskDetailUiState(
@@ -162,6 +179,114 @@ fun SmartFeatherApp() {
                 )
             }
         }
+
+        AppScreen.POPULATION -> PopulationScreen(
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
+        )
+
+        AppScreen.WEIGHT -> WeightScreen(
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
+        )
+
+        AppScreen.FEEDS_REFILL -> FeedsRefillScreen(
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
+        )
+
+        AppScreen.VITAMINS_REFILL -> VitaminsRefillScreen(
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
+        )
+
+        AppScreen.BIOSECURITY -> BiosecurityScreen(
+            onBackToFarm = { currentScreen = AppScreen.FARM_MANAGEMENT },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS },
+            onDisinfectionClick = { currentScreen = AppScreen.DISINFECTION },
+            onPersonnelLogsClick = { currentScreen = AppScreen.PERSONNEL_LOGS },
+            onVisitorClick = { currentScreen = AppScreen.VISITOR },
+        )
+
+        AppScreen.DISINFECTION -> DisinfectionScreen(
+            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+        )
+
+        AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
+            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+        )
+
+        AppScreen.VISITOR -> VisitorScreen(
+            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+        )
+
+        AppScreen.NEW_BIRD_BATCH -> NewBirdBatchScreen(
+            onBackToFarm = { currentScreen = AppScreen.FARM_MANAGEMENT },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+        )
+
+        AppScreen.FARM_MANAGEMENT -> FarmManagementScreen(
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            },
+            onPopulationClick = {
+                currentScreen = AppScreen.POPULATION
+            },
+            onWeightClick = {
+                currentScreen = AppScreen.WEIGHT
+            },
+            onFeedsRefillClick = {
+                currentScreen = AppScreen.FEEDS_REFILL
+            },
+            onVitaminsRefillClick = {
+                currentScreen = AppScreen.VITAMINS_REFILL
+            },
+            onBiosecurityClick = {
+                currentScreen = AppScreen.BIOSECURITY
+            },
+            onNewBirdBatchClick = {
+                currentScreen = AppScreen.NEW_BIRD_BATCH
+            }
+        )
     }
 }
 
