@@ -104,7 +104,7 @@ private val DashboardPoppins = FontFamily(
     Font(R.font.poppins_bold, FontWeight.Bold)
 )
 
-private fun placeholderDashboardState(): DashboardUiState {
+fun placeholderDashboardState(): DashboardUiState {
     return DashboardUiState(
         welcomeText = "Welcome!",
         stats = listOf(
@@ -148,12 +148,16 @@ private fun formatValue(value: Float, unit: String): String {
 @Composable
 fun DashboardScreen(
     onNavigateToTasks: () -> Unit,
-    uiState: DashboardUiState = remember { placeholderDashboardState() }
+    onNavigateToFarmManagement: () -> Unit,
+    uiState: DashboardUiState
 ) {
     Scaffold(
         containerColor = Color(0xFFF6F3EF),
         bottomBar = {
-            BottomNavBar(onTasksClick = onNavigateToTasks)
+            BottomNavBar(
+                onTasksClick = onNavigateToTasks,
+                onFarmManagementClick = onNavigateToFarmManagement
+            )
         }
     ) { innerPadding ->
         BoxWithConstraints(
@@ -711,8 +715,9 @@ private fun QuickAccessCard(
 }
 
 @Composable
-private fun BottomNavBar(
-    onTasksClick: () -> Unit
+fun BottomNavBar(
+    onTasksClick: () -> Unit,
+    onFarmManagementClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -745,7 +750,7 @@ private fun BottomNavBar(
             icon = Icons.Outlined.Edit,
             label = "Farm Management",
             selected = false,
-            onClick = {}
+            onClick = onFarmManagementClick
         )
 
         BottomNavItem(
@@ -792,6 +797,8 @@ private fun BottomNavItem(
 @Composable
 fun DashboardScreenPreview() {
     DashboardScreen(
-        onNavigateToTasks = {}
+        onNavigateToTasks = {},
+        onNavigateToFarmManagement = {},
+        uiState = placeholderDashboardState()
     )
 }
