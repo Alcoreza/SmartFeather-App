@@ -124,6 +124,7 @@ private fun placeholderTasks(): List<TaskItem> {
 @Composable
 fun TasksScreen(
     onNavigateToDashboard: () -> Unit,
+    onNavigateToFarmManagement: () -> Unit,
     onPendingTaskClick: (TaskItem) -> Unit,
     onCompletedTaskClick: (TaskItem) -> Unit
 ) {
@@ -141,7 +142,10 @@ fun TasksScreen(
     Scaffold(
         containerColor = Color(0xFFF5F2EE),
         bottomBar = {
-            TasksBottomNavBar(onDashboardClick = onNavigateToDashboard)
+            TasksBottomNavBar(
+                onDashboardClick = onNavigateToDashboard,
+                onFarmManagementClick = onNavigateToFarmManagement
+            )
         }
     ) { innerPadding ->
         Box(
@@ -387,7 +391,8 @@ private fun priorityColor(priority: TaskPriority): Color {
 }
 @Composable
 private fun TasksBottomNavBar(
-    onDashboardClick: () -> Unit
+    onDashboardClick: () -> Unit,
+    onFarmManagementClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -420,7 +425,7 @@ private fun TasksBottomNavBar(
             icon = Icons.Outlined.Edit,
             label = "Farm Management",
             selected = false,
-            onClick = {}
+            onClick = onFarmManagementClick
         )
 
         BottomNavItem(
@@ -470,6 +475,7 @@ private fun BottomNavItem(
 fun TasksScreenPreview() {
     TasksScreen(
         onNavigateToDashboard = {},
+        onNavigateToFarmManagement = {},
         onPendingTaskClick = {},
         onCompletedTaskClick = {}
     )
