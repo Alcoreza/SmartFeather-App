@@ -3,45 +3,505 @@ package com.example.smartfeather
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.smartfeather.ui.theme.SmartFeatherTheme
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+enum class AppScreen {
+    LOGIN,
+    DASHBOARD,
+    TASKS,
+    FARM_MANAGEMENT,
+    TASK_DETAIL,
+    COMPLETED_TASK_DETAIL,
+    POPULATION,
+    WEIGHT,
+    FEEDS_REFILL,
+    VITAMINS_REFILL,
+    BIOSECURITY,
+    DISINFECTION,
+    PERSONNEL_LOGS,
+    VISITOR,
+    NEW_BIRD_BATCH,
+}
+
+private val LoginPoppins = FontFamily(
+    Font(R.font.poppins_regular, FontWeight.Normal),
+    Font(R.font.poppins_medium, FontWeight.Medium),
+    Font(R.font.poppins_semibold, FontWeight.SemiBold),
+    Font(R.font.poppins_bold, FontWeight.Bold)
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            SmartFeatherTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
+            SmartFeatherApp()
+        }
+    }
+}
+
+@Composable
+fun SmartFeatherApp() {
+    var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
+    var selectedPendingTask by remember {
+        mutableStateOf<PendingTaskDetailUiState?>(null)
+    }
+    var selectedCompletedTask by remember {
+        mutableStateOf<CompletedTaskDetailUiState?>(null)
+    }
+
+    when (currentScreen) {
+        AppScreen.LOGIN -> LoginScreen(
+            onLoginClick = {
+                currentScreen = AppScreen.DASHBOARD
+            }
+        )
+
+        AppScreen.DASHBOARD -> DashboardScreen(
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            },
+            onNavigateToFarmManagement = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            uiState = placeholderDashboardState()
+        )
+
+        AppScreen.TASKS -> TasksScreen(
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToFarmManagement = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onPendingTaskClick = { task ->
+                selectedPendingTask = PendingTaskDetailUiState(
+                    title = task.title,
+                    description = task.description,
+                    timeAssigned = "11:58 AM",
+                    finishBy = task.timeLabel.replace("Finish by: ", "").replace("\n", " "),
+                    priorityLabel = task.priority.name.lowercase()
+                        .replaceFirstChar { it.uppercase() },
+                    priority = task.priority
+                )
+                currentScreen = AppScreen.TASK_DETAIL
+            },
+            onCompletedTaskClick = { task ->
+                selectedCompletedTask = CompletedTaskDetailUiState(
+                    title = task.title,
+                    description = task.description,
+                    timeAssigned = "9:21 AM",
+                    finishBy = "5:00 PM",
+                    timeCompleted = task.timeLabel.replace("Completed: ", "").replace("\n", " "),
+                    priorityLabel = task.priority.name.lowercase()
+                        .replaceFirstChar { it.uppercase() },
+                    priority = task.priority,
+                    notes = "Worker notes will appear here from the database.",
+                    hasPhoto = true
+                )
+                currentScreen = AppScreen.COMPLETED_TASK_DETAIL
+            }
+        )
+
+        AppScreen.TASK_DETAIL -> {
+            selectedPendingTask?.let { task ->
+                PendingTaskDetailScreen(
+                    task = task,
+                    onBackClick = {
+                        currentScreen = AppScreen.TASKS
+                    },
+                    onNavigateToDashboard = {
+                        currentScreen = AppScreen.DASHBOARD
+                    },
+                    onNavigateToTasks = {
+                        currentScreen = AppScreen.TASKS
+                    },
+                    onSubmit = { _, _ ->
+                        currentScreen = AppScreen.TASKS
+                    }
+                )
+            }
+        }
+
+        AppScreen.COMPLETED_TASK_DETAIL -> {
+            selectedCompletedTask?.let { task ->
+                CompletedTaskDetailScreen(
+                    task = task,
+                    onBackClick = {
+                        currentScreen = AppScreen.TASKS
+                    },
+                    onNavigateToDashboard = {
+                        currentScreen = AppScreen.DASHBOARD
+                    },
+                    onNavigateToTasks = {
+                        currentScreen = AppScreen.TASKS
+                    }
+                )
+            }
+        }
+
+        AppScreen.POPULATION -> PopulationScreen(
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
+        )
+
+        AppScreen.WEIGHT -> WeightScreen(
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
+        )
+
+        AppScreen.FEEDS_REFILL -> FeedsRefillScreen(
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
+        )
+
+        AppScreen.VITAMINS_REFILL -> VitaminsRefillScreen(
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
+        )
+
+        AppScreen.BIOSECURITY -> BiosecurityScreen(
+            onBackToFarm = { currentScreen = AppScreen.FARM_MANAGEMENT },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS },
+            onDisinfectionClick = { currentScreen = AppScreen.DISINFECTION },
+            onPersonnelLogsClick = { currentScreen = AppScreen.PERSONNEL_LOGS },
+            onVisitorClick = { currentScreen = AppScreen.VISITOR },
+        )
+
+        AppScreen.DISINFECTION -> DisinfectionScreen(
+            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+        )
+
+        AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
+            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+        )
+
+        AppScreen.VISITOR -> VisitorScreen(
+            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+        )
+
+        AppScreen.NEW_BIRD_BATCH -> NewBirdBatchScreen(
+            onBackToFarm = { currentScreen = AppScreen.FARM_MANAGEMENT },
+            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+        )
+
+        AppScreen.FARM_MANAGEMENT -> FarmManagementScreen(
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            },
+            onPopulationClick = {
+                currentScreen = AppScreen.POPULATION
+            },
+            onWeightClick = {
+                currentScreen = AppScreen.WEIGHT
+            },
+            onFeedsRefillClick = {
+                currentScreen = AppScreen.FEEDS_REFILL
+            },
+            onVitaminsRefillClick = {
+                currentScreen = AppScreen.VITAMINS_REFILL
+            },
+            onBiosecurityClick = {
+                currentScreen = AppScreen.BIOSECURITY
+            },
+            onNewBirdBatchClick = {
+                currentScreen = AppScreen.NEW_BIRD_BATCH
+            }
+        )
+    }
+}
+
+@Composable
+fun LoginScreen(
+    onLoginClick: () -> Unit
+) {
+    var userId by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+
+    val pageBackground = Color(0xFF012B18)
+    val deepBackground = Color(0xFF001B10)
+    val borderGreen = Color(0xFF55D56E)
+    val softGreen = Color(0xFF2F8F45)
+    val softGreenDark = Color(0xFF1F6F32)
+    val white = Color(0xFFF8F8F6)
+    val mutedWhite = Color(0xFFEAF6ED)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(deepBackground, pageBackground)
+                )
+            )
+            .pointerInput(Unit) {
+                detectTapGestures {
+                    focusManager.clearFocus()
+                }
+            }
+    ) {
+        Box(
+            modifier = Modifier
+                .size(220.dp)
+                .align(Alignment.TopStart)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0x223BE46A), Color.Transparent)
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .size(260.dp)
+                .align(Alignment.BottomEnd)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(Color(0x163BE46A), Color.Transparent)
+                    ),
+                    shape = CircleShape
+                )
+        )
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .navigationBarsPadding()
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(34.dp))
+                    .background(Color(0x12000000))
+                    .border(
+                        width = 1.dp,
+                        color = borderGreen.copy(alpha = 0.9f),
+                        shape = RoundedCornerShape(34.dp)
                     )
+                    .padding(horizontal = 28.dp, vertical = 42.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Log In",
+                        fontFamily = LoginPoppins,
+                        color = white,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(38.dp))
+
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "ID",
+                            fontFamily = LoginPoppins,
+                            color = mutedWhite,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = userId,
+                            onValueChange = { userId = it },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions.Default.copy(
+                                keyboardType = KeyboardType.Text
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(50.dp),
+                            placeholder = {
+                                Text(
+                                    text = "Enter your ID",
+                                    fontFamily = LoginPoppins,
+                                    color = Color(0xFF8C8C8C),
+                                    fontSize = 16.sp
+                                )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = white,
+                                unfocusedContainerColor = white,
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedTextColor = Color.Black,
+                                unfocusedTextColor = Color.Black,
+                                cursorColor = softGreen
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Password",
+                            fontFamily = LoginPoppins,
+                            color = mutedWhite,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(50.dp),
+                            placeholder = {
+                                Text(
+                                    text = "Enter your password",
+                                    fontFamily = LoginPoppins,
+                                    color = Color(0xFF8C8C8C),
+                                    fontSize = 16.sp
+                                )
+                            },
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = white,
+                                unfocusedContainerColor = white,
+                                focusedBorderColor = Color.Transparent,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedTextColor = Color.Black,
+                                unfocusedTextColor = Color.Black,
+                                cursorColor = softGreen
+                            )
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(36.dp))
+
+                    Button(
+                        onClick = {
+                            focusManager.clearFocus()
+                            onLoginClick()
+                        },
+                        shape = RoundedCornerShape(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
+                        modifier = Modifier.width(112.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(
+                                    brush = Brush.verticalGradient(
+                                        colors = listOf(softGreen, softGreenDark)
+                                    )
+                                )
+                                .padding(vertical = 10.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Go",
+                                fontFamily = LoginPoppins,
+                                color = white,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Medium,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+@Preview(showBackground = true, showSystemUi = true)
 @Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    SmartFeatherTheme {
-        Greeting("Android")
-    }
+fun LoginScreenPreview() {
+    LoginScreen(onLoginClick = {})
 }
