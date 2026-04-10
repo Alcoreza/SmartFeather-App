@@ -45,6 +45,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 enum class AppScreen {
     LOGIN,
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun SmartFeatherApp() {
+    val authService = remember { SupabaseAuthService() }
     var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
     var selectedPendingTask by remember {
         mutableStateOf<PendingTaskDetailUiState?>(null)
@@ -92,7 +94,10 @@ fun SmartFeatherApp() {
 
     when (currentScreen) {
         AppScreen.LOGIN -> LoginScreen(
-            onLoginClick = {
+            onLoginClick = { employeeId, password ->
+                authService.signInFlockman(employeeId = employeeId, password = password)
+            },
+            onLoginSuccess = {
                 currentScreen = AppScreen.DASHBOARD
             }
         )
@@ -292,10 +297,14 @@ fun SmartFeatherApp() {
 
 @Composable
 fun LoginScreen(
-    onLoginClick: () -> Unit
+    onLoginClick: suspend (String, String) -> Result<Unit>,
+    onLoginSuccess: () -> Unit
 ) {
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
     val pageBackground = Color(0xFF012B18)
@@ -382,7 +391,7 @@ fun LoginScreen(
 
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Text(
-                            text = "ID",
+                            text = "Employee ID",
                             fontFamily = LoginPoppins,
                             color = mutedWhite,
                             fontSize = 13.sp,
@@ -393,16 +402,19 @@ fun LoginScreen(
 
                         OutlinedTextField(
                             value = userId,
-                            onValueChange = { userId = it },
+                            onValueChange = {
+                                userId = it
+                                errorMessage = null
+                            },
                             singleLine = true,
                             keyboardOptions = KeyboardOptions.Default.copy(
-                                keyboardType = KeyboardType.Text
+                                keyboardType = KeyboardType.Number
                             ),
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(50.dp),
                             placeholder = {
                                 Text(
-                                    text = "Enter your ID",
+                                    text = "Enter your employee ID",
                                     fontFamily = LoginPoppins,
                                     color = Color(0xFF8C8C8C),
                                     fontSize = 16.sp
@@ -435,7 +447,10 @@ fun LoginScreen(
 
                         OutlinedTextField(
                             value = password,
-                            onValueChange = { password = it },
+                            onValueChange = {
+                                password = it
+                                errorMessage = null
+                            },
                             singleLine = true,
                             visualTransformation = PasswordVisualTransformation(),
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
@@ -463,14 +478,46 @@ fun LoginScreen(
 
                     Spacer(modifier = Modifier.height(36.dp))
 
+                    errorMessage?.let {
+                        Text(
+                            text = it,
+                            fontFamily = LoginPoppins,
+                            color = Color(0xFFFF8B8B),
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                    }
+
                     Button(
                         onClick = {
                             focusManager.clearFocus()
-                            onLoginClick()
+                            if (userId.isBlank() || password.isBlank()) {
+                                errorMessage = "Please provide both employee ID and password."
+                                return@Button
+                            }
+                            if (userId.any { !it.isDigit() }) {
+                                errorMessage = "Employee ID should contain numbers only."
+                                return@Button
+                            }
+
+                            coroutineScope.launch {
+                                isLoading = true
+                                val result = onLoginClick(userId.trim(), password)
+                                isLoading = false
+                                result
+                                    .onSuccess {
+                                        errorMessage = null
+                                        onLoginSuccess()
+                                    }
+                                    .onFailure {
+                                        errorMessage = it.message ?: "Unable to sign in."
+                                    }
+                            }
                         },
                         shape = RoundedCornerShape(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent),
-                        modifier = Modifier.width(112.dp)
+                        enabled = !isLoading,
+                        modifier = Modifier.width(140.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -485,7 +532,7 @@ fun LoginScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Go",
+                                text = if (isLoading) "Signing In..." else "Go",
                                 fontFamily = LoginPoppins,
                                 color = white,
                                 fontSize = 18.sp,
@@ -503,5 +550,8 @@ fun LoginScreen(
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun LoginScreenPreview() {
-    LoginScreen(onLoginClick = {})
+    LoginScreen(
+        onLoginClick = { _, _ -> Result.success(Unit) },
+        onLoginSuccess = {}
+    )
 }
