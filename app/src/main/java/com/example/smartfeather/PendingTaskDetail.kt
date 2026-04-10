@@ -63,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 data class PendingTaskDetailUiState(
+    val id: Int,
     val title: String,
     val description: String,
     val timeAssigned: String,
@@ -70,6 +71,8 @@ data class PendingTaskDetailUiState(
     val priorityLabel: String,
     val priority: TaskPriority
 )
+
+
 
 private val DetailPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -477,6 +480,7 @@ private fun DetailNavItem(
 fun PendingTaskDetailScreenPreview() {
     PendingTaskDetailScreen(
         task = PendingTaskDetailUiState(
+            id = 1,
             title = "Cleaning",
             description = "Clean the assigned pen thoroughly, focusing especially on the area near the opening where dirt, moisture, and waste are more likely to accumulate. Remove visible manure, spilled feed, feathers, and other debris from the floor and surrounding surfaces.\n\nEnsure that the feeding and watering areas inside the pen are clean and unobstructed. After cleaning, visually check the pen to confirm that it is clean, dry, and safe for the birds.",
             timeAssigned = "11:58 AM",

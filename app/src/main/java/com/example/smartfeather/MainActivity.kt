@@ -84,7 +84,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun SmartFeatherApp() {
     val authService = remember { SupabaseAuthService() }
+    val taskService = remember { TaskBackendService() }
+    val coroutineScope = rememberCoroutineScope()
     var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
+    var loggedInEmployeeId by remember { mutableStateOf<Int?>(null) }
     var selectedPendingTask by remember {
         mutableStateOf<PendingTaskDetailUiState?>(null)
     }
@@ -92,15 +95,19 @@ fun SmartFeatherApp() {
         mutableStateOf<CompletedTaskDetailUiState?>(null)
     }
 
+
+
     when (currentScreen) {
         AppScreen.LOGIN -> LoginScreen(
             onLoginClick = { employeeId, password ->
                 authService.signInFlockman(employeeId = employeeId, password = password)
             },
-            onLoginSuccess = {
+            onLoginSuccess = { employeeId ->
+                loggedInEmployeeId = employeeId.toIntOrNull()
                 currentScreen = AppScreen.DASHBOARD
             }
         )
+
 
         AppScreen.DASHBOARD -> DashboardScreen(
             onNavigateToTasks = {
@@ -113,6 +120,7 @@ fun SmartFeatherApp() {
         )
 
         AppScreen.TASKS -> TasksScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
             },
@@ -121,10 +129,19 @@ fun SmartFeatherApp() {
             },
             onPendingTaskClick = { task ->
                 selectedPendingTask = PendingTaskDetailUiState(
+                    id = task.id,
                     title = task.title,
                     description = task.description,
-                    timeAssigned = "11:58 AM",
-                    finishBy = task.timeLabel.replace("Finish by: ", "").replace("\n", " "),
+                    timeAssigned = if (task.timeLabel.startsWith("Assigned:")) {
+                        task.timeLabel.removePrefix("Assigned: ").replace("\n", " ")
+                    } else {
+                        ""
+                    },
+                    finishBy = if (task.timeLabel.startsWith("Finish by:")) {
+                        task.timeLabel.removePrefix("Finish by: ").replace("\n", " ")
+                    } else {
+                        ""
+                    },
                     priorityLabel = task.priority.name.lowercase()
                         .replaceFirstChar { it.uppercase() },
                     priority = task.priority
@@ -133,20 +150,30 @@ fun SmartFeatherApp() {
             },
             onCompletedTaskClick = { task ->
                 selectedCompletedTask = CompletedTaskDetailUiState(
+                    id = task.id,
                     title = task.title,
                     description = task.description,
-                    timeAssigned = "9:21 AM",
-                    finishBy = "5:00 PM",
-                    timeCompleted = task.timeLabel.replace("Completed: ", "").replace("\n", " "),
+                    timeAssigned = "",
+                    finishBy = "",
+                    timeCompleted = task.timeLabel
+                        .removePrefix("Completed: ")
+                        .removePrefix("Submitted: ")
+                        .replace("\n", " "),
+                    timeCompletedLabel = if (task.status == TaskStatus.FOR_APPROVAL) {
+                        "Submitted"
+                    } else {
+                        "Time Completed"
+                    },
                     priorityLabel = task.priority.name.lowercase()
                         .replaceFirstChar { it.uppercase() },
                     priority = task.priority,
-                    notes = "Worker notes will appear here from the database.",
-                    hasPhoto = true
+                    notes = task.notes,
+                    hasPhoto = task.hasPhoto
                 )
                 currentScreen = AppScreen.COMPLETED_TASK_DETAIL
             }
         )
+
 
         AppScreen.TASK_DETAIL -> {
             selectedPendingTask?.let { task ->
@@ -161,9 +188,22 @@ fun SmartFeatherApp() {
                     onNavigateToTasks = {
                         currentScreen = AppScreen.TASKS
                     },
-                    onSubmit = { _, _ ->
-                        currentScreen = AppScreen.TASKS
+                    onSubmit = { notes, _ ->
+                        val employeeId = loggedInEmployeeId ?: return@PendingTaskDetailScreen
+                        val taskId = selectedPendingTask?.id ?: return@PendingTaskDetailScreen
+
+                        coroutineScope.launch {
+                            taskService.submitTaskForApproval(
+                                taskId = taskId,
+                                employeeId = employeeId,
+                                notes = notes,
+                                photoUrl = null
+                            ).onSuccess {
+                                currentScreen = AppScreen.TASKS
+                            }
+                        }
                     }
+
                 )
             }
         }
@@ -298,7 +338,7 @@ fun SmartFeatherApp() {
 @Composable
 fun LoginScreen(
     onLoginClick: suspend (String, String) -> Result<Unit>,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: (String) -> Unit
 ) {
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -507,7 +547,7 @@ fun LoginScreen(
                                 result
                                     .onSuccess {
                                         errorMessage = null
-                                        onLoginSuccess()
+                                        onLoginSuccess(userId.trim())
                                     }
                                     .onFailure {
                                         errorMessage = it.message ?: "Unable to sign in."
@@ -552,6 +592,6 @@ fun LoginScreen(
 fun LoginScreenPreview() {
     LoginScreen(
         onLoginClick = { _, _ -> Result.success(Unit) },
-        onLoginSuccess = {}
+        onLoginSuccess = { }
     )
 }

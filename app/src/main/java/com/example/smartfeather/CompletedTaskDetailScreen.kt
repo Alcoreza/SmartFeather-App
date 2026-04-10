@@ -46,16 +46,20 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 data class CompletedTaskDetailUiState(
+    val id: Int,
     val title: String,
     val description: String,
     val timeAssigned: String,
     val finishBy: String,
     val timeCompleted: String,
+    val timeCompletedLabel: String = "Time Completed",
     val priorityLabel: String,
     val priority: TaskPriority,
     val notes: String,
     val hasPhoto: Boolean = true
 )
+
+
 
 private val CompletedPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -238,7 +242,8 @@ private fun MobileStatusRow(task: CompletedTaskDetailUiState) {
             DetailChip("Completed", Color(0xFF266F33))
             StatusChip("Time Assigned", task.timeAssigned, Color(0xFF103824))
             StatusChip("Finish By", task.finishBy, Color(0xFFD88913))
-            StatusChip("Time Completed", task.timeCompleted, Color(0xFF52B84F))
+            StatusChip(task.timeCompletedLabel, task.timeCompleted, Color(0xFF52B84F))
+
         }
 
         Row(
@@ -264,7 +269,7 @@ private fun TabletStatusRow(task: CompletedTaskDetailUiState) {
         DetailChip("Completed", Color(0xFF266F33))
         StatusChip("Time Assigned", task.timeAssigned, Color(0xFF103824))
         StatusChip("Finish By", task.finishBy, Color(0xFFD88913))
-        StatusChip("Time Completed", task.timeCompleted, Color(0xFF52B84F))
+        StatusChip(task.timeCompletedLabel, task.timeCompleted, Color(0xFF52B84F))
         StatusChip("Priority", task.priorityLabel, completedPriorityChipColor(task.priority))
     }
 }
@@ -489,11 +494,13 @@ private fun CompletedNavItem(
 fun CompletedTaskDetailScreenPreview() {
     CompletedTaskDetailScreen(
         task = CompletedTaskDetailUiState(
+            id = 1,
             title = "Water Refill",
             description = "Check the water containers or drinker system assigned to the pen and refill it with clean and sufficient water. Ensure that all drinkers are properly filled and accessible to the birds. Remove any visible dirt, debris, or contaminants around the water area. Observe the water flow to confirm that there are no leaks, blockages, or interruptions.",
             timeAssigned = "9:21 AM",
             finishBy = "5:00 PM",
             timeCompleted = "2:53 PM",
+            timeCompletedLabel = "Time Completed",
             priorityLabel = "Low",
             priority = TaskPriority.LOW,
             notes = "Water was refilled successfully. All drinkers are working properly and no leaks were observed in the assigned pen.",

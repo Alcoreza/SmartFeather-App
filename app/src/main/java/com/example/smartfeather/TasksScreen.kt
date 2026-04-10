@@ -29,9 +29,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -49,6 +52,7 @@ import androidx.compose.ui.unit.sp
 
 enum class TaskStatus {
     PENDING,
+    FOR_APPROVAL,
     COMPLETED
 }
 
@@ -66,7 +70,9 @@ data class TaskItem(
     val penLabel: String,
     val timeLabel: String,
     val priority: TaskPriority,
-    val status: TaskStatus
+    val status: TaskStatus,
+    val notes: String = "",
+    val hasPhoto: Boolean = false
 )
 
 private val AppPoppins = FontFamily(
@@ -76,67 +82,39 @@ private val AppPoppins = FontFamily(
     Font(R.font.poppins_bold, FontWeight.Bold)
 )
 
-private fun placeholderTasks(): List<TaskItem> {
-    return listOf(
-        TaskItem(
-            id = 1,
-            title = "Cleaning",
-            description = "Clean the pens thoroughly especially near the opening area.",
-            houseLabel = "House: 1",
-            penLabel = "Pen: 3",
-            timeLabel = "Finish by: 1-28-26\n1:30 PM",
-            priority = TaskPriority.HIGH,
-            status = TaskStatus.PENDING
-        ),
-        TaskItem(
-            id = 2,
-            title = "Inspection",
-            description = "Inspect the roofing structure at the inventory room. Check for loose panels and possible entry points.",
-            houseLabel = "House: 1",
-            penLabel = "Pen: 1",
-            timeLabel = "Finish by: 1-27-26\n4:30 PM",
-            priority = TaskPriority.MID,
-            status = TaskStatus.PENDING
-        ),
-        TaskItem(
-            id = 3,
-            title = "Water Refill",
-            description = "Refill the water at the pen.",
-            houseLabel = "House: 2",
-            penLabel = "Pen: 2",
-            timeLabel = "Completed: 1-25-26\n2:53 PM",
-            priority = TaskPriority.LOW,
-            status = TaskStatus.COMPLETED
-        ),
-        TaskItem(
-            id = 4,
-            title = "Feeding",
-            description = "Put the appropriate amount of feed into all feeders and ensure even distribution.",
-            houseLabel = "House: 1",
-            penLabel = "Pen: 1",
-            timeLabel = "Completed: 1-23-26\n7:25 AM",
-            priority = TaskPriority.HIGH,
-            status = TaskStatus.COMPLETED
-        )
-    )
-}
-
 @Composable
 fun TasksScreen(
+    employeeId: Int,
     onNavigateToDashboard: () -> Unit,
     onNavigateToFarmManagement: () -> Unit,
     onPendingTaskClick: (TaskItem) -> Unit,
     onCompletedTaskClick: (TaskItem) -> Unit
 ) {
+    val taskService = remember { TaskBackendService() }
 
+    val tasks = remember { mutableStateListOf<TaskItem>() }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val tasks = remember {
-        mutableStateListOf<TaskItem>().apply {
-            addAll(placeholderTasks())
-        }
+    LaunchedEffect(employeeId) {
+        isLoading = true
+        errorMessage = null
+
+        taskService.getTasksForFlockman(employeeId)
+            .onSuccess { items ->
+                tasks.clear()
+                tasks.addAll(items)
+            }
+            .onFailure { throwable ->
+                tasks.clear()
+                errorMessage = throwable.message ?: "Failed to load tasks."
+            }
+
+        isLoading = false
     }
 
     val pendingTasks = tasks.filter { it.status == TaskStatus.PENDING }
+    val forApprovalTasks = tasks.filter { it.status == TaskStatus.FOR_APPROVAL }
     val completedTasks = tasks.filter { it.status == TaskStatus.COMPLETED }
 
     Scaffold(
@@ -176,6 +154,44 @@ fun TasksScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
+                if (isLoading) {
+                    Card(
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Loading tasks...",
+                            modifier = Modifier.padding(18.dp),
+                            fontFamily = AppPoppins,
+                            fontSize = 14.sp,
+                            color = Color(0xFF6A6A6A)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+                }
+
+                if (errorMessage != null) {
+                    Card(
+                        shape = RoundedCornerShape(22.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = errorMessage ?: "Something went wrong.",
+                            modifier = Modifier.padding(18.dp),
+                            fontFamily = AppPoppins,
+                            fontSize = 14.sp,
+                            color = Color(0xFFC51E1E)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+                }
+
                 SectionChip(
                     text = "Pending",
                     containerColor = Color(0xFFF4A46E)
@@ -186,12 +202,23 @@ fun TasksScreen(
                 TaskListSection(
                     items = pendingTasks,
                     emptyText = "No pending tasks right now.",
-                    isPending = true,
-                    onPendingTaskClick = onPendingTaskClick,
-                    onCompletedTaskClick = onCompletedTaskClick
+                    onTaskClick = onPendingTaskClick
                 )
 
+                Spacer(modifier = Modifier.height(26.dp))
 
+                SectionChip(
+                    text = "For Approval",
+                    containerColor = Color(0xFFD88913)
+                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                TaskListSection(
+                    items = forApprovalTasks,
+                    emptyText = "No tasks waiting for verification.",
+                    onTaskClick = onCompletedTaskClick
+                )
 
                 Spacer(modifier = Modifier.height(26.dp))
 
@@ -205,12 +232,8 @@ fun TasksScreen(
                 TaskListSection(
                     items = completedTasks,
                     emptyText = "No completed tasks yet.",
-                    isPending = false,
-                    onPendingTaskClick = onPendingTaskClick,
-                    onCompletedTaskClick = onCompletedTaskClick
+                    onTaskClick = onCompletedTaskClick
                 )
-
-
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
@@ -243,11 +266,8 @@ private fun SectionChip(
 private fun TaskListSection(
     items: List<TaskItem>,
     emptyText: String,
-    isPending: Boolean,
-    onPendingTaskClick: (TaskItem) -> Unit,
-    onCompletedTaskClick: (TaskItem) -> Unit
+    onTaskClick: (TaskItem) -> Unit
 ) {
-
     if (items.isEmpty()) {
         Card(
             shape = RoundedCornerShape(22.dp),
@@ -278,11 +298,8 @@ private fun TaskListSection(
             items.forEachIndexed { index, item ->
                 TaskRow(
                     item = item,
-                    isPending = isPending,
-                    onPendingTaskClick = onPendingTaskClick,
-                    onCompletedTaskClick = onCompletedTaskClick
+                    onTaskClick = onTaskClick
                 )
-
 
                 if (index != items.lastIndex) {
                     Box(
@@ -297,30 +314,18 @@ private fun TaskListSection(
     }
 }
 
-
 @Composable
 private fun TaskRow(
     item: TaskItem,
-    isPending: Boolean,
-    onPendingTaskClick: (TaskItem) -> Unit,
-    onCompletedTaskClick: (TaskItem) -> Unit
+    onTaskClick: (TaskItem) -> Unit
 ) {
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable {
-                if (isPending) {
-                    onPendingTaskClick(item)
-                } else {
-                    onCompletedTaskClick(item)
-                }
-            }
+            .clickable { onTaskClick(item) }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.Bottom
-    )
-
-    {
+    ) {
         Column(
             modifier = Modifier.weight(1f)
         ) {
@@ -366,7 +371,11 @@ private fun TaskRow(
                 fontSize = 12.sp,
                 lineHeight = 13.sp,
                 textAlign = TextAlign.End,
-                color = if (isPending) Color(0xFFD17A17) else Color(0xFF4E8D39)
+                color = when (item.status) {
+                    TaskStatus.PENDING -> Color(0xFFD17A17)
+                    TaskStatus.FOR_APPROVAL -> Color(0xFFC27A11)
+                    TaskStatus.COMPLETED -> Color(0xFF4E8D39)
+                }
             )
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -381,7 +390,6 @@ private fun TaskRow(
     }
 }
 
-
 private fun priorityColor(priority: TaskPriority): Color {
     return when (priority) {
         TaskPriority.LOW -> Color(0xFFFA7A1F)
@@ -389,6 +397,7 @@ private fun priorityColor(priority: TaskPriority): Color {
         TaskPriority.HIGH -> Color(0xFFC51E1E)
     }
 }
+
 @Composable
 private fun TasksBottomNavBar(
     onDashboardClick: () -> Unit,
@@ -437,7 +446,6 @@ private fun TasksBottomNavBar(
     }
 }
 
-
 @Composable
 private fun BottomNavItem(
     icon: ImageVector,
@@ -469,17 +477,14 @@ private fun BottomNavItem(
     }
 }
 
-
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun TasksScreenPreview() {
     TasksScreen(
+        employeeId = 2,
         onNavigateToDashboard = {},
         onNavigateToFarmManagement = {},
         onPendingTaskClick = {},
         onCompletedTaskClick = {}
     )
 }
-
-
-

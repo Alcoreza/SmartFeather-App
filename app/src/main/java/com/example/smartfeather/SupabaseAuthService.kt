@@ -1,16 +1,22 @@
 package com.example.smartfeather
 
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.android.Android
+import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import io.github.jan.supabase.createSupabaseClient
-import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.postgrest.decodeSingleOrNull
-import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.Columns
-import io.github.jan.supabase.postgrest.query.filter.eq
-import org.mindrot.jbcrypt.BCrypt
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 
 object SupabaseConfig {
     const val SUPABASE_URL = "https://fgtqbfmnehnzwanzqzyb.supabase.co"
@@ -18,24 +24,41 @@ object SupabaseConfig {
 }
 
 @Serializable
-data class UserLoginRow(
-    @SerialName("EmployeeId")
+data class MobileLoginRequest(
+    @SerialName("p_employee_id")
     val employeeId: Int,
-    @SerialName("Role")
-    val role: String,
-    @SerialName("Password")
-    val passwordHash: String
+    @SerialName("p_password")
+    val password: String
+)
+
+@Serializable
+data class MobileLoginResponse(
+    @SerialName("employee_id")
+    val employeeId: Int,
+    @SerialName("first_name")
+    val firstName: String,
+    @SerialName("last_name")
+    val lastName: String,
+    @SerialName("role")
+    val role: String
+)
+
+@Serializable
+data class SupabaseErrorResponse(
+    val code: String? = null,
+    val details: String? = null,
+    val hint: String? = null,
+    val message: String? = null
 )
 
 class SupabaseAuthService(
     private val baseUrl: String = SupabaseConfig.SUPABASE_URL,
     private val publishableKey: String = SupabaseConfig.SUPABASE_PUBLISHABLE_KEY
 ) {
-    private val supabase = createSupabaseClient(
-        supabaseUrl = baseUrl,
-        supabaseKey = publishableKey
-    ) {
-        install(Postgrest)
+    private val httpClient = HttpClient(Android)
+
+    private val json = Json {
+        ignoreUnknownKeys = true
     }
 
     suspend fun signInFlockman(employeeId: String, password: String): Result<Unit> {
@@ -44,23 +67,31 @@ class SupabaseAuthService(
                 val employeeIdValue = employeeId.toIntOrNull()
                     ?: error("Employee ID should contain numbers only.")
 
-                val user = supabase
-                    .from("user")
-                    .select(columns = Columns.list("EmployeeId", "Role", "Password")) {
-                        filter {
-                            eq("EmployeeId", employeeIdValue)
-                        }
-                        limit(1)
-                    }
-                    .decodeSingleOrNull<UserLoginRow>()
-                    ?: error("Employee ID not found.")
+                val requestBody = MobileLoginRequest(
+                    employeeId = employeeIdValue,
+                    password = password
+                )
+
+                val responseText = httpClient.post("$baseUrl/rest/v1/rpc/mobile_flockman_login") {
+                    header("apikey", publishableKey)
+                    header("Authorization", "Bearer $publishableKey")
+                    contentType(ContentType.Application.Json)
+                    setBody(json.encodeToString(requestBody))
+                }.bodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["message"] != null) {
+                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Login failed.")
+                }
+
+                val users = json.decodeFromJsonElement<List<MobileLoginResponse>>(parsed)
+                val user = users.firstOrNull()
+                    ?: error("Invalid employee ID or password.")
 
                 if (!user.role.equals("Flockman", ignoreCase = true)) {
                     error("Only Flockman accounts can sign in on mobile.")
-                }
-
-                if (user.passwordHash.isBlank() || !BCrypt.checkpw(password, user.passwordHash)) {
-                    error("Invalid employee ID or password.")
                 }
 
                 Unit
