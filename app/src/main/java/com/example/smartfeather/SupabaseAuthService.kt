@@ -6,9 +6,10 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
-import io.github.jan.supabase.postgrest.decodeList
+import io.github.jan.supabase.postgrest.decodeSingleOrNull
 import io.github.jan.supabase.postgrest.from
-import io.github.jan.supabase.postgrest.query.filter.FilterOperator
+import io.github.jan.supabase.postgrest.query.Columns
+import io.github.jan.supabase.postgrest.query.filter.eq
 import org.mindrot.jbcrypt.BCrypt
 
 object SupabaseConfig {
@@ -45,14 +46,13 @@ class SupabaseAuthService(
 
                 val user = supabase
                     .from("user")
-                    .select {
+                    .select(columns = Columns.list("EmployeeId", "Role", "Password")) {
                         filter {
-                            filter("EmployeeId", FilterOperator.EQ, employeeIdValue)
+                            eq("EmployeeId", employeeIdValue)
                         }
                         limit(1)
                     }
-                    .decodeList<UserLoginRow>()
-                    .firstOrNull()
+                    .decodeSingleOrNull<UserLoginRow>()
                     ?: error("Employee ID not found.")
 
                 if (!user.role.equals("Flockman", ignoreCase = true)) {
