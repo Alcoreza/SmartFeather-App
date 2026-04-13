@@ -36,7 +36,6 @@ fun WeightScreen(
     onNavigateToTasks: () -> Unit,
     onNavigateToProfile: () -> Unit
 ) {
-
     var batchId by remember { mutableStateOf("") }
     var date by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
@@ -59,17 +58,12 @@ fun WeightScreen(
             )
         }
     ) { padding ->
-
-
-
-    Column(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF1EFEC))
                 .padding(padding)
         ) {
-
-            // 🔴 HEADER
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -104,20 +98,19 @@ fun WeightScreen(
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
             ) {
-
-                Label("Batch ID")
-                InputField(batchId) { batchId = it }
+                WeightLabel("Batch ID")
+                WeightInputField(batchId) { batchId = it }
 
                 Spacer(Modifier.height(10.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f)) {
-                        Label("Date")
-                        InputField(date) { date = it }
+                        WeightLabel("Date")
+                        WeightInputField(date) { date = it }
                     }
                     Column(Modifier.weight(1f)) {
-                        Label("Time")
-                        InputField(time) { time = it }
+                        WeightLabel("Time")
+                        WeightInputField(time) { time = it }
                     }
                 }
 
@@ -125,12 +118,12 @@ fun WeightScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f)) {
-                        Label("House")
-                        DropdownField(house) { house = it }
+                        WeightLabel("House")
+                        WeightDropdownField(house) { house = it }
                     }
                     Column(Modifier.weight(1f)) {
-                        Label("Pen")
-                        DropdownField(pen) { pen = it }
+                        WeightLabel("Pen")
+                        WeightDropdownField(pen) { pen = it }
                     }
                 }
 
@@ -138,41 +131,41 @@ fun WeightScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f)) {
-                        Label("Age")
-                        InputField(age) { age = it }
+                        WeightLabel("Age")
+                        WeightInputField(age) { age = it }
                     }
                     Column(Modifier.weight(1f)) {
-                        Label("Status")
-                        DropdownField(status) { status = it }
+                        WeightLabel("Status")
+                        WeightDropdownField(status) { status = it }
                     }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
-                Label("Number of Flocks")
-                InputField(flocks) { flocks = it }
+                WeightLabel("Number of Flocks")
+                WeightInputField(flocks) { flocks = it }
 
                 Spacer(Modifier.height(10.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f)) {
-                        Label("Weight 1")
-                        InputField(weight1) { weight1 = it }
+                        WeightLabel("Weight 1")
+                        WeightInputField(weight1) { weight1 = it }
                     }
                     Column(Modifier.weight(1f)) {
-                        Label("Weight 2")
-                        InputField(weight2) { weight2 = it }
+                        WeightLabel("Weight 2")
+                        WeightInputField(weight2) { weight2 = it }
                     }
                     Column(Modifier.weight(1f)) {
-                        Label("Weight 3")
-                        InputField(weight3) { weight3 = it }
+                        WeightLabel("Weight 3")
+                        WeightInputField(weight3) { weight3 = it }
                     }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
-                Label("Sick Count")
-                InputField(sickCount) { sickCount = it }
+                WeightLabel("Sick Count")
+                WeightInputField(sickCount) { sickCount = it }
 
                 Spacer(Modifier.height(20.dp))
 

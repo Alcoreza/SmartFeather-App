@@ -5,14 +5,31 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -22,13 +39,10 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
-// ---- FONT FAMILY ----
 private val FarmPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
     Font(R.font.poppins_medium, FontWeight.Medium),
@@ -36,20 +50,41 @@ private val FarmPoppins = FontFamily(
     Font(R.font.poppins_bold, FontWeight.Bold)
 )
 
-// ---- MAIN SCREEN ----
 @Composable
 fun PopulationScreen(
     onBackToFarm: () -> Unit,
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit
 ) {
+    val populationService = remember { PopulationBackendService() }
+    val coroutineScope = rememberCoroutineScope()
+
     var batchId by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
     var eggs by remember { mutableStateOf("") }
     var mortality by remember { mutableStateOf("") }
+
+    var houses by remember { mutableStateOf<List<HouseOption>>(emptyList()) }
+    var selectedHouse by remember { mutableStateOf<HouseOption?>(null) }
+    var penOptions by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    var houseExpanded by remember { mutableStateOf(false) }
+    var penExpanded by remember { mutableStateOf(false) }
+
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        populationService.getHouses()
+            .onSuccess { loadedHouses ->
+                houses = loadedHouses
+            }
+            .onFailure {
+                errorMessage = it.message ?: "Failed to load houses."
+            }
+    }
 
     Scaffold(
         bottomBar = {
@@ -60,7 +95,6 @@ fun PopulationScreen(
             )
         }
     ) { padding ->
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -68,7 +102,6 @@ fun PopulationScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // HEADER: full width before inner padding
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -95,46 +128,91 @@ fun PopulationScreen(
                 )
             }
 
-            // CONTENT: inner padding applied
-            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                Label("Batch ID")
-                InputField(batchId) { batchId = it }
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                PopulationLabel("Batch ID")
+                PopulationInputField(batchId) { batchId = it }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Label("Date")
-                        InputField(date) { date = it }
+                        PopulationLabel("House")
+                        PopulationDropdownField(
+                            value = house,
+                            options = houses.map { it.houseNumber },
+                            expanded = houseExpanded,
+                            onExpandedChange = { houseExpanded = it },
+                            onValueSelected = { selectedValue: String ->
+                                house = selectedValue
+                                selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
+                                pen = ""
+                                penOptions = populationService.buildPenOptions(selectedHouse)
+                                houseExpanded = false
+                                penExpanded = false
+                                errorMessage = null
+                                successMessage = null
+                            }
+                        )
                     }
+
                     Column(modifier = Modifier.weight(1f)) {
-                        Label("Time")
-                        InputField(time) { time = it }
+                        PopulationLabel("Pen")
+                        PopulationDropdownField(
+                            value = pen,
+                            options = penOptions,
+                            expanded = penExpanded,
+                            onExpandedChange = {
+                                if (selectedHouse != null) {
+                                    penExpanded = it
+                                }
+                            },
+                            onValueSelected = { selectedValue: String ->
+                                pen = selectedValue
+                                penExpanded = false
+                                errorMessage = null
+                                successMessage = null
+                            }
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Label("House")
-                        DropdownField(house) { house = it }
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Label("Pen")
-                        DropdownField(pen) { pen = it }
-                    }
+                PopulationLabel("Eggs Hatched")
+                PopulationInputField(eggs) {
+                    eggs = it.filter { ch -> ch.isDigit() }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Label("Eggs Hatched")
-                InputField(eggs) { eggs = it }
+                PopulationLabel("Mortalities")
+                PopulationInputField(mortality) {
+                    mortality = it.filter { ch -> ch.isDigit() }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Label("Mortalities")
-                InputField(mortality) { mortality = it }
+                errorMessage?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFFB00020),
+                        fontFamily = FarmPoppins,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                successMessage?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFF1E5D36),
+                        fontFamily = FarmPoppins,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -143,12 +221,72 @@ fun PopulationScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Button(
-                        onClick = { /* TODO: handle submit */ },
+                        onClick = {
+                            errorMessage = null
+                            successMessage = null
+
+                            val currentHouse = selectedHouse
+                            if (currentHouse == null) {
+                                errorMessage = "Please select a house."
+                                return@Button
+                            }
+                            if (pen.isBlank()) {
+                                errorMessage = "Please select a pen."
+                                return@Button
+                            }
+                            if (eggs.isBlank()) {
+                                errorMessage = "Please enter eggs hatched."
+                                return@Button
+                            }
+                            if (mortality.isBlank()) {
+                                errorMessage = "Please enter mortalities."
+                                return@Button
+                            }
+
+                            val eggsValue = eggs.toIntOrNull()
+                            val mortalityValue = mortality.toIntOrNull()
+
+                            if (eggsValue == null || mortalityValue == null) {
+                                errorMessage = "Eggs hatched and mortalities must be valid numbers."
+                                return@Button
+                            }
+
+                            coroutineScope.launch {
+                                isLoading = true
+                                populationService.submitPopulation(
+                                    houseId = currentHouse.id,
+                                    penNumber = pen,
+                                    eggsHatched = eggsValue,
+                                    mortality = mortalityValue
+                                ).onSuccess { success ->
+                                    if (success) {
+                                        successMessage = "Population data submitted successfully."
+                                        batchId = ""
+                                        house = ""
+                                        pen = ""
+                                        eggs = ""
+                                        mortality = ""
+                                        selectedHouse = null
+                                        penOptions = emptyList()
+                                    } else {
+                                        errorMessage = "No matching pen record was updated."
+                                    }
+                                }.onFailure {
+                                    errorMessage = it.message ?: "Failed to submit population data."
+                                }
+                                isLoading = false
+                            }
+                        },
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E5D36)),
-                        modifier = Modifier.height(40.dp)
+                        modifier = Modifier.height(40.dp),
+                        enabled = !isLoading
                     ) {
-                        Text("Submit", color = Color.White)
+                        Text(
+                            text = if (isLoading) "Submitting..." else "Submit",
+                            color = Color.White,
+                            fontFamily = FarmPoppins
+                        )
                     }
                 }
             }
@@ -156,31 +294,8 @@ fun PopulationScreen(
     }
 }
 
-// ---- COMPONENTS ----
 @Composable
-fun InputField(value: String, onChange: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onChange,
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        shape = RoundedCornerShape(20.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFEDEDED),
-            unfocusedContainerColor = Color(0xFFEDEDED),
-            focusedBorderColor = Color(0xFFBDBDBD),
-            unfocusedBorderColor = Color(0xFFBDBDBD),
-            cursorColor = Color.Black
-        ),
-        textStyle = LocalTextStyle.current.copy(
-            fontFamily = FarmPoppins,
-            fontSize = 14.sp
-        )
-    )
-}
-
-@Composable
-fun Label(text: String) {
+private fun PopulationLabel(text: String) {
     Text(
         text = text,
         fontSize = 12.sp,
@@ -191,33 +306,84 @@ fun Label(text: String) {
 }
 
 @Composable
-fun DropdownField(value: String, onValueSelected: (String) -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
-            .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
-            .clickable { onValueSelected("Selected Item") }
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+private fun PopulationInputField(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(20.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = Color(0xFFEDEDED),
+            unfocusedContainerColor = Color(0xFFEDEDED),
+            focusedBorderColor = Color(0xFFBDBDBD),
+            unfocusedBorderColor = Color(0xFFBDBDBD),
+            cursorColor = Color.Black
+        )
+    )
+}
+
+@Composable
+private fun PopulationDropdownField(
+    value: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onValueSelected: (String) -> Unit
+) {
+    Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
+                .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
+                .clickable { onExpandedChange(true) }
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart
         ) {
-            Text(
-                text = if (value.isEmpty()) "Select" else value,
-                fontFamily = FarmPoppins,
-                fontSize = 14.sp
-            )
-            Text("⌄", fontSize = 18.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (value.isEmpty()) "Select" else value,
+                    fontFamily = FarmPoppins,
+                    fontSize = 14.sp
+                )
+                Text(
+                    text = "⌄",
+                    fontSize = 18.sp,
+                    fontFamily = FarmPoppins
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = option,
+                            fontFamily = FarmPoppins
+                        )
+                    },
+                    onClick = {
+                        onValueSelected(option)
+                    }
+                )
+            }
         }
     }
 }
 
-// ---- BOTTOM NAVIGATION ----
 @Composable
 fun PopulationBottomNavBar(
     onDashboardClick: () -> Unit,
