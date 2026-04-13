@@ -149,6 +149,7 @@ private fun formatValue(value: Float, unit: String): String {
 fun DashboardScreen(
     onNavigateToTasks: () -> Unit,
     onNavigateToFarmManagement: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     uiState: DashboardUiState
 ) {
     Scaffold(
@@ -156,8 +157,10 @@ fun DashboardScreen(
         bottomBar = {
             BottomNavBar(
                 onTasksClick = onNavigateToTasks,
-                onFarmManagementClick = onNavigateToFarmManagement
+                onFarmManagementClick = onNavigateToFarmManagement,
+                onProfileClick = onNavigateToProfile
             )
+
         }
     ) { innerPadding ->
         BoxWithConstraints(
@@ -717,7 +720,8 @@ private fun QuickAccessCard(
 @Composable
 fun BottomNavBar(
     onTasksClick: () -> Unit,
-    onFarmManagementClick: () -> Unit
+    onFarmManagementClick: () -> Unit,
+    onProfileClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -757,7 +761,7 @@ fun BottomNavBar(
             icon = Icons.Outlined.AccountCircle,
             label = "Profile",
             selected = false,
-            onClick = {}
+            onClick = onProfileClick
         )
     }
 }
@@ -799,6 +803,7 @@ fun DashboardScreenPreview() {
     DashboardScreen(
         onNavigateToTasks = {},
         onNavigateToFarmManagement = {},
+        onNavigateToProfile = {},
         uiState = placeholderDashboardState()
     )
 }

@@ -69,6 +69,7 @@ data class FarmManagementItem(
 fun FarmManagementScreen(
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     onPopulationClick: () -> Unit = {},
     onWeightClick: () -> Unit = {},
     onFeedsRefillClick: () -> Unit = {},
@@ -126,8 +127,10 @@ fun FarmManagementScreen(
         bottomBar = {
             FarmManagementBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
-                onTasksClick = onNavigateToTasks
+                onTasksClick = onNavigateToTasks,
+                onProfileClick = onNavigateToProfile
             )
+
         }
     ) { innerPadding ->
         Column(
@@ -255,7 +258,8 @@ private fun FarmManagementCard(
 @Composable
 private fun FarmManagementBottomNavBar(
     onDashboardClick: () -> Unit,
-    onTasksClick: () -> Unit
+    onTasksClick: () -> Unit,
+    onProfileClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -295,7 +299,7 @@ private fun FarmManagementBottomNavBar(
             icon = Icons.Outlined.AccountCircle,
             label = "Profile",
             selected = false,
-            onClick = {}
+            onClick = onProfileClick
         )
     }
 }

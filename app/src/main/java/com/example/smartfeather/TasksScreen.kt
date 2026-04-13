@@ -87,6 +87,7 @@ fun TasksScreen(
     employeeId: Int,
     onNavigateToDashboard: () -> Unit,
     onNavigateToFarmManagement: () -> Unit,
+    onNavigateToProfile: () -> Unit,
     onPendingTaskClick: (TaskItem) -> Unit,
     onCompletedTaskClick: (TaskItem) -> Unit
 ) {
@@ -122,8 +123,10 @@ fun TasksScreen(
         bottomBar = {
             TasksBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
-                onFarmManagementClick = onNavigateToFarmManagement
+                onFarmManagementClick = onNavigateToFarmManagement,
+                onProfileClick = onNavigateToProfile
             )
+
         }
     ) { innerPadding ->
         Box(
@@ -401,7 +404,8 @@ private fun priorityColor(priority: TaskPriority): Color {
 @Composable
 private fun TasksBottomNavBar(
     onDashboardClick: () -> Unit,
-    onFarmManagementClick: () -> Unit
+    onFarmManagementClick: () -> Unit,
+    onProfileClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -441,7 +445,8 @@ private fun TasksBottomNavBar(
             icon = Icons.Outlined.AccountCircle,
             label = "Profile",
             selected = false,
-            onClick = {}
+            onClick = onProfileClick
+
         )
     }
 }
@@ -484,6 +489,7 @@ fun TasksScreenPreview() {
         employeeId = 2,
         onNavigateToDashboard = {},
         onNavigateToFarmManagement = {},
+        onNavigateToProfile = {},
         onPendingTaskClick = {},
         onCompletedTaskClick = {}
     )

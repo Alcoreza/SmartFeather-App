@@ -33,7 +33,8 @@ private val FarmPoppins = FontFamily(
 fun WeightScreen(
     onBackToFarm: () -> Unit,
     onNavigateToDashboard: () -> Unit,
-    onNavigateToTasks: () -> Unit
+    onNavigateToTasks: () -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
 
     var batchId by remember { mutableStateOf("") }
@@ -53,12 +54,15 @@ fun WeightScreen(
         bottomBar = {
             BottomNavBar(
                 onTasksClick = onNavigateToTasks,
-                onFarmManagementClick = onBackToFarm
+                onFarmManagementClick = onBackToFarm,
+                onProfileClick = onNavigateToProfile
             )
         }
     ) { padding ->
 
-        Column(
+
+
+    Column(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color(0xFFF1EFEC))

@@ -63,6 +63,7 @@ enum class AppScreen {
     PERSONNEL_LOGS,
     VISITOR,
     NEW_BIRD_BATCH,
+    PROFILE,
 }
 
 private val LoginPoppins = FontFamily(
@@ -116,8 +117,12 @@ fun SmartFeatherApp() {
             onNavigateToFarmManagement = {
                 currentScreen = AppScreen.FARM_MANAGEMENT
             },
+            onNavigateToProfile = {
+                currentScreen = AppScreen.PROFILE
+            },
             uiState = placeholderDashboardState()
         )
+
 
         AppScreen.TASKS -> TasksScreen(
             employeeId = loggedInEmployeeId ?: 0,
@@ -126,6 +131,9 @@ fun SmartFeatherApp() {
             },
             onNavigateToFarmManagement = {
                 currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToProfile = {
+                currentScreen = AppScreen.PROFILE
             },
             onPendingTaskClick = { task ->
                 selectedPendingTask = PendingTaskDetailUiState(
@@ -246,8 +254,12 @@ fun SmartFeatherApp() {
             },
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
+            },
+            onNavigateToProfile = {
+                currentScreen = AppScreen.PROFILE
             }
         )
+
 
         AppScreen.FEEDS_REFILL -> FeedsRefillScreen(
             onBackToFarm = {
@@ -306,12 +318,35 @@ fun SmartFeatherApp() {
             onNavigateToTasks = { currentScreen = AppScreen.TASKS }
         )
 
+        AppScreen.PROFILE -> ProfileScreen(
+            employeeId = loggedInEmployeeId ?: 0,
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            },
+            onNavigateToFarmManagement = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onLogout = {
+                loggedInEmployeeId = null
+                selectedPendingTask = null
+                selectedCompletedTask = null
+                currentScreen = AppScreen.LOGIN
+            }
+        )
+
+
         AppScreen.FARM_MANAGEMENT -> FarmManagementScreen(
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
             },
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
+            },
+            onNavigateToProfile = {
+                currentScreen = AppScreen.PROFILE
             },
             onPopulationClick = {
                 currentScreen = AppScreen.POPULATION
