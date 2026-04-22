@@ -1,6 +1,7 @@
 package com.example.smartfeather
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -8,7 +9,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,11 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import kotlinx.coroutines.launch
 
 private val VitaminsPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -41,13 +42,40 @@ fun VitaminsRefillScreen(
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit
 ) {
+    val vitaminsService = remember { VitaminsRefillBackendService() }
+    val coroutineScope = rememberCoroutineScope()
+
     var batchId by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
     var typeOfVitamins by remember { mutableStateOf("") }
-    var mlRefilled by remember { mutableStateOf("") }
+    var bottlesUsed by remember { mutableStateOf("") }
+
+    var houses by remember { mutableStateOf<List<VitaminHouseOption>>(emptyList()) }
+    var pens by remember { mutableStateOf<List<VitaminPenOption>>(emptyList()) }
+    var vitaminOptions by remember { mutableStateOf<List<VitaminInventoryOption>>(emptyList()) }
+
+    var selectedHouse by remember { mutableStateOf<VitaminHouseOption?>(null) }
+    var selectedPen by remember { mutableStateOf<VitaminPenOption?>(null) }
+    var selectedVitamin by remember { mutableStateOf<VitaminInventoryOption?>(null) }
+
+    var houseExpanded by remember { mutableStateOf(false) }
+    var penExpanded by remember { mutableStateOf(false) }
+    var vitaminExpanded by remember { mutableStateOf(false) }
+
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        vitaminsService.getHouses()
+            .onSuccess { houses = it }
+            .onFailure { errorMessage = it.message ?: "Failed to load houses." }
+
+        vitaminsService.getVitaminInventoryOptions()
+            .onSuccess { vitaminOptions = it }
+            .onFailure { errorMessage = it.message ?: "Failed to load vitamin inventory." }
+    }
 
     Scaffold(
         bottomBar = {
@@ -65,7 +93,6 @@ fun VitaminsRefillScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
         ) {
-            // HEADER
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -80,7 +107,7 @@ fun VitaminsRefillScreen(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .padding(start = 12.dp)
-                        .clickable { onBackToFarm() } // use each screen's own back lambda
+                        .clickable { onBackToFarm() }
                 )
                 Text(
                     text = "Vitamins Refill",
@@ -91,9 +118,7 @@ fun VitaminsRefillScreen(
                 )
             }
 
-            // CONTENT
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-
                 VitaminsLabel("Batch ID")
                 VitaminsInputField(batchId) { batchId = it }
 
@@ -101,37 +126,99 @@ fun VitaminsRefillScreen(
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
-                        VitaminsLabel("Date")
-                        VitaminsInputField(date) { date = it }
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        VitaminsLabel("Time")
-                        VitaminsInputField(time) { time = it }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
                         VitaminsLabel("House")
-                        VitaminsDropdownField(house) { house = it }
+                        VitaminsDropdownField(
+                            value = house,
+                            options = houses.map { it.houseNumber },
+                            expanded = houseExpanded,
+                            onExpandedChange = { houseExpanded = it },
+                            onValueSelected = { selectedValue ->
+                                house = selectedValue
+                                selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
+                                pen = ""
+                                selectedPen = null
+                                pens = emptyList()
+                                houseExpanded = false
+                                errorMessage = null
+                                successMessage = null
+
+                                val houseId = selectedHouse?.id ?: return@VitaminsDropdownField
+                                coroutineScope.launch {
+                                    vitaminsService.getPensByHouse(houseId)
+                                        .onSuccess { pens = it }
+                                        .onFailure {
+                                            errorMessage = it.message ?: "Failed to load pens."
+                                        }
+                                }
+                            }
+                        )
                     }
+
                     Column(modifier = Modifier.weight(1f)) {
                         VitaminsLabel("Pen")
-                        VitaminsDropdownField(pen) { pen = it }
+                        VitaminsDropdownField(
+                            value = pen,
+                            options = pens.map { it.penName },
+                            expanded = penExpanded,
+                            onExpandedChange = {
+                                if (selectedHouse != null) penExpanded = it
+                            },
+                            onValueSelected = { selectedValue ->
+                                pen = selectedValue
+                                selectedPen = pens.firstOrNull { it.penName == selectedValue }
+                                penExpanded = false
+                                errorMessage = null
+                                successMessage = null
+                            }
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 VitaminsLabel("Type of Vitamins")
-                VitaminsDropdownField(typeOfVitamins) { typeOfVitamins = it }
+                VitaminsDropdownField(
+                    value = typeOfVitamins,
+                    options = vitaminOptions.map { it.itemName },
+                    expanded = vitaminExpanded,
+                    onExpandedChange = { vitaminExpanded = it },
+                    onValueSelected = { selectedValue ->
+                        typeOfVitamins = selectedValue
+                        selectedVitamin = vitaminOptions.firstOrNull { it.itemName == selectedValue }
+                        vitaminExpanded = false
+                        errorMessage = null
+                        successMessage = null
+                    }
+                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                VitaminsLabel("mL of Vitamins Refilled")
-                VitaminsInputField(mlRefilled) { mlRefilled = it }
+                VitaminsLabel("Bottles of Vitamins Used")
+                VitaminsInputField(bottlesUsed) {
+                    bottlesUsed = it.filter { ch -> ch.isDigit() }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                errorMessage?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFFB00020),
+                        fontFamily = VitaminsPoppins,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                successMessage?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFF2E7D32),
+                        fontFamily = VitaminsPoppins,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -140,12 +227,73 @@ fun VitaminsRefillScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Button(
-                        onClick = { },
+                        onClick = {
+                            errorMessage = null
+                            successMessage = null
+
+                            val currentHouse = selectedHouse
+                            val currentPen = selectedPen
+                            val currentVitamin = selectedVitamin
+                            val bottlesValue = bottlesUsed.toIntOrNull()
+
+                            if (currentHouse == null) {
+                                errorMessage = "Please select a house."
+                                return@Button
+                            }
+                            if (currentPen == null) {
+                                errorMessage = "Please select a pen."
+                                return@Button
+                            }
+                            if (currentVitamin == null) {
+                                errorMessage = "Please select a type of vitamins."
+                                return@Button
+                            }
+                            if (bottlesValue == null || bottlesValue <= 0) {
+                                errorMessage = "Please enter a valid bottle count."
+                                return@Button
+                            }
+
+                            coroutineScope.launch {
+                                isLoading = true
+                                vitaminsService.submitVitaminRefill(
+                                    inventoryId = currentVitamin.id,
+                                    houseId = currentHouse.id,
+                                    penId = currentPen.id,
+                                    bottles = bottlesValue
+                                ).onSuccess { success ->
+                                    if (success) {
+                                        successMessage = "Vitamins refill submitted successfully."
+                                        batchId = ""
+                                        house = ""
+                                        pen = ""
+                                        typeOfVitamins = ""
+                                        bottlesUsed = ""
+                                        selectedHouse = null
+                                        selectedPen = null
+                                        selectedVitamin = null
+                                        pens = emptyList()
+
+                                        vitaminsService.getVitaminInventoryOptions()
+                                            .onSuccess { vitaminOptions = it }
+                                    } else {
+                                        errorMessage = "Failed to submit vitamins refill."
+                                    }
+                                }.onFailure {
+                                    errorMessage = it.message ?: "Failed to submit vitamins refill."
+                                }
+                                isLoading = false
+                            }
+                        },
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E5D36)),
-                        modifier = Modifier.height(40.dp)
+                        modifier = Modifier.height(40.dp),
+                        enabled = !isLoading
                     ) {
-                        Text("Submit", color = Color.White, fontFamily = VitaminsPoppins)
+                        Text(
+                            text = if (isLoading) "Submitting..." else "Submit",
+                            color = Color.White,
+                            fontFamily = VitaminsPoppins
+                        )
                     }
                 }
             }
@@ -183,22 +331,56 @@ private fun VitaminsInputField(value: String, onValueChange: (String) -> Unit) {
 }
 
 @Composable
-private fun VitaminsDropdownField(value: String, onValueSelected: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = {},
-        readOnly = true,
-        trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) },
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFEDEDED),
-            unfocusedContainerColor = Color(0xFFEDEDED),
-            focusedBorderColor = Color(0xFFBDBDBD),
-            unfocusedBorderColor = Color(0xFFBDBDBD),
-            cursorColor = Color.Black
-        )
-    )
+private fun VitaminsDropdownField(
+    value: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onValueSelected: (String) -> Unit
+) {
+    Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
+                .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
+                .clickable { onExpandedChange(true) }
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (value.isBlank()) "Select" else value,
+                    fontFamily = VitaminsPoppins,
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
+                Text(
+                    text = "⌄",
+                    fontFamily = VitaminsPoppins,
+                    fontSize = 18.sp,
+                    color = Color.Black
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option, fontFamily = VitaminsPoppins) },
+                    onClick = { onValueSelected(option) }
+                )
+            }
+        }
+    }
 }
 
 @Composable
