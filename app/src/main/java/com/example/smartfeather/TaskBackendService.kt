@@ -2,7 +2,7 @@ package com.example.smartfeather
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
-import io.ktor.client.request.header
+import io.ktor.client.request.accept
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -23,24 +23,24 @@ import java.util.Locale
 
 @Serializable
 data class FlockmanTasksRequest(
-    @SerialName("p_employee_id")
+    @SerialName("employee_id")
     val employeeId: Int
 )
 
 @Serializable
 data class CompleteTaskRequest(
-    @SerialName("p_task_id")
+    @SerialName("task_id")
     val taskId: Int,
-    @SerialName("p_employee_id")
+    @SerialName("employee_id")
     val employeeId: Int,
-    @SerialName("p_notes")
+    @SerialName("notes")
     val notes: String? = null,
-    @SerialName("p_photo_url")
+    @SerialName("photo_url")
     val photoUrl: String? = null
 )
 
 @Serializable
-data class TaskRpcRow(
+data class TaskApiRow(
     @SerialName("taskid")
     val taskId: Int,
     @SerialName("tasktype")
@@ -69,9 +69,16 @@ data class TaskRpcRow(
     val photoUrl: String? = null
 )
 
+@Serializable
+data class ApiMessageResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("message")
+    val message: String? = null
+)
+
 class TaskBackendService(
-    private val baseUrl: String = ApiConfig.BASE_URL,
-    private val publishableKey: String = ApiConfig.BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
 
@@ -84,22 +91,20 @@ class TaskBackendService(
             runCatching {
                 val requestBody = FlockmanTasksRequest(employeeId)
 
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_flockman_tasks") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody(json.encodeToString(requestBody))
-                    }.bodyAsText()
+                val responseText = httpClient.post("$baseUrl/api/mobile/tasks") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(json.encodeToString(requestBody))
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                if (parsed is JsonObject && parsed["message"] != null && parsed["taskid"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load tasks.")
                 }
 
-                json.decodeFromJsonElement<List<TaskRpcRow>>(parsed).map { it.toTaskItem() }
+                json.decodeFromJsonElement<List<TaskApiRow>>(parsed).map { it.toTaskItem() }
             }
         }
     }
@@ -119,34 +124,31 @@ class TaskBackendService(
                     photoUrl = photoUrl
                 )
 
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_submit_task_for_approval") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody(json.encodeToString(requestBody))
-                    }.bodyAsText()
+                val responseText = httpClient.post("$baseUrl/api/mobile/tasks/submit") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(json.encodeToString(requestBody))
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to submit task for approval.")
                 }
 
-                parsed.toString().contains("true")
+                val result = json.decodeFromJsonElement<ApiMessageResponse>(parsed)
+                result.success == true
             }
         }
     }
 
-
-    private fun TaskRpcRow.toTaskItem(): TaskItem {
+    private fun TaskApiRow.toTaskItem(): TaskItem {
         val statusEnum = when (status.trim().lowercase(Locale.ROOT)) {
             "completed" -> TaskStatus.COMPLETED
             "for approval" -> TaskStatus.FOR_APPROVAL
             else -> TaskStatus.PENDING
         }
-
 
         val priorityEnum = when (priorityLevel?.trim()?.uppercase(Locale.ROOT)) {
             "LOW" -> TaskPriority.LOW
@@ -170,7 +172,6 @@ class TaskBackendService(
                 }
             }
         }
-
 
         return TaskItem(
             id = taskId,
