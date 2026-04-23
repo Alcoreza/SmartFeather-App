@@ -2,7 +2,8 @@ package com.example.smartfeather
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
-import io.ktor.client.request.header
+import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -19,7 +20,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class HouseRpcRow(
+data class PopulationHouseApiRow(
     @SerialName("id")
     val id: Long,
     @SerialName("house_number")
@@ -29,26 +30,33 @@ data class HouseRpcRow(
 )
 
 @Serializable
-data class SubmitPopulationRequest(
-    @SerialName("p_house_id")
+data class PopulationSubmitRequest(
+    @SerialName("house_id")
     val houseId: Long,
-    @SerialName("p_pen_name")
+    @SerialName("pen_name")
     val penName: String,
-    @SerialName("p_eggs_hatched")
+    @SerialName("eggs_hatched")
     val eggsHatched: Int,
-    @SerialName("p_mortality")
+    @SerialName("mortality")
     val mortality: Int
 )
 
-data class HouseOption(
+@Serializable
+data class PopulationApiMessageResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("message")
+    val message: String? = null
+)
+
+data class PopulationHouseOption(
     val id: Long,
     val houseNumber: String,
     val numberOfPens: Int
 )
 
 class PopulationBackendService(
-    private val baseUrl: String = ApiConfig.BASE_URL,
-    private val publishableKey: String = ApiConfig.BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
 
@@ -56,26 +64,22 @@ class PopulationBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getHouses(): Result<List<HouseOption>> {
+    suspend fun getHouses(): Result<List<PopulationHouseOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_houses") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody("{}")
-                    }.bodyAsText()
+                val responseText = httpClient.get("$baseUrl/api/mobile/houses") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
                 if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load houses.")
                 }
 
-                json.decodeFromJsonElement<List<HouseRpcRow>>(parsed).map {
-                    HouseOption(
+                json.decodeFromJsonElement<List<PopulationHouseApiRow>>(parsed).map {
+                    PopulationHouseOption(
                         id = it.id,
                         houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown",
                         numberOfPens = (it.numberOfPens ?: 0L).toInt()
@@ -93,34 +97,33 @@ class PopulationBackendService(
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val requestBody = SubmitPopulationRequest(
+                val requestBody = PopulationSubmitRequest(
                     houseId = houseId,
                     penName = "Pen $penNumber",
                     eggsHatched = eggsHatched,
                     mortality = mortality
                 )
 
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_submit_population") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody(json.encodeToString(requestBody))
-                    }.bodyAsText()
+                val responseText = httpClient.post("$baseUrl/api/mobile/population") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(json.encodeToString(requestBody))
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to submit population data.")
                 }
 
-                parsed.toString().contains("true")
+                val result = json.decodeFromJsonElement<PopulationApiMessageResponse>(parsed)
+                result.success == true
             }
         }
     }
 
-    fun buildPenOptions(selectedHouse: HouseOption?): List<String> {
+    fun buildPenOptions(selectedHouse: PopulationHouseOption?): List<String> {
         val count = selectedHouse?.numberOfPens ?: 0
         return (1..count).map { it.toString() }
     }

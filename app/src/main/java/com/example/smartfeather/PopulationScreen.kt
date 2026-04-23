@@ -65,8 +65,8 @@ fun PopulationScreen(
     var eggs by remember { mutableStateOf("") }
     var mortality by remember { mutableStateOf("") }
 
-    var houses by remember { mutableStateOf<List<HouseOption>>(emptyList()) }
-    var selectedHouse by remember { mutableStateOf<HouseOption?>(null) }
+    var houses by remember { mutableStateOf<List<PopulationHouseOption>>(emptyList()) }
+    var selectedHouse by remember { mutableStateOf<PopulationHouseOption?>(null) }
     var penOptions by remember { mutableStateOf<List<String>>(emptyList()) }
 
     var houseExpanded by remember { mutableStateOf(false) }
