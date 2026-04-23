@@ -2,7 +2,7 @@ package com.example.smartfeather
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
-import io.ktor.client.request.header
+import io.ktor.client.request.accept
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -18,29 +18,40 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
-object SupabaseConfig {
-    const val SUPABASE_URL = "https://fgtqbfmnehnzwanzqzyb.supabase.co"
-    const val SUPABASE_PUBLISHABLE_KEY = "sb_publishable_hWs6UmOa8zQFICiImm4qvw_1HlUSJ1T"
-}
-
 @Serializable
 data class MobileLoginRequest(
-    @SerialName("p_employee_id")
-    val employeeId: Int,
-    @SerialName("p_password")
+    @SerialName("user_id")
+    val userId: Int,
+    @SerialName("password")
     val password: String
 )
 
 @Serializable
-data class MobileLoginResponse(
-    @SerialName("employee_id")
+data class MobileLoginUser(
+    @SerialName("EmployeeId")
     val employeeId: Int,
-    @SerialName("first_name")
-    val firstName: String,
-    @SerialName("last_name")
-    val lastName: String,
-    @SerialName("role")
+    @SerialName("FirstName")
+    val firstName: String? = null,
+    @SerialName("LastName")
+    val lastName: String? = null,
+    @SerialName("Role")
     val role: String
+)
+
+@Serializable
+data class MobileLoginResponse(
+    @SerialName("message")
+    val message: String? = null,
+    @SerialName("user")
+    val user: MobileLoginUser? = null
+)
+
+@Serializable
+data class LaravelErrorResponse(
+    @SerialName("message")
+    val message: String? = null,
+    @SerialName("errors")
+    val errors: Map<String, List<String>>? = null
 )
 
 @Serializable
@@ -52,8 +63,7 @@ data class SupabaseErrorResponse(
 )
 
 class SupabaseAuthService(
-    private val baseUrl: String = SupabaseConfig.SUPABASE_URL,
-    private val publishableKey: String = SupabaseConfig.SUPABASE_PUBLISHABLE_KEY
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
 
@@ -68,27 +78,25 @@ class SupabaseAuthService(
                     ?: error("Employee ID should contain numbers only.")
 
                 val requestBody = MobileLoginRequest(
-                    employeeId = employeeIdValue,
+                    userId = employeeIdValue,
                     password = password
                 )
 
-                val responseText = httpClient.post("$baseUrl/rest/v1/rpc/mobile_flockman_login") {
-                    header("apikey", publishableKey)
-                    header("Authorization", "Bearer $publishableKey")
+                val responseText = httpClient.post("$baseUrl/api/mobile/login") {
                     contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                if (parsed is JsonObject && parsed["user"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Login failed.")
                 }
 
-                val users = json.decodeFromJsonElement<List<MobileLoginResponse>>(parsed)
-                val user = users.firstOrNull()
-                    ?: error("Invalid employee ID or password.")
+                val loginResponse = json.decodeFromJsonElement<MobileLoginResponse>(parsed)
+                val user = loginResponse.user ?: error("Invalid employee ID or password.")
 
                 if (!user.role.equals("Flockman", ignoreCase = true)) {
                     error("Only Flockman accounts can sign in on mobile.")

@@ -47,8 +47,8 @@ data class HouseOption(
 )
 
 class PopulationBackendService(
-    private val baseUrl: String = SupabaseConfig.SUPABASE_URL,
-    private val publishableKey: String = SupabaseConfig.SUPABASE_PUBLISHABLE_KEY
+    private val baseUrl: String = ApiConfig.BASE_URL,
+    private val publishableKey: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
 
