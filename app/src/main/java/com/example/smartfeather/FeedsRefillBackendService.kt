@@ -2,7 +2,8 @@ package com.example.smartfeather
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
-import io.ktor.client.request.header
+import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -19,7 +20,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class FeedHouseRpcRow(
+data class FeedHouseApiRow(
     @SerialName("id")
     val id: Long,
     @SerialName("house_number")
@@ -29,7 +30,7 @@ data class FeedHouseRpcRow(
 )
 
 @Serializable
-data class FeedPenRpcRow(
+data class FeedPenApiRow(
     @SerialName("id")
     val id: Long,
     @SerialName("pen_name")
@@ -37,7 +38,7 @@ data class FeedPenRpcRow(
 )
 
 @Serializable
-data class FeedInventoryRpcRow(
+data class FeedInventoryApiRow(
     @SerialName("id")
     val id: Int,
     @SerialName("item_name")
@@ -49,23 +50,25 @@ data class FeedInventoryRpcRow(
 )
 
 @Serializable
-data class FeedPensByHouseRequest(
-    @SerialName("p_house_id")
-    val houseId: Long
+data class FeedRefillRequest(
+    @SerialName("inventory_id")
+    val inventoryId: Int,
+    @SerialName("house_id")
+    val houseId: Long,
+    @SerialName("pen_id")
+    val penId: Long,
+    @SerialName("feeder_number")
+    val feederNumber: Int,
+    @SerialName("kilograms")
+    val kilograms: Int
 )
 
 @Serializable
-data class FeedRefillRequest(
-    @SerialName("p_inventory_id")
-    val inventoryId: Int,
-    @SerialName("p_house_id")
-    val houseId: Long,
-    @SerialName("p_pen_id")
-    val penId: Long,
-    @SerialName("p_feeder_number")
-    val feederNumber: Int,
-    @SerialName("p_kilograms")
-    val kilograms: Int
+data class FeedApiMessageResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("message")
+    val message: String? = null
 )
 
 data class FeedHouseOption(
@@ -86,8 +89,7 @@ data class FeedInventoryOption(
 )
 
 class FeedsRefillBackendService(
-    private val baseUrl: String = ApiConfig.BASE_URL,
-    private val publishableKey: String = ApiConfig.BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
 
@@ -98,21 +100,18 @@ class FeedsRefillBackendService(
     suspend fun getHouses(): Result<List<FeedHouseOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_houses") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody("{}")
-                    }.bodyAsText()
+                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/houses") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
+
                 if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load houses.")
                 }
 
-                json.decodeFromJsonElement<List<FeedHouseRpcRow>>(parsed).map {
+                json.decodeFromJsonElement<List<FeedHouseApiRow>>(parsed).map {
                     FeedHouseOption(
                         id = it.id,
                         houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
@@ -125,21 +124,18 @@ class FeedsRefillBackendService(
     suspend fun getPensByHouse(houseId: Long): Result<List<FeedPenOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_pens_by_house") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody(json.encodeToString(FeedPensByHouseRequest(houseId)))
-                    }.bodyAsText()
+                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/houses/$houseId/pens") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
+
                 if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load pens.")
                 }
 
-                json.decodeFromJsonElement<List<FeedPenRpcRow>>(parsed).map {
+                json.decodeFromJsonElement<List<FeedPenApiRow>>(parsed).map {
                     FeedPenOption(
                         id = it.id,
                         penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
@@ -152,21 +148,18 @@ class FeedsRefillBackendService(
     suspend fun getFeedInventoryOptions(): Result<List<FeedInventoryOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_feed_inventory_options") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody("{}")
-                    }.bodyAsText()
+                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/feed-options") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
+
                 if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load feed inventory.")
                 }
 
-                json.decodeFromJsonElement<List<FeedInventoryRpcRow>>(parsed).map {
+                json.decodeFromJsonElement<List<FeedInventoryApiRow>>(parsed).map {
                     FeedInventoryOption(
                         id = it.id,
                         itemName = it.itemName?.ifBlank { "Unknown Feed" } ?: "Unknown Feed",
@@ -187,31 +180,29 @@ class FeedsRefillBackendService(
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_submit_feed_refill") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody(
-                            json.encodeToString(
-                                FeedRefillRequest(
-                                    inventoryId = inventoryId,
-                                    houseId = houseId,
-                                    penId = penId,
-                                    feederNumber = feederNumber,
-                                    kilograms = kilograms
-                                )
-                            )
-                        )
-                    }.bodyAsText()
+                val requestBody = FeedRefillRequest(
+                    inventoryId = inventoryId,
+                    houseId = houseId,
+                    penId = penId,
+                    feederNumber = feederNumber,
+                    kilograms = kilograms
+                )
+
+                val responseText = httpClient.post("$baseUrl/api/mobile/feed-refill") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(json.encodeToString(requestBody))
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to submit feeds refill.")
                 }
 
-                parsed.toString().contains("true")
+                val response = json.decodeFromJsonElement<FeedApiMessageResponse>(parsed)
+                response.success == true
             }
         }
     }
