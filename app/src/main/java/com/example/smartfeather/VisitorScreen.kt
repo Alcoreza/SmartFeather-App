@@ -1,32 +1,62 @@
 package com.example.smartfeather
 
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import kotlinx.coroutines.launch
+import java.util.Calendar
+import androidx.compose.foundation.border
+
 
 private val VisitorPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -37,10 +67,16 @@ private val VisitorPoppins = FontFamily(
 
 @Composable
 fun VisitorScreen(
+    employeeId: Int,
     onBackToBiosecurity: () -> Unit,
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit
 ) {
+    val visitorService = remember { VisitorBackendService() }
+    val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
+
     var date by remember { mutableStateOf("") }
     var timeIn by remember { mutableStateOf("") }
     var timeOut by remember { mutableStateOf("") }
@@ -49,6 +85,36 @@ fun VisitorScreen(
     var footBath by remember { mutableStateOf(false) }
     var sanitation by remember { mutableStateOf(false) }
     var ppe by remember { mutableStateOf(false) }
+
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+
+    fun showDatePicker() {
+        val calendar = Calendar.getInstance()
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                date = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth)
+            },
+            calendar.get(Calendar.YEAR),
+            calendar.get(Calendar.MONTH),
+            calendar.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    fun showTimePicker(onTimeSelected: (String) -> Unit) {
+        val calendar = Calendar.getInstance()
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                onTimeSelected(String.format("%02d:%02d", hourOfDay, minute))
+            },
+            calendar.get(Calendar.HOUR_OF_DAY),
+            calendar.get(Calendar.MINUTE),
+            false
+        ).show()
+    }
 
     Scaffold(
         bottomBar = {
@@ -65,8 +131,12 @@ fun VisitorScreen(
                 .background(Color(0xFFF2F2F2))
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
+                    }
+                }
         ) {
-            // HEADER
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -81,7 +151,7 @@ fun VisitorScreen(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
                         .padding(start = 12.dp)
-                        .clickable { onBackToBiosecurity() } // use each screen's own back lambda
+                        .clickable { onBackToBiosecurity() }
                 )
                 Text(
                     text = "Visitors",
@@ -92,24 +162,36 @@ fun VisitorScreen(
                 )
             }
 
-            // CONTENT
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // Date, Time In, Time Out in one row
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         VisitorLabel("Date")
-                        VisitorInputField(date) { date = it }
+                        VisitorPickerField(
+                            value = date,
+                            placeholder = "Date",
+                            onClick = { showDatePicker() }
+                        )
+
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         VisitorLabel("Time In")
-                        VisitorInputField(timeIn) { timeIn = it }
+                        VisitorPickerField(
+                            value = timeIn,
+                            placeholder = "Time in",
+                            onClick = { showTimePicker { timeIn = it } }
+                        )
+
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         VisitorLabel("Time Out")
-                        VisitorInputField(timeOut) { timeOut = it }
+                        VisitorPickerField(
+                            value = timeOut,
+                            placeholder = "Time out",
+                            onClick = { showTimePicker { timeOut = it } }
+                        )
+
                     }
                 }
 
@@ -125,7 +207,6 @@ fun VisitorScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Checkboxes in one row
                 Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     VisitorCheckbox(
                         label = "Foot Bath",
@@ -144,6 +225,28 @@ fun VisitorScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                errorMessage?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFFB00020),
+                        fontFamily = VisitorPoppins,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
+                successMessage?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFF2E7D32),
+                        fontFamily = VisitorPoppins,
+                        fontSize = 13.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
@@ -151,12 +254,74 @@ fun VisitorScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Button(
-                        onClick = { },
+                        onClick = {
+                            errorMessage = null
+                            successMessage = null
+                            focusManager.clearFocus()
+
+                            if (date.isBlank()) {
+                                errorMessage = "Please select a date."
+                                return@Button
+                            }
+                            if (timeIn.isBlank()) {
+                                errorMessage = "Please select time in."
+                                return@Button
+                            }
+                            if (timeOut.isBlank()) {
+                                errorMessage = "Please select time out."
+                                return@Button
+                            }
+                            if (name.isBlank()) {
+                                errorMessage = "Please enter the visitor name."
+                                return@Button
+                            }
+                            if (purpose.isBlank()) {
+                                errorMessage = "Please enter the purpose."
+                                return@Button
+                            }
+
+                            coroutineScope.launch {
+                                isLoading = true
+                                visitorService.submitVisitorLog(
+                                    employeeId = employeeId,
+                                    date = date,
+                                    timeIn = timeIn,
+                                    timeOut = timeOut,
+                                    name = name.trim(),
+                                    purpose = purpose.trim(),
+                                    footBath = footBath,
+                                    sanitation = sanitation,
+                                    ppe = ppe
+                                ).onSuccess { success ->
+                                    if (success) {
+                                        successMessage = "Visitor log submitted successfully."
+                                        date = ""
+                                        timeIn = ""
+                                        timeOut = ""
+                                        name = ""
+                                        purpose = ""
+                                        footBath = false
+                                        sanitation = false
+                                        ppe = false
+                                    } else {
+                                        errorMessage = "Failed to submit visitor log."
+                                    }
+                                }.onFailure {
+                                    errorMessage = it.message ?: "Failed to submit visitor log."
+                                }
+                                isLoading = false
+                            }
+                        },
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E5D36)),
-                        modifier = Modifier.height(40.dp)
+                        modifier = Modifier.height(40.dp),
+                        enabled = !isLoading
                     ) {
-                        Text("Submit", color = Color.White, fontFamily = VisitorPoppins)
+                        Text(
+                            text = if (isLoading) "Submitting..." else "Submit",
+                            color = Color.White,
+                            fontFamily = VisitorPoppins
+                        )
                     }
                 }
             }
@@ -184,6 +349,7 @@ private fun VisitorCheckbox(
         )
     }
 }
+
 
 @Composable
 private fun VisitorLabel(text: String) {
@@ -213,6 +379,33 @@ private fun VisitorInputField(value: String, onValueChange: (String) -> Unit) {
         )
     )
 }
+
+@Composable
+private fun VisitorPickerField(
+    value: String,
+    placeholder: String,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
+            .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text = if (value.isBlank()) placeholder else value,
+            fontFamily = VisitorPoppins,
+            fontSize = 14.sp,
+            color = if (value.isBlank()) Color(0xFF6E6E6E) else Color.Black,
+            maxLines = 1
+        )
+    }
+}
+
 
 @Composable
 private fun VisitorBottomNavBar(

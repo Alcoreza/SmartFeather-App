@@ -310,6 +310,7 @@ fun SmartFeatherApp() {
         )
 
         AppScreen.VISITOR -> VisitorScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
             onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
             onNavigateToTasks = { currentScreen = AppScreen.TASKS }
