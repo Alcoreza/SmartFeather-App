@@ -2,17 +2,14 @@ package com.example.smartfeather
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
-import io.ktor.client.request.header
-import io.ktor.client.request.post
-import io.ktor.client.request.setBody
+import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -20,12 +17,6 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
-@Serializable
-data class MobileProfileRequest(
-    @SerialName("p_employee_id")
-    val employeeId: Int
-)
 
 @Serializable
 data class MobileProfileResponse(
@@ -65,8 +56,7 @@ data class FlockmanProfileUiState(
 )
 
 class ProfileBackendService(
-    private val baseUrl: String = ApiConfig.BASE_URL,
-    private val publishableKey: String = ApiConfig.BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
 
@@ -77,24 +67,18 @@ class ProfileBackendService(
     suspend fun getFlockmanProfile(employeeId: Int): Result<FlockmanProfileUiState> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val requestBody = MobileProfileRequest(employeeId)
-
-                val responseText = httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_flockman_profile") {
-                    header("apikey", publishableKey)
-                    header("Authorization", "Bearer $publishableKey")
-                    contentType(ContentType.Application.Json)
-                    setBody(json.encodeToString(requestBody))
+                val responseText = httpClient.get("$baseUrl/api/mobile/profile/$employeeId") {
+                    accept(ContentType.Application.Json)
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                if (parsed is JsonObject && parsed["employee_id"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load profile.")
                 }
 
-                val profiles = json.decodeFromJsonElement<List<MobileProfileResponse>>(parsed)
-                val profile = profiles.firstOrNull() ?: error("Profile not found.")
+                val profile = json.decodeFromJsonElement<MobileProfileResponse>(parsed)
 
                 FlockmanProfileUiState(
                     firstName = profile.firstName.orEmpty(),

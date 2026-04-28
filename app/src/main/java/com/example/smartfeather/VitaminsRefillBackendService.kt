@@ -2,7 +2,8 @@ package com.example.smartfeather
 
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
-import io.ktor.client.request.header
+import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -19,7 +20,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class VitaminHouseRpcRow(
+data class VitaminHouseApiRow(
     @SerialName("id")
     val id: Long,
     @SerialName("house_number")
@@ -29,7 +30,7 @@ data class VitaminHouseRpcRow(
 )
 
 @Serializable
-data class VitaminPenRpcRow(
+data class VitaminPenApiRow(
     @SerialName("id")
     val id: Long,
     @SerialName("pen_name")
@@ -37,7 +38,7 @@ data class VitaminPenRpcRow(
 )
 
 @Serializable
-data class VitaminInventoryRpcRow(
+data class VitaminInventoryApiRow(
     @SerialName("id")
     val id: Int,
     @SerialName("item_name")
@@ -49,21 +50,23 @@ data class VitaminInventoryRpcRow(
 )
 
 @Serializable
-data class VitaminPensByHouseRequest(
-    @SerialName("p_house_id")
-    val houseId: Long
+data class VitaminRefillRequest(
+    @SerialName("inventory_id")
+    val inventoryId: Int,
+    @SerialName("house_id")
+    val houseId: Long,
+    @SerialName("pen_id")
+    val penId: Long,
+    @SerialName("bottles")
+    val bottles: Int
 )
 
 @Serializable
-data class VitaminRefillRequest(
-    @SerialName("p_inventory_id")
-    val inventoryId: Int,
-    @SerialName("p_house_id")
-    val houseId: Long,
-    @SerialName("p_pen_id")
-    val penId: Long,
-    @SerialName("p_bottles")
-    val bottles: Int
+data class VitaminApiMessageResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("message")
+    val message: String? = null
 )
 
 data class VitaminHouseOption(
@@ -84,8 +87,7 @@ data class VitaminInventoryOption(
 )
 
 class VitaminsRefillBackendService(
-    private val baseUrl: String = ApiConfig.BASE_URL,
-    private val publishableKey: String = ApiConfig.BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
 
@@ -96,21 +98,18 @@ class VitaminsRefillBackendService(
     suspend fun getHouses(): Result<List<VitaminHouseOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_houses") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody("{}")
-                    }.bodyAsText()
+                val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/houses") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
+
                 if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load houses.")
                 }
 
-                json.decodeFromJsonElement<List<VitaminHouseRpcRow>>(parsed).map {
+                json.decodeFromJsonElement<List<VitaminHouseApiRow>>(parsed).map {
                     VitaminHouseOption(
                         id = it.id,
                         houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
@@ -123,21 +122,18 @@ class VitaminsRefillBackendService(
     suspend fun getPensByHouse(houseId: Long): Result<List<VitaminPenOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_pens_by_house") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody(json.encodeToString(VitaminPensByHouseRequest(houseId)))
-                    }.bodyAsText()
+                val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/houses/$houseId/pens") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
+
                 if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load pens.")
                 }
 
-                json.decodeFromJsonElement<List<VitaminPenRpcRow>>(parsed).map {
+                json.decodeFromJsonElement<List<VitaminPenApiRow>>(parsed).map {
                     VitaminPenOption(
                         id = it.id,
                         penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
@@ -150,21 +146,18 @@ class VitaminsRefillBackendService(
     suspend fun getVitaminInventoryOptions(): Result<List<VitaminInventoryOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_get_vitamin_inventory_options") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody("{}")
-                    }.bodyAsText()
+                val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/options") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
+
                 if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load vitamin inventory.")
                 }
 
-                json.decodeFromJsonElement<List<VitaminInventoryRpcRow>>(parsed).map {
+                json.decodeFromJsonElement<List<VitaminInventoryApiRow>>(parsed).map {
                     VitaminInventoryOption(
                         id = it.id,
                         itemName = it.itemName?.ifBlank { "Unknown Vitamin" } ?: "Unknown Vitamin",
@@ -184,30 +177,28 @@ class VitaminsRefillBackendService(
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText =
-                    httpClient.post("$baseUrl/rest/v1/rpc/mobile_submit_vitamin_refill") {
-                        header("apikey", publishableKey)
-                        header("Authorization", "Bearer $publishableKey")
-                        contentType(ContentType.Application.Json)
-                        setBody(
-                            json.encodeToString(
-                                VitaminRefillRequest(
-                                    inventoryId = inventoryId,
-                                    houseId = houseId,
-                                    penId = penId,
-                                    bottles = bottles
-                                )
-                            )
-                        )
-                    }.bodyAsText()
+                val requestBody = VitaminRefillRequest(
+                    inventoryId = inventoryId,
+                    houseId = houseId,
+                    penId = penId,
+                    bottles = bottles
+                )
+
+                val responseText = httpClient.post("$baseUrl/api/mobile/vitamin-refill") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(json.encodeToString(requestBody))
+                }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<SupabaseErrorResponse>(parsed)
+
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to submit vitamins refill.")
                 }
 
-                parsed.toString().contains("true")
+                val response = json.decodeFromJsonElement<VitaminApiMessageResponse>(parsed)
+                response.success == true
             }
         }
     }
