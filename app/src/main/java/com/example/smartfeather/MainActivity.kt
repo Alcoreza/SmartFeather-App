@@ -295,10 +295,13 @@ fun SmartFeatherApp() {
         )
 
         AppScreen.DISINFECTION -> DisinfectionScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
             onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
             onNavigateToTasks = { currentScreen = AppScreen.TASKS }
         )
+
+
 
         AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
             onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
