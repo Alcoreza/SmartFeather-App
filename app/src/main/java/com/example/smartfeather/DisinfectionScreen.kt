@@ -53,6 +53,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import kotlinx.coroutines.delay
 
 
 private val DisinfectionPoppins = FontFamily(
@@ -71,6 +78,8 @@ fun DisinfectionScreen(
 ) {
     val disinfectionService = remember { DisinfectionBackendService() }
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+
 
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
@@ -111,8 +120,13 @@ fun DisinfectionScreen(
                 .background(Color(0xFFF2F2F2))
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
+                    }
+                }
         ) {
-            Box(
+        Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF1E5D36))
@@ -230,6 +244,7 @@ fun DisinfectionScreen(
                 ) {
                     Button(
                         onClick = {
+                            focusManager.clearFocus()
                             errorMessage = null
                             successMessage = null
 
@@ -309,11 +324,27 @@ private fun DisinfectionLabel(text: String) {
 }
 
 @Composable
-private fun DisinfectionInputField(value: String, onValueChange: (String) -> Unit) {
+private fun DisinfectionInputField(
+    value: String,
+    onValueChange: (String) -> Unit
+) {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onFocusEvent { focusState ->
+                if (focusState.isFocused) {
+                    coroutineScope.launch {
+                        delay(250)
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                }
+            },
         singleLine = true,
         shape = RoundedCornerShape(20.dp),
         colors = OutlinedTextFieldDefaults.colors(
@@ -325,6 +356,7 @@ private fun DisinfectionInputField(value: String, onValueChange: (String) -> Uni
         )
     )
 }
+
 
 @Composable
 private fun DisinfectionDropdownField(

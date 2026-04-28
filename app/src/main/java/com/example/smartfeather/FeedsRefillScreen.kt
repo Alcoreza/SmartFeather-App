@@ -3,6 +3,7 @@ package com.example.smartfeather
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -45,13 +47,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.ui.focus.onFocusEvent
+import kotlinx.coroutines.delay
+
 
 private val FarmPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -68,6 +78,7 @@ fun FeedsRefillScreen(
 ) {
     val feedsService = remember { FeedsRefillBackendService() }
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     var batchId by remember { mutableStateOf("") }
     var house by remember { mutableStateOf("") }
@@ -128,6 +139,11 @@ fun FeedsRefillScreen(
                 .background(Color(0xFFF2F2F2))
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
+                    }
+                }
         ) {
             Box(
                 modifier = Modifier
@@ -234,7 +250,6 @@ fun FeedsRefillScreen(
                     }
                 )
 
-
                 Spacer(modifier = Modifier.height(10.dp))
 
                 FeedsLabel("Feeder Number")
@@ -254,8 +269,11 @@ fun FeedsRefillScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 FeedsLabel("Kilograms of Feeds Refilled")
-                FeedsInputField(kilograms) {
-                    kilograms = it.filter { ch -> ch.isDigit() }
+                FeedsInputField(
+                    value = kilograms,
+                    keyboardType = KeyboardType.Number
+                ) { newValue ->
+                    kilograms = newValue.filter { ch -> ch.isDigit() }
                 }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -288,6 +306,7 @@ fun FeedsRefillScreen(
                 ) {
                     Button(
                         onClick = {
+                            focusManager.clearFocus()
                             errorMessage = null
                             successMessage = null
 
@@ -382,12 +401,30 @@ fun FeedsLabel(text: String) {
 }
 
 @Composable
-fun FeedsInputField(value: String, onValueChange: (String) -> Unit) {
+fun FeedsInputField(
+    value: String,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    onValueChange: (String) -> Unit
+) {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onFocusEvent { focusState ->
+                if (focusState.isFocused) {
+                    coroutineScope.launch {
+                        delay(250)
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                }
+            },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = RoundedCornerShape(20.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color(0xFFEDEDED),
@@ -398,6 +435,7 @@ fun FeedsInputField(value: String, onValueChange: (String) -> Unit) {
         )
     )
 }
+
 
 @Composable
 fun FeedsDropdownField(
