@@ -1,26 +1,68 @@
 package com.example.smartfeather
 
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.*
-import androidx.compose.ui.Alignment
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val FarmPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -36,18 +78,36 @@ fun WeightScreen(
     onNavigateToTasks: () -> Unit,
     onNavigateToProfile: () -> Unit
 ) {
-    var batchId by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
+    val weightService = remember { WeightBackendService() }
+    val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
+    val scrollState = rememberScrollState()
+
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
     var age by remember { mutableStateOf("") }
-    var status by remember { mutableStateOf("") }
-    var flocks by remember { mutableStateOf("3") }
-    var weight1 by remember { mutableStateOf("") }
-    var weight2 by remember { mutableStateOf("") }
-    var weight3 by remember { mutableStateOf("") }
-    var sickCount by remember { mutableStateOf("") }
+    var flocks by remember { mutableStateOf("") }
+    var flocksWithCases by remember { mutableStateOf("") }
+    var targetWeight by remember { mutableStateOf("") }
+    var weights by remember { mutableStateOf<List<String>>(emptyList()) }
+
+    var houses by remember { mutableStateOf<List<WeightHouseOption>>(emptyList()) }
+    var pens by remember { mutableStateOf<List<WeightPenOption>>(emptyList()) }
+    var selectedHouse by remember { mutableStateOf<WeightHouseOption?>(null) }
+    var selectedPen by remember { mutableStateOf<WeightPenOption?>(null) }
+
+    var houseExpanded by remember { mutableStateOf(false) }
+    var penExpanded by remember { mutableStateOf(false) }
+
+    var isLoading by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var successMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        weightService.getHouses()
+            .onSuccess { houses = it }
+            .onFailure { errorMessage = it.message ?: "Failed to load houses." }
+    }
 
     Scaffold(
         bottomBar = {
@@ -63,6 +123,13 @@ fun WeightScreen(
                 .fillMaxSize()
                 .background(Color(0xFFF1EFEC))
                 .padding(padding)
+                .verticalScroll(scrollState)
+                .imePadding()
+                .pointerInput(Unit) {
+                    detectTapGestures {
+                        focusManager.clearFocus()
+                    }
+                }
         ) {
             Box(
                 modifier = Modifier
@@ -93,79 +160,179 @@ fun WeightScreen(
             }
 
             Column(
-                modifier = Modifier
-                    .padding(18.dp)
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
+                modifier = Modifier.padding(18.dp)
             ) {
-                WeightLabel("Batch ID")
-                WeightInputField(batchId) { batchId = it }
-
-                Spacer(Modifier.height(10.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        WeightLabel("Date")
-                        WeightInputField(date) { date = it }
-                    }
-                    Column(Modifier.weight(1f)) {
-                        WeightLabel("Time")
-                        WeightInputField(time) { time = it }
-                    }
-                }
-
-                Spacer(Modifier.height(10.dp))
-
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f)) {
                         WeightLabel("House")
-                        WeightDropdownField(house) { house = it }
+                        WeightDropdownField(
+                            value = house,
+                            options = houses.map { it.houseNumber },
+                            expanded = houseExpanded,
+                            onExpandedChange = { houseExpanded = it },
+                            onValueSelected = { selectedValue ->
+                                house = selectedValue
+                                selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
+                                pen = ""
+                                selectedPen = null
+                                pens = emptyList()
+                                houseExpanded = false
+                                errorMessage = null
+                                successMessage = null
+
+                                val houseId = selectedHouse?.id ?: return@WeightDropdownField
+                                coroutineScope.launch {
+                                    weightService.getPensByHouse(houseId)
+                                        .onSuccess { pens = it }
+                                        .onFailure {
+                                            errorMessage = it.message ?: "Failed to load pens."
+                                        }
+                                }
+                            }
+                        )
                     }
+
                     Column(Modifier.weight(1f)) {
                         WeightLabel("Pen")
-                        WeightDropdownField(pen) { pen = it }
+                        WeightDropdownField(
+                            value = pen,
+                            options = pens.map { it.penName },
+                            expanded = penExpanded,
+                            onExpandedChange = {
+                                if (selectedHouse != null) penExpanded = it
+                            },
+                            onValueSelected = { selectedValue ->
+                                pen = selectedValue
+                                selectedPen = pens.firstOrNull { it.penName == selectedValue }
+                                penExpanded = false
+                                errorMessage = null
+                                successMessage = null
+                            }
+                        )
                     }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        WeightLabel("Age")
-                        WeightInputField(age) { age = it }
-                    }
-                    Column(Modifier.weight(1f)) {
-                        WeightLabel("Status")
-                        WeightDropdownField(status) { status = it }
-                    }
+                WeightLabel("Age")
+                WeightInputField(
+                    value = age,
+                    keyboardType = KeyboardType.Number,
+                    scrollState = scrollState
+                ) { newValue ->
+                    age = newValue.filter { it.isDigit() }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
                 WeightLabel("Number of Flocks")
-                WeightInputField(flocks) { flocks = it }
+                WeightInputField(
+                    value = flocks,
+                    keyboardType = KeyboardType.Number,
+                    scrollState = scrollState
+                ) { newValue ->
+                    val digitsOnly = newValue.filter { it.isDigit() }
+                    flocks = digitsOnly
 
-                Spacer(Modifier.height(10.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(Modifier.weight(1f)) {
-                        WeightLabel("Weight 1")
-                        WeightInputField(weight1) { weight1 = it }
-                    }
-                    Column(Modifier.weight(1f)) {
-                        WeightLabel("Weight 2")
-                        WeightInputField(weight2) { weight2 = it }
-                    }
-                    Column(Modifier.weight(1f)) {
-                        WeightLabel("Weight 3")
-                        WeightInputField(weight3) { weight3 = it }
+                    val count = digitsOnly.toIntOrNull() ?: 0
+                    weights = if (count > 0) {
+                        List(count) { index -> weights.getOrNull(index) ?: "" }
+                    } else {
+                        emptyList()
                     }
                 }
 
                 Spacer(Modifier.height(10.dp))
 
-                WeightLabel("Sick Count")
-                WeightInputField(sickCount) { sickCount = it }
+                WeightLabel("Flocks With Cases")
+                WeightInputField(
+                    value = flocksWithCases,
+                    keyboardType = KeyboardType.Number,
+                    scrollState = scrollState
+                ) { newValue ->
+                    flocksWithCases = newValue.filter { it.isDigit() }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                WeightLabel("Target Weight")
+                WeightInputField(
+                    value = targetWeight,
+                    keyboardType = KeyboardType.Decimal,
+                    scrollState = scrollState
+                ) { newValue ->
+                    val filtered = buildString {
+                        var dotUsed = false
+                        newValue.forEach { ch ->
+                            if (ch.isDigit()) append(ch)
+                            else if (ch == '.' && !dotUsed) {
+                                append(ch)
+                                dotUsed = true
+                            }
+                        }
+                    }
+                    targetWeight = filtered
+                }
+
+                weights.chunked(3).forEachIndexed { rowIndex, rowWeights ->
+                    Spacer(Modifier.height(10.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        rowWeights.forEachIndexed { columnIndex, value ->
+                            val actualIndex = rowIndex * 3 + columnIndex
+
+                            Column(Modifier.weight(1f)) {
+                                WeightLabel("Weight ${actualIndex + 1}")
+                                WeightInputField(
+                                    value = value,
+                                    keyboardType = KeyboardType.Decimal,
+                                    scrollState = scrollState
+                                ) { newValue ->
+                                    val filtered = buildString {
+                                        var dotUsed = false
+                                        newValue.forEach { ch ->
+                                            if (ch.isDigit()) append(ch)
+                                            else if (ch == '.' && !dotUsed) {
+                                                append(ch)
+                                                dotUsed = true
+                                            }
+                                        }
+                                    }
+
+                                    weights = weights.toMutableList().also {
+                                        it[actualIndex] = filtered
+                                    }
+                                }
+                            }
+                        }
+
+                        repeat(3 - rowWeights.size) {
+                            Spacer(modifier = Modifier.weight(1f))
+                        }
+                    }
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                errorMessage?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFFB00020),
+                        fontFamily = FarmPoppins,
+                        fontSize = 13.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
+                successMessage?.let {
+                    Text(
+                        text = it,
+                        color = Color(0xFF1E5D36),
+                        fontFamily = FarmPoppins,
+                        fontSize = 13.sp
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
 
                 Spacer(Modifier.height(20.dp))
 
@@ -174,15 +341,86 @@ fun WeightScreen(
                     horizontalArrangement = Arrangement.End
                 ) {
                     Button(
-                        onClick = { },
+                        onClick = {
+                            focusManager.clearFocus()
+                            errorMessage = null
+                            successMessage = null
+
+                            val currentHouse = selectedHouse
+                            val currentPen = selectedPen
+                            val ageValue = age.toIntOrNull()
+                            val flockCount = flocks.toIntOrNull()
+                            val flocksWithCasesValue = flocksWithCases.toIntOrNull() ?: 0
+                            val targetWeightValue = targetWeight.toDoubleOrNull()
+                            val weightValues = weights.map { it.toDoubleOrNull() }
+
+                            if (currentHouse == null) {
+                                errorMessage = "Please select a house."
+                                return@Button
+                            }
+                            if (currentPen == null) {
+                                errorMessage = "Please select a pen."
+                                return@Button
+                            }
+                            if (ageValue == null || ageValue <= 0) {
+                                errorMessage = "Please enter a valid age."
+                                return@Button
+                            }
+                            if (flockCount == null || flockCount <= 0) {
+                                errorMessage = "Please enter a valid number of flocks."
+                                return@Button
+                            }
+                            if (targetWeightValue == null || targetWeightValue <= 0.0) {
+                                errorMessage = "Please enter a valid target weight."
+                                return@Button
+                            }
+                            if (weightValues.size != flockCount || weightValues.any { it == null }) {
+                                errorMessage = "Please enter valid weights for all flocks."
+                                return@Button
+                            }
+
+                            coroutineScope.launch {
+                                isLoading = true
+                                weightService.submitWeightSampling(
+                                    houseId = currentHouse.id,
+                                    penId = currentPen.id,
+                                    age = ageValue,
+                                    numberOfFlocks = flockCount,
+                                    flocksWithCases = flocksWithCasesValue,
+                                    targetWeight = targetWeightValue,
+                                    weights = weightValues.filterNotNull()
+                                ).onSuccess { response ->
+                                    if (response.success == true) {
+                                        successMessage =
+                                            "Average: ${response.averageWeight} | Target: ${response.target} | Status: ${response.status}"
+                                        house = ""
+                                        pen = ""
+                                        age = ""
+                                        flocks = ""
+                                        flocksWithCases = ""
+                                        targetWeight = ""
+                                        weights = emptyList()
+                                        selectedHouse = null
+                                        selectedPen = null
+                                        pens = emptyList()
+                                    } else {
+                                        errorMessage = response.message ?: "Failed to submit weight sampling."
+                                    }
+                                }.onFailure {
+                                    errorMessage = it.message ?: "Failed to submit weight sampling."
+                                }
+                                isLoading = false
+                            }
+                        },
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF1E5D36)
                         ),
-                        modifier = Modifier.height(40.dp)
+                        modifier = Modifier.height(40.dp),
+                        enabled = !isLoading
                     ) {
                         Text(
-                            "Submit",
+                            text = if (isLoading) "Submitting..." else "Submit",
                             color = Color.White,
                             fontFamily = FarmPoppins
                         )
@@ -205,12 +443,31 @@ private fun WeightLabel(text: String) {
 }
 
 @Composable
-private fun WeightInputField(value: String, onValueChange: (String) -> Unit) {
+private fun WeightInputField(
+    value: String,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    scrollState: ScrollState,
+    onValueChange: (String) -> Unit
+) {
+    val bringIntoViewRequester = remember { BringIntoViewRequester() }
+    val coroutineScope = rememberCoroutineScope()
+
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .bringIntoViewRequester(bringIntoViewRequester)
+            .onFocusEvent { focusState ->
+                if (focusState.isFocused) {
+                    coroutineScope.launch {
+                        delay(350)
+                        bringIntoViewRequester.bringIntoView()
+                    }
+                }
+            },
         singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         shape = RoundedCornerShape(20.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = Color(0xFFEDEDED),
@@ -223,20 +480,54 @@ private fun WeightInputField(value: String, onValueChange: (String) -> Unit) {
 }
 
 @Composable
-private fun WeightDropdownField(value: String, onValueSelected: (String) -> Unit) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = {},
-        readOnly = true,
-        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-        shape = RoundedCornerShape(20.dp),
-        modifier = Modifier.fillMaxWidth(),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFEDEDED),
-            unfocusedContainerColor = Color(0xFFEDEDED),
-            focusedBorderColor = Color(0xFFBDBDBD),
-            unfocusedBorderColor = Color(0xFFBDBDBD),
-            cursorColor = Color.Black
-        )
-    )
+private fun WeightDropdownField(
+    value: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onValueSelected: (String) -> Unit
+) {
+    Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
+                .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
+                .clickable { onExpandedChange(true) }
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (value.isBlank()) "Select" else value,
+                    fontFamily = FarmPoppins,
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
+                Text(
+                    text = "⌄",
+                    fontSize = 18.sp,
+                    fontFamily = FarmPoppins,
+                    color = Color.Black
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option, fontFamily = FarmPoppins) },
+                    onClick = { onValueSelected(option) }
+                )
+            }
+        }
+    }
 }
