@@ -323,6 +323,7 @@ fun SmartFeatherApp() {
             onNavigateToTasks = { currentScreen = AppScreen.TASKS }
         )
 
+
         AppScreen.PROFILE -> ProfileScreen(
             employeeId = loggedInEmployeeId ?: 0,
             onNavigateToDashboard = {
