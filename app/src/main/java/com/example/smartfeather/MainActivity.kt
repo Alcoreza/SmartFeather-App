@@ -140,16 +140,10 @@ fun SmartFeatherApp() {
                     id = task.id,
                     title = task.title,
                     description = task.description,
-                    timeAssigned = if (task.timeLabel.startsWith("Assigned:")) {
-                        task.timeLabel.removePrefix("Assigned: ").replace("\n", " ")
-                    } else {
-                        ""
-                    },
-                    finishBy = if (task.timeLabel.startsWith("Finish by:")) {
-                        task.timeLabel.removePrefix("Finish by: ").replace("\n", " ")
-                    } else {
-                        ""
-                    },
+                    timeAssigned = task.assignedLabel.replace("\n", " "),
+                    finishBy = task.finishByLabel
+                        .removePrefix("Finish by: ")
+                        .replace("\n", " "),
                     priorityLabel = task.priority.name.lowercase()
                         .replaceFirstChar { it.uppercase() },
                     priority = task.priority
@@ -161,16 +155,28 @@ fun SmartFeatherApp() {
                     id = task.id,
                     title = task.title,
                     description = task.description,
-                    timeAssigned = "",
-                    finishBy = "",
-                    timeCompleted = task.timeLabel
-                        .removePrefix("Completed: ")
-                        .removePrefix("Submitted: ")
+                    timeAssigned = task.assignedLabel.replace("\n", " "),
+                    finishBy = task.finishByLabel
+                        .removePrefix("Finish by: ")
                         .replace("\n", " "),
+                    timeCompleted = when (task.status) {
+                        TaskStatus.FOR_APPROVAL -> task.submittedLabel
+                            .removePrefix("Submitted: ")
+                            .replace("\n", " ")
+                        TaskStatus.COMPLETED -> task.completedLabel
+                            .removePrefix("Completed: ")
+                            .replace("\n", " ")
+                        else -> ""
+                    },
                     timeCompletedLabel = if (task.status == TaskStatus.FOR_APPROVAL) {
                         "Submitted"
                     } else {
                         "Time Completed"
+                    },
+                    statusLabel = if (task.status == TaskStatus.FOR_APPROVAL) {
+                        "For Approval"
+                    } else {
+                        "Completed"
                     },
                     priorityLabel = task.priority.name.lowercase()
                         .replaceFirstChar { it.uppercase() },
@@ -180,7 +186,9 @@ fun SmartFeatherApp() {
                 )
                 currentScreen = AppScreen.COMPLETED_TASK_DETAIL
             }
+
         )
+
 
 
         AppScreen.TASK_DETAIL -> {

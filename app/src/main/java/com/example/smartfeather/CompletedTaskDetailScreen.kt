@@ -50,6 +50,7 @@ data class CompletedTaskDetailUiState(
     val title: String,
     val description: String,
     val timeAssigned: String,
+    val statusLabel: String,
     val finishBy: String,
     val timeCompleted: String,
     val timeCompletedLabel: String = "Time Completed",
@@ -239,17 +240,21 @@ private fun MobileStatusRow(task: CompletedTaskDetailUiState) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            DetailChip("Completed", Color(0xFF266F33))
+            DetailChip(task.statusLabel, if (task.statusLabel == "For Approval") Color(0xFFD88913) else Color(0xFF266F33))
             StatusChip("Time Assigned", task.timeAssigned, Color(0xFF103824))
             StatusChip("Finish By", task.finishBy, Color(0xFFD88913))
-            StatusChip(task.timeCompletedLabel, task.timeCompleted, Color(0xFF52B84F))
-
         }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            StatusChip(
+                task.timeCompletedLabel,
+                task.timeCompleted,
+                Color(0xFF52B84F)
+            )
+
             StatusChip(
                 "Priority",
                 task.priorityLabel,
@@ -260,19 +265,31 @@ private fun MobileStatusRow(task: CompletedTaskDetailUiState) {
 }
 
 
+
 @Composable
 private fun TabletStatusRow(task: CompletedTaskDetailUiState) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        DetailChip("Completed", Color(0xFF266F33))
-        StatusChip("Time Assigned", task.timeAssigned, Color(0xFF103824))
-        StatusChip("Finish By", task.finishBy, Color(0xFFD88913))
-        StatusChip(task.timeCompletedLabel, task.timeCompleted, Color(0xFF52B84F))
-        StatusChip("Priority", task.priorityLabel, completedPriorityChipColor(task.priority))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            DetailChip(task.statusLabel, if (task.statusLabel == "For Approval") Color(0xFFD88913) else Color(0xFF266F33))
+            StatusChip("Time Assigned", task.timeAssigned, Color(0xFF103824))
+            StatusChip("Finish By", task.finishBy, Color(0xFFD88913))
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            StatusChip(task.timeCompletedLabel, task.timeCompleted, Color(0xFF52B84F))
+            StatusChip("Priority", task.priorityLabel, completedPriorityChipColor(task.priority))
+        }
     }
 }
+
 
 @Composable
 private fun DetailChip(
@@ -305,23 +322,29 @@ private fun StatusChip(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
             .background(containerColor)
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = title,
             fontFamily = CompletedPoppins,
             fontSize = 9.sp,
-            color = Color.White.copy(alpha = 0.9f)
+            color = Color.White.copy(alpha = 0.9f),
+            textAlign = TextAlign.Center,
+            lineHeight = 10.sp
         )
         Text(
             text = value,
             fontFamily = CompletedPoppins,
             fontWeight = FontWeight.SemiBold,
             fontSize = 10.sp,
-            color = Color.White
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            lineHeight = 11.sp
         )
     }
 }
+
 
 @Composable
 private fun PhotoCard(
@@ -498,6 +521,7 @@ fun CompletedTaskDetailScreenPreview() {
             title = "Water Refill",
             description = "Check the water containers or drinker system assigned to the pen and refill it with clean and sufficient water. Ensure that all drinkers are properly filled and accessible to the birds. Remove any visible dirt, debris, or contaminants around the water area. Observe the water flow to confirm that there are no leaks, blockages, or interruptions.",
             timeAssigned = "9:21 AM",
+            statusLabel = "Completed",
             finishBy = "5:00 PM",
             timeCompleted = "2:53 PM",
             timeCompletedLabel = "Time Completed",

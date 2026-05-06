@@ -17,8 +17,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
 import java.util.Locale
 
 @Serializable
@@ -160,26 +162,32 @@ class TaskBackendService(
         val descriptionText =
             detailedTask?.takeIf { it.isNotBlank() } ?: "No task details provided."
 
-        val timeLabelText = when (statusEnum) {
-            TaskStatus.COMPLETED -> "Completed: ${formatTaskTimestamp(timeCompleted)}"
-            TaskStatus.FOR_APPROVAL -> "Submitted: ${formatTaskTimestamp(timeCompleted)}"
-            TaskStatus.PENDING -> {
-                val finishText = finishBy?.let { formatTaskTimestamp(it) }
-                if (!finishText.isNullOrBlank()) {
-                    "Finish by: $finishText"
-                } else {
-                    "Assigned: ${formatTaskTimestamp(timeAssigned)}"
-                }
-            }
-        }
-
         return TaskItem(
             id = taskId,
             title = taskType,
             description = descriptionText,
             houseLabel = "House: ${houseId ?: "-"}",
             penLabel = "Pen: ${penNumber ?: "-"}",
-            timeLabel = timeLabelText,
+            assignedLabel = if (!timeAssigned.isNullOrBlank()) {
+                formatTaskTimestamp(timeAssigned)
+            } else {
+                ""
+            },
+            finishByLabel = if (!finishBy.isNullOrBlank()) {
+                "Finish by: ${formatTaskTimestamp(finishBy)}"
+            } else {
+                ""
+            },
+            submittedLabel = if (!timeCompleted.isNullOrBlank()) {
+                "Submitted: ${formatTaskTimestamp(timeCompleted)}"
+            } else {
+                ""
+            },
+            completedLabel = if (!timeCompleted.isNullOrBlank()) {
+                "Completed: ${formatTaskTimestamp(timeCompleted)}"
+            } else {
+                ""
+            },
             priority = priorityEnum,
             status = statusEnum,
             notes = notes ?: "",
@@ -190,11 +198,37 @@ class TaskBackendService(
     private fun formatTaskTimestamp(value: String?): String {
         if (value.isNullOrBlank()) return "-"
 
-        return runCatching {
-            val dateTime = LocalDateTime.parse(value.replace(" ", "T"))
-            val dateFormatter = DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault())
-            val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
-            "${dateTime.format(dateFormatter)}\n${dateTime.format(timeFormatter)}"
-        }.getOrElse { value }
+        val parsedDateTime = parseTaskDateTime(value) ?: return value
+
+        val dateFormatter = DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault())
+        val timeFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault())
+
+        return "${parsedDateTime.format(dateFormatter)}\n${parsedDateTime.format(timeFormatter)}"
+    }
+
+    private fun parseTaskDateTime(value: String): LocalDateTime? {
+        val normalized = value.trim()
+
+        val dateTimePatterns = listOf(
+            DateTimeFormatter.ISO_LOCAL_DATE_TIME,
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSS"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS"),
+            DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm")
+        )
+
+        for (formatter in dateTimePatterns) {
+            try {
+                return LocalDateTime.parse(normalized, formatter)
+            } catch (_: DateTimeParseException) {
+            }
+        }
+
+        return try {
+            LocalDate.parse(normalized, DateTimeFormatter.ISO_LOCAL_DATE).atStartOfDay()
+        } catch (_: DateTimeParseException) {
+            null
+        }
     }
 }

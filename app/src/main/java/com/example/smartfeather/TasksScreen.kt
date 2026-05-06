@@ -68,12 +68,16 @@ data class TaskItem(
     val description: String,
     val houseLabel: String,
     val penLabel: String,
-    val timeLabel: String,
+    val assignedLabel: String = "",
+    val finishByLabel: String = "",
+    val submittedLabel: String = "",
+    val completedLabel: String = "",
     val priority: TaskPriority,
     val status: TaskStatus,
     val notes: String = "",
     val hasPhoto: Boolean = false
 )
+
 
 private val AppPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -367,19 +371,50 @@ private fun TaskRow(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            Text(
-                text = item.timeLabel,
-                fontFamily = AppPoppins,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                lineHeight = 13.sp,
-                textAlign = TextAlign.End,
-                color = when (item.status) {
-                    TaskStatus.PENDING -> Color(0xFFD17A17)
-                    TaskStatus.FOR_APPROVAL -> Color(0xFFC27A11)
-                    TaskStatus.COMPLETED -> Color(0xFF4E8D39)
+            when (item.status) {
+                TaskStatus.PENDING -> {
+                    if (item.finishByLabel.isNotBlank()) {
+                        Text(
+                            text = item.finishByLabel,
+                            fontFamily = AppPoppins,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
+                            lineHeight = 13.sp,
+                            textAlign = TextAlign.End,
+                            color = Color(0xFFD17A17)
+                        )
+                    }
                 }
-            )
+
+                TaskStatus.FOR_APPROVAL -> {
+                    if (item.submittedLabel.isNotBlank()) {
+                        Text(
+                            text = item.submittedLabel,
+                            fontFamily = AppPoppins,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
+                            lineHeight = 13.sp,
+                            textAlign = TextAlign.End,
+                            color = Color(0xFFC27A11)
+                        )
+                    }
+                }
+
+                TaskStatus.COMPLETED -> {
+                    if (item.completedLabel.isNotBlank()) {
+                        Text(
+                            text = item.completedLabel,
+                            fontFamily = AppPoppins,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 12.sp,
+                            lineHeight = 13.sp,
+                            textAlign = TextAlign.End,
+                            color = Color(0xFF4E8D39)
+                        )
+                    }
+                }
+            }
+
 
             Spacer(modifier = Modifier.height(14.dp))
 
