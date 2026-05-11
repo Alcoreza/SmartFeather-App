@@ -75,8 +75,10 @@ data class TaskItem(
     val priority: TaskPriority,
     val status: TaskStatus,
     val notes: String = "",
-    val hasPhoto: Boolean = false
+    val hasPhoto: Boolean = false,
+    val photoUrl: String? = null
 )
+
 
 
 private val AppPoppins = FontFamily(

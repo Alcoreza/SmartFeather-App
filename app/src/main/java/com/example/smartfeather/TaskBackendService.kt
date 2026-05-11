@@ -1,13 +1,19 @@
 package com.example.smartfeather
 
+import android.content.Context
+import android.net.Uri
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
+import io.ktor.http.Headers
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
+import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -22,6 +28,9 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
+import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.storage.uploadToSignedUrl
+
 
 @Serializable
 data class FlockmanTasksRequest(
@@ -37,9 +46,36 @@ data class CompleteTaskRequest(
     val employeeId: Int,
     @SerialName("notes")
     val notes: String? = null,
-    @SerialName("photo_url")
-    val photoUrl: String? = null
+    @SerialName("photo_path")
+    val photoPath: String? = null
 )
+
+@Serializable
+data class CreateTaskPhotoUploadUrlRequest(
+    @SerialName("task_id")
+    val taskId: Int,
+    @SerialName("employee_id")
+    val employeeId: Int,
+    @SerialName("mime_type")
+    val mimeType: String
+)
+
+@Serializable
+data class TaskPhotoUploadUrlResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("bucket")
+    val bucket: String? = null,
+    @SerialName("path")
+    val path: String? = null,
+    @SerialName("token")
+    val token: String? = null,
+    @SerialName("public_url")
+    val publicUrl: String? = null,
+    @SerialName("message")
+    val message: String? = null
+)
+
 
 @Serializable
 data class TaskApiRow(
@@ -112,18 +148,25 @@ class TaskBackendService(
     }
 
     suspend fun submitTaskForApproval(
+        context: Context,
         taskId: Int,
         employeeId: Int,
         notes: String,
-        photoUrl: String? = null
+        photoUri: Uri? = null
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
+                val uploadedPath = if (photoUri != null) {
+                    uploadTaskPhoto(context, taskId, employeeId, photoUri)
+                } else {
+                    null
+                }
+
                 val requestBody = CompleteTaskRequest(
                     taskId = taskId,
                     employeeId = employeeId,
                     notes = notes.ifBlank { null },
-                    photoUrl = photoUrl
+                    photoPath = uploadedPath
                 )
 
                 val responseText = httpClient.post("$baseUrl/api/mobile/tasks/submit") {
@@ -144,6 +187,51 @@ class TaskBackendService(
             }
         }
     }
+
+    private suspend fun uploadTaskPhoto(
+        context: Context,
+        taskId: Int,
+        employeeId: Int,
+        photoUri: Uri
+    ): String {
+        val mimeType = context.contentResolver.getType(photoUri) ?: "image/jpeg"
+
+        val signedUrlResponseText = httpClient.post("$baseUrl/api/mobile/tasks/photo-upload-url") {
+            contentType(ContentType.Application.Json)
+            accept(ContentType.Application.Json)
+            setBody(
+                json.encodeToString(
+                    CreateTaskPhotoUploadUrlRequest(
+                        taskId = taskId,
+                        employeeId = employeeId,
+                        mimeType = mimeType
+                    )
+                )
+            )
+        }.bodyAsText()
+
+        val signedUrlParsed = json.parseToJsonElement(signedUrlResponseText)
+        if (signedUrlParsed is JsonObject && signedUrlParsed["success"] == null) {
+            val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(signedUrlParsed)
+            error(errorResponse.message ?: "Failed to create signed upload URL.")
+        }
+
+        val uploadInfo = json.decodeFromJsonElement<TaskPhotoUploadUrlResponse>(signedUrlParsed)
+        val bucket = uploadInfo.bucket ?: error("Missing upload bucket.")
+        val path = uploadInfo.path ?: error("Missing upload path.")
+        val token = uploadInfo.token ?: error("Missing upload token.")
+
+        SupabaseProvider.client.storage
+            .from(bucket)
+            .uploadToSignedUrl(
+                path = path,
+                token = token,
+                uri = photoUri
+            )
+
+        return path
+    }
+
 
     private fun TaskApiRow.toTaskItem(): TaskItem {
         val statusEnum = when (status.trim().lowercase(Locale.ROOT)) {
@@ -191,8 +279,10 @@ class TaskBackendService(
             priority = priorityEnum,
             status = statusEnum,
             notes = notes ?: "",
-            hasPhoto = !photoUrl.isNullOrBlank()
+            hasPhoto = !photoUrl.isNullOrBlank(),
+            photoUrl = photoUrl
         )
+
     }
 
     private fun formatTaskTimestamp(value: String?): String {

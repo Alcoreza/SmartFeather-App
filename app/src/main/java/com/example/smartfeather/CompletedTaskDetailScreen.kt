@@ -44,6 +44,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+
 
 data class CompletedTaskDetailUiState(
     val id: Int,
@@ -57,8 +59,10 @@ data class CompletedTaskDetailUiState(
     val priorityLabel: String,
     val priority: TaskPriority,
     val notes: String,
-    val hasPhoto: Boolean = true
+    val hasPhoto: Boolean = true,
+    val photoUrl: String? = null
 )
+
 
 
 
@@ -168,8 +172,10 @@ fun CompletedTaskDetailScreen(
                     ) {
                         PhotoCard(
                             hasPhoto = task.hasPhoto,
+                            photoUrl = task.photoUrl,
                             modifier = Modifier.weight(1f)
                         )
+
                         NotesCard(
                             notes = task.notes,
                             modifier = Modifier.weight(1f)
@@ -178,8 +184,10 @@ fun CompletedTaskDetailScreen(
                 } else {
                     PhotoCard(
                         hasPhoto = task.hasPhoto,
+                        photoUrl = task.photoUrl,
                         modifier = Modifier.fillMaxWidth()
                     )
+
 
                     Spacer(modifier = Modifier.height(18.dp))
 
@@ -349,6 +357,7 @@ private fun StatusChip(
 @Composable
 private fun PhotoCard(
     hasPhoto: Boolean,
+    photoUrl: String?,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -371,27 +380,17 @@ private fun PhotoCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp)
+                    .height(180.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(Color(0xFFF8F8F8)),
                 contentAlignment = Alignment.Center
             ) {
-                if (hasPhoto) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Icon(
-                            imageVector = Icons.Outlined.Edit,
-                            contentDescription = "Proof photo",
-                            tint = Color(0xFF4D4D4D),
-                            modifier = Modifier.size(46.dp)
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "Worker proof photo",
-                            fontFamily = CompletedPoppins,
-                            fontSize = 13.sp,
-                            color = Color(0xFF777777)
-                        )
-                    }
+                if (hasPhoto && !photoUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = photoUrl,
+                        contentDescription = "Proof photo",
+                        modifier = Modifier.fillMaxSize()
+                    )
                 } else {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(
@@ -413,6 +412,7 @@ private fun PhotoCard(
         }
     }
 }
+
 
 @Composable
 private fun NotesCard(
@@ -528,7 +528,7 @@ fun CompletedTaskDetailScreenPreview() {
             priorityLabel = "Low",
             priority = TaskPriority.LOW,
             notes = "Water was refilled successfully. All drinkers are working properly and no leaks were observed in the assigned pen.",
-            hasPhoto = true
+            photoUrl = null
         )
     )
 }

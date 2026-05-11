@@ -46,6 +46,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+
 
 enum class AppScreen {
     LOGIN,
@@ -87,6 +89,7 @@ fun SmartFeatherApp() {
     val authService = remember { SupabaseAuthService() }
     val taskService = remember { TaskBackendService() }
     val coroutineScope = rememberCoroutineScope()
+    val context = LocalContext.current
     var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
     var loggedInEmployeeId by remember { mutableStateOf<Int?>(null) }
     var selectedPendingTask by remember {
@@ -182,8 +185,10 @@ fun SmartFeatherApp() {
                         .replaceFirstChar { it.uppercase() },
                     priority = task.priority,
                     notes = task.notes,
-                    hasPhoto = task.hasPhoto
+                    hasPhoto = task.hasPhoto,
+                    photoUrl = task.photoUrl
                 )
+
                 currentScreen = AppScreen.COMPLETED_TASK_DETAIL
             }
 
@@ -204,21 +209,28 @@ fun SmartFeatherApp() {
                     onNavigateToTasks = {
                         currentScreen = AppScreen.TASKS
                     },
-                    onSubmit = { notes, _ ->
-                        val employeeId = loggedInEmployeeId ?: return@PendingTaskDetailScreen
-                        val taskId = selectedPendingTask?.id ?: return@PendingTaskDetailScreen
+                    onSubmit = { notes, photoUri ->
+                        val employeeId = loggedInEmployeeId
+                            ?: return@PendingTaskDetailScreen Result.failure(IllegalStateException("Missing employee ID."))
 
-                        coroutineScope.launch {
-                            taskService.submitTaskForApproval(
-                                taskId = taskId,
-                                employeeId = employeeId,
-                                notes = notes,
-                                photoUrl = null
-                            ).onSuccess {
-                                currentScreen = AppScreen.TASKS
-                            }
-                        }
+                        val taskId = selectedPendingTask?.id
+                            ?: return@PendingTaskDetailScreen Result.failure(IllegalStateException("Missing task ID."))
+
+                        val result = taskService.submitTaskForApproval(
+                            context = context,
+                            taskId = taskId,
+                            employeeId = employeeId,
+                            notes = notes,
+                            photoUri = photoUri
+                        )
+
+                        result.onSuccess {
+                            currentScreen = AppScreen.TASKS
+                        }.map { Unit }
                     }
+
+
+
 
                 )
             }

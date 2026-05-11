@@ -6,6 +6,7 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
@@ -42,6 +44,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -49,18 +52,18 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import kotlinx.coroutines.launch
 
 data class PendingTaskDetailUiState(
     val id: Int,
@@ -71,8 +74,6 @@ data class PendingTaskDetailUiState(
     val priorityLabel: String,
     val priority: TaskPriority
 )
-
-
 
 private val DetailPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -95,11 +96,15 @@ fun PendingTaskDetailScreen(
     onBackClick: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
     onNavigateToTasks: () -> Unit = {},
-    onSubmit: (notes: String, photoUri: Uri?) -> Unit = { _, _ -> }
+    onSubmit: suspend (notes: String, photoUri: Uri?) -> Result<Unit> = { _, _ -> Result.success(Unit) }
 ) {
     var notes by remember { mutableStateOf("") }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var submitError by remember { mutableStateOf<String?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
+
     val focusManager = LocalFocusManager.current
+    val coroutineScope = rememberCoroutineScope()
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -169,7 +174,6 @@ fun PendingTaskDetailScreen(
                 }
 
                 Spacer(modifier = Modifier.height(18.dp))
-
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -251,7 +255,7 @@ fun PendingTaskDetailScreen(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(112.dp)
+                                .height(180.dp)
                                 .clip(RoundedCornerShape(18.dp))
                                 .background(Color(0xFFF7F7F7))
                                 .clickable {
@@ -263,33 +267,33 @@ fun PendingTaskDetailScreen(
                                 },
                             contentAlignment = Alignment.Center
                         ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Edit,
-                                    contentDescription = "Upload proof photo",
-                                    tint = Color(0xFF7A7A7A),
-                                    modifier = Modifier.size(34.dp)
+                            if (selectedPhotoUri != null) {
+                                AsyncImage(
+                                    model = selectedPhotoUri,
+                                    contentDescription = "Selected proof photo",
+                                    modifier = Modifier.fillMaxSize()
                                 )
+                            } else {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Edit,
+                                        contentDescription = "Upload proof photo",
+                                        tint = Color(0xFF7A7A7A),
+                                        modifier = Modifier.size(34.dp)
+                                    )
 
-                                Spacer(modifier = Modifier.height(8.dp))
+                                    Spacer(modifier = Modifier.height(8.dp))
 
-                                Text(
-                                    text = if (selectedPhotoUri == null) {
-                                        "Tap to upload proof of work"
-                                    } else {
-                                        "Photo selected"
-                                    },
-                                    fontFamily = DetailPoppins,
-                                    fontWeight = FontWeight.Medium,
-                                    fontSize = 13.sp,
-                                    color = if (selectedPhotoUri == null) {
-                                        Color(0xFF8A8A8A)
-                                    } else {
-                                        Color(0xFF1F7A2E)
-                                    }
-                                )
+                                    Text(
+                                        text = "Tap to upload proof of work",
+                                        fontFamily = DetailPoppins,
+                                        fontWeight = FontWeight.Medium,
+                                        fontSize = 13.sp,
+                                        color = Color(0xFF8A8A8A)
+                                    )
+                                }
                             }
                         }
                     }
@@ -343,19 +347,42 @@ fun PendingTaskDetailScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
 
+                submitError?.let {
+                    Text(
+                        text = it,
+                        fontFamily = DetailPoppins,
+                        fontSize = 13.sp,
+                        color = Color(0xFFC92222)
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                }
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
                     Button(
-                        onClick = { onSubmit(notes, selectedPhotoUri) },
+                        onClick = {
+                            focusManager.clearFocus()
+                            submitError = null
+
+                            coroutineScope.launch {
+                                isSubmitting = true
+                                onSubmit(notes, selectedPhotoUri)
+                                    .onFailure {
+                                        submitError = it.message ?: "Failed to submit task."
+                                    }
+                                isSubmitting = false
+                            }
+                        },
                         shape = RoundedCornerShape(999.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color(0xFF1F7A2E)
-                        )
+                        ),
+                        enabled = !isSubmitting
                     ) {
                         Text(
-                            text = "Submit",
+                            text = if (isSubmitting) "Submitting..." else "Submit",
                             fontFamily = DetailPoppins,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 18.sp,

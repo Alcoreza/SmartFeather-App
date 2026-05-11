@@ -51,9 +51,16 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation("androidx.compose.material:material-icons-extended")
-    implementation(libs.ktor.client.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.jbcrypt)
+    implementation("io.github.jan-tennert.supabase:postgrest-kt:2.0.4")
+    implementation("io.github.jan-tennert.supabase:storage-kt:2.0.4")
+    implementation("io.github.jan-tennert.supabase:gotrue-kt:2.0.4")
+    implementation("io.ktor:ktor-client-android:2.3.12")
+    implementation("io.coil-kt:coil-compose:2.7.0")
+
+
+
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
