@@ -3,10 +3,24 @@ package com.example.smartfeather
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -32,29 +46,24 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.ui.focus.onFocusEvent
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.delay
-
-
-
-
+import kotlinx.coroutines.launch
 
 private val FarmPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -73,8 +82,17 @@ fun PopulationScreen(
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
+    val openedAt = remember { LocalDateTime.now() }
+    val openedDate = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }
+    val openedTime = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }
+    val recordedAtValue = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+    }
 
-    var batchId by remember { mutableStateOf("") }
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
     var eggs by remember { mutableStateOf("") }
@@ -122,8 +140,7 @@ fun PopulationScreen(
                     }
                 }
         ) {
-
-        Box(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF8B0000))
@@ -152,8 +169,17 @@ fun PopulationScreen(
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
-                PopulationLabel("Batch ID")
-                PopulationInputField(batchId) { batchId = it }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        PopulationLabel("Date")
+                        PopulationReadOnlyField(openedDate)
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        PopulationLabel("Time")
+                        PopulationReadOnlyField(openedTime)
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -218,7 +244,6 @@ fun PopulationScreen(
                 ) { newValue ->
                     mortality = newValue.filter { ch -> ch.isDigit() }
                 }
-
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -287,11 +312,11 @@ fun PopulationScreen(
                                     houseId = currentHouse.id,
                                     penNumber = pen,
                                     eggsHatched = eggsValue,
-                                    mortality = mortalityValue
+                                    mortality = mortalityValue,
+                                    recordedAt = recordedAtValue
                                 ).onSuccess { success ->
                                     if (success) {
                                         successMessage = "Population data submitted successfully."
-                                        batchId = ""
                                         house = ""
                                         pen = ""
                                         eggs = ""
@@ -371,7 +396,23 @@ private fun PopulationInputField(
     )
 }
 
-
+@Composable
+private fun PopulationReadOnlyField(value: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        enabled = false,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(20.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledContainerColor = Color(0xFFE3E3E3),
+            disabledBorderColor = Color(0xFFBDBDBD),
+            disabledTextColor = Color(0xFF6E6E6E)
+        )
+    )
+}
 
 @Composable
 private fun PopulationDropdownField(

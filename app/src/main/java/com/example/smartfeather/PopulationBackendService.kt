@@ -38,7 +38,9 @@ data class PopulationSubmitRequest(
     @SerialName("eggs_hatched")
     val eggsHatched: Int,
     @SerialName("mortality")
-    val mortality: Int
+    val mortality: Int,
+    @SerialName("recorded_at")
+    val recordedAt: String
 )
 
 @Serializable
@@ -93,7 +95,8 @@ class PopulationBackendService(
         houseId: Long,
         penNumber: String,
         eggsHatched: Int,
-        mortality: Int
+        mortality: Int,
+        recordedAt: String
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -101,7 +104,8 @@ class PopulationBackendService(
                     houseId = houseId,
                     penName = "Pen $penNumber",
                     eggsHatched = eggsHatched,
-                    mortality = mortality
+                    mortality = mortality,
+                    recordedAt = recordedAt
                 )
 
                 val responseText = httpClient.post("$baseUrl/api/mobile/population") {

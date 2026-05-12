@@ -59,6 +59,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -79,7 +82,17 @@ fun VitaminsRefillScreen(
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
-    var batchId by remember { mutableStateOf("") }
+    val openedAt = remember { LocalDateTime.now() }
+    val openedDate = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }
+    val openedTime = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }
+    val recordedAtValue = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+    }
+
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
     var typeOfVitamins by remember { mutableStateOf("") }
@@ -158,8 +171,17 @@ fun VitaminsRefillScreen(
             }
 
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                VitaminsLabel("Batch ID")
-                VitaminsInputField(batchId) { batchId = it }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        VitaminsLabel("Date")
+                        VitaminsReadOnlyField(openedDate)
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        VitaminsLabel("Time")
+                        VitaminsReadOnlyField(openedTime)
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -302,11 +324,11 @@ fun VitaminsRefillScreen(
                                     inventoryId = currentVitamin.id,
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
-                                    bottles = bottlesValue
+                                    bottles = bottlesValue,
+                                    recordedAt = recordedAtValue
                                 ).onSuccess { success ->
                                     if (success) {
                                         successMessage = "Vitamins refill submitted successfully."
-                                        batchId = ""
                                         house = ""
                                         pen = ""
                                         typeOfVitamins = ""
@@ -387,6 +409,24 @@ private fun VitaminsInputField(
             focusedBorderColor = Color(0xFFBDBDBD),
             unfocusedBorderColor = Color(0xFFBDBDBD),
             cursorColor = Color.Black
+        )
+    )
+}
+
+@Composable
+private fun VitaminsReadOnlyField(value: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        enabled = false,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(20.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledContainerColor = Color(0xFFE3E3E3),
+            disabledBorderColor = Color(0xFFBDBDBD),
+            disabledTextColor = Color(0xFF6E6E6E)
         )
     )
 }

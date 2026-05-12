@@ -1,7 +1,9 @@
 package com.example.smartfeather
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
@@ -42,25 +43,25 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.ui.focus.onFocusEvent
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
-import kotlinx.coroutines.delay
-
 
 private val DisinfectionPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -80,6 +81,19 @@ fun DisinfectionScreen(
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
+    val openedAt = remember { LocalDateTime.now() }
+    val openedDate = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }
+    val openedTime = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }
+    val recordedDateValue = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    }
+    val recordedTimeValue = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+    }
 
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
@@ -126,7 +140,7 @@ fun DisinfectionScreen(
                     }
                 }
         ) {
-        Box(
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Color(0xFF1E5D36))
@@ -152,6 +166,20 @@ fun DisinfectionScreen(
             }
 
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        DisinfectionLabel("Date")
+                        DisinfectionReadOnlyField(openedDate)
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        DisinfectionLabel("Time")
+                        DisinfectionReadOnlyField(openedTime)
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -275,7 +303,9 @@ fun DisinfectionScreen(
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
                                     activity = activity.trim(),
-                                    disinfectantUsed = disinfectantUsed.trim()
+                                    disinfectantUsed = disinfectantUsed.trim(),
+                                    recordedDate = recordedDateValue,
+                                    recordedTime = recordedTimeValue
                                 ).onSuccess { success ->
                                     if (success) {
                                         successMessage = "Disinfection submitted successfully."
@@ -357,6 +387,23 @@ private fun DisinfectionInputField(
     )
 }
 
+@Composable
+private fun DisinfectionReadOnlyField(value: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        enabled = false,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(20.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledContainerColor = Color(0xFFE3E3E3),
+            disabledBorderColor = Color(0xFFBDBDBD),
+            disabledTextColor = Color(0xFF6E6E6E)
+        )
+    )
+}
 
 @Composable
 private fun DisinfectionDropdownField(
@@ -410,7 +457,6 @@ private fun DisinfectionDropdownField(
         }
     }
 }
-
 
 @Composable
 private fun DisinfectionBottomNavBar(

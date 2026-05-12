@@ -58,7 +58,9 @@ data class VitaminRefillRequest(
     @SerialName("pen_id")
     val penId: Long,
     @SerialName("bottles")
-    val bottles: Int
+    val bottles: Int,
+    @SerialName("recorded_at")
+    val recordedAt: String
 )
 
 @Serializable
@@ -173,7 +175,8 @@ class VitaminsRefillBackendService(
         inventoryId: Int,
         houseId: Long,
         penId: Long,
-        bottles: Int
+        bottles: Int,
+        recordedAt: String
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -181,7 +184,8 @@ class VitaminsRefillBackendService(
                     inventoryId = inventoryId,
                     houseId = houseId,
                     penId = penId,
-                    bottles = bottles
+                    bottles = bottles,
+                    recordedAt = recordedAt
                 )
 
                 val responseText = httpClient.post("$baseUrl/api/mobile/vitamin-refill") {

@@ -60,7 +60,9 @@ data class FeedRefillRequest(
     @SerialName("feeder_number")
     val feederNumber: Int,
     @SerialName("kilograms")
-    val kilograms: Int
+    val kilograms: Int,
+    @SerialName("recorded_at")
+    val recordedAt: String
 )
 
 @Serializable
@@ -176,7 +178,8 @@ class FeedsRefillBackendService(
         houseId: Long,
         penId: Long,
         feederNumber: Int,
-        kilograms: Int
+        kilograms: Int,
+        recordedAt: String
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -185,7 +188,8 @@ class FeedsRefillBackendService(
                     houseId = houseId,
                     penId = penId,
                     feederNumber = feederNumber,
-                    kilograms = kilograms
+                    kilograms = kilograms,
+                    recordedAt = recordedAt
                 )
 
                 val responseText = httpClient.post("$baseUrl/api/mobile/feed-refill") {

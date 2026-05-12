@@ -1,7 +1,5 @@
 package com.example.smartfeather
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -57,7 +55,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -66,9 +63,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 private val NewBatchPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -86,13 +85,24 @@ fun NewBirdBatchScreen(
     val batchService = remember { NewBatchBackendService() }
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
-    val context = LocalContext.current
     val scrollState = rememberScrollState()
+
+    val openedAt = remember { LocalDateTime.now() }
+    val displayDate = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }
+    val displayTime = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }
+    val submittedDate = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    }
+    val submittedTime = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("HH:mm"))
+    }
 
     var batchCode by remember { mutableStateOf("") }
     var initialPopulation by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf("") }
-    var time by remember { mutableStateOf("") }
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
 
@@ -116,32 +126,6 @@ fun NewBirdBatchScreen(
         batchService.getHouses()
             .onSuccess { houses = it }
             .onFailure { errorMessage = it.message ?: "Failed to load houses." }
-    }
-
-    fun showDatePicker() {
-        val calendar = Calendar.getInstance()
-        DatePickerDialog(
-            context,
-            { _, year, month, dayOfMonth ->
-                date = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth)
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
-    }
-
-    fun showTimePicker() {
-        val calendar = Calendar.getInstance()
-        TimePickerDialog(
-            context,
-            { _, hourOfDay, minute ->
-                time = String.format("%02d:%02d", hourOfDay, minute)
-            },
-            calendar.get(Calendar.HOUR_OF_DAY),
-            calendar.get(Calendar.MINUTE),
-            false
-        ).show()
     }
 
     if (showConflictDialog) {
@@ -262,20 +246,12 @@ fun NewBirdBatchScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         NewBatchLabel("Date")
-                        NewBatchPickerField(
-                            value = date,
-                            placeholder = "Date",
-                            onClick = { showDatePicker() }
-                        )
+                        NewBatchReadOnlyField(displayDate)
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
                         NewBatchLabel("Time")
-                        NewBatchPickerField(
-                            value = time,
-                            placeholder = "Time",
-                            onClick = { showTimePicker() }
-                        )
+                        NewBatchReadOnlyField(displayTime)
                     }
                 }
 
@@ -377,14 +353,6 @@ fun NewBirdBatchScreen(
                                 errorMessage = "Please enter a valid initial population."
                                 return@Button
                             }
-                            if (date.isBlank()) {
-                                errorMessage = "Please select a date."
-                                return@Button
-                            }
-                            if (time.isBlank()) {
-                                errorMessage = "Please select a time."
-                                return@Button
-                            }
                             if (currentHouse == null) {
                                 errorMessage = "Please select a house."
                                 return@Button
@@ -401,8 +369,8 @@ fun NewBirdBatchScreen(
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
                                     initialPopulation = initialPopulationValue,
-                                    date = date,
-                                    time = time
+                                    date = submittedDate,
+                                    time = submittedTime
                                 ).onSuccess { result ->
                                     if (result.isConflict) {
                                         conflictMessage = buildString {
@@ -419,8 +387,6 @@ fun NewBirdBatchScreen(
                                         successMessage = result.message
                                         batchCode = ""
                                         initialPopulation = ""
-                                        date = ""
-                                        time = ""
                                         house = ""
                                         pen = ""
                                         selectedHouse = null
@@ -501,29 +467,21 @@ private fun NewBatchInputField(
 }
 
 @Composable
-private fun NewBatchPickerField(
-    value: String,
-    placeholder: String,
-    onClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp)
-            .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
-            .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Text(
-            text = if (value.isBlank()) placeholder else value,
-            fontFamily = NewBatchPoppins,
-            fontSize = 14.sp,
-            color = if (value.isBlank()) Color(0xFF6E6E6E) else Color.Black,
-            maxLines = 1
+private fun NewBatchReadOnlyField(value: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        enabled = false,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(20.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledContainerColor = Color(0xFFE3E3E3),
+            disabledBorderColor = Color(0xFFBDBDBD),
+            disabledTextColor = Color(0xFF6E6E6E)
         )
-    }
+    )
 }
 
 @Composable

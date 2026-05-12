@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -44,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -56,12 +59,11 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
-import androidx.compose.ui.focus.onFocusEvent
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import kotlinx.coroutines.delay
-
+import kotlinx.coroutines.launch
 
 private val FarmPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -80,7 +82,17 @@ fun FeedsRefillScreen(
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
 
-    var batchId by remember { mutableStateOf("") }
+    val openedAt = remember { LocalDateTime.now() }
+    val openedDate = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }
+    val openedTime = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }
+    val recordedAtValue = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss"))
+    }
+
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
     var feedType by remember { mutableStateOf("") }
@@ -176,8 +188,17 @@ fun FeedsRefillScreen(
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Spacer(modifier = Modifier.height(10.dp))
 
-                FeedsLabel("Batch ID")
-                FeedsInputField(batchId) { batchId = it }
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        FeedsLabel("Date")
+                        FeedsReadOnlyField(openedDate)
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        FeedsLabel("Time")
+                        FeedsReadOnlyField(openedTime)
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -344,11 +365,11 @@ fun FeedsRefillScreen(
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
                                     feederNumber = feederValue,
-                                    kilograms = kilogramsValue
+                                    kilograms = kilogramsValue,
+                                    recordedAt = recordedAtValue
                                 ).onSuccess { success ->
                                     if (success) {
                                         successMessage = "Feeds refill submitted successfully."
-                                        batchId = ""
                                         house = ""
                                         pen = ""
                                         feedType = ""
@@ -436,6 +457,23 @@ fun FeedsInputField(
     )
 }
 
+@Composable
+fun FeedsReadOnlyField(value: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        enabled = false,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(20.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledContainerColor = Color(0xFFE3E3E3),
+            disabledBorderColor = Color(0xFFBDBDBD),
+            disabledTextColor = Color(0xFF6E6E6E)
+        )
+    )
+}
 
 @Composable
 fun FeedsDropdownField(

@@ -48,7 +48,11 @@ data class DisinfectionSubmitRequest(
     @SerialName("activity")
     val activity: String,
     @SerialName("disinfectant_used")
-    val disinfectantUsed: String
+    val disinfectantUsed: String,
+    @SerialName("recorded_date")
+    val recordedDate: String,
+    @SerialName("recorded_time")
+    val recordedTime: String
 )
 
 @Serializable
@@ -131,7 +135,9 @@ class DisinfectionBackendService(
         houseId: Long,
         penId: Long,
         activity: String,
-        disinfectantUsed: String
+        disinfectantUsed: String,
+        recordedDate: String,
+        recordedTime: String
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -140,7 +146,9 @@ class DisinfectionBackendService(
                     houseId = houseId,
                     penId = penId,
                     activity = activity,
-                    disinfectantUsed = disinfectantUsed
+                    disinfectantUsed = disinfectantUsed,
+                    recordedDate = recordedDate,
+                    recordedTime = recordedTime
                 )
 
                 val responseText = httpClient.post("$baseUrl/api/mobile/disinfection") {
