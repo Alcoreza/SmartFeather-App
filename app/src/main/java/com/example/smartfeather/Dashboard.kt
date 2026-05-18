@@ -61,6 +61,7 @@ import kotlin.math.roundToInt
 data class DashboardStat(
     val title: String,
     val value: String,
+    val icon: ImageVector,
     val bgColor: Color,
     val iconBg: Color
 )
@@ -85,11 +86,13 @@ data class ResourceData(
 data class QuickAccessItem(
     val title: String,
     val icon: ImageVector,
-    val tint: Color
+    val tint: Color,
+    val actionKey: String
 )
 
 data class DashboardUiState(
     val welcomeText: String,
+    val overviewDateLabel: String,
     val stats: List<DashboardStat>,
     val gauges: List<GaugeData>,
     val resources: List<ResourceData>,
@@ -107,10 +110,11 @@ private val DashboardPoppins = FontFamily(
 fun placeholderDashboardState(): DashboardUiState {
     return DashboardUiState(
         welcomeText = "Welcome!",
+        overviewDateLabel = "for 5/11/26",
         stats = listOf(
-            DashboardStat("Total Birds", "5462", Color(0xFFFDFDFD), Color(0xFFD92C2C)),
-            DashboardStat("Total Eggs", "367", Color(0xFFFDFDFD), Color(0xFFFFA96E)),
-            DashboardStat("Mortalities", "25", Color(0xFFFDFDFD), Color(0xFF808080))
+            DashboardStat("Total Birds", "5462", Icons.Outlined.Home, Color(0xFFFDFDFD), Color(0xFFD92C2C)),
+            DashboardStat("Total Eggs", "367", Icons.Outlined.CheckCircle, Color(0xFFFDFDFD), Color(0xFFFFA96E)),
+            DashboardStat("Mortalities", "25", Icons.Outlined.AccountCircle, Color(0xFFFDFDFD), Color(0xFF808080))
         ),
         gauges = listOf(
             GaugeData("Temperature", 11f, "deg", 0f, 40f, Color(0xFF6ABF4B)),
@@ -122,9 +126,9 @@ fun placeholderDashboardState(): DashboardUiState {
         ),
         pendingTasks = "2",
         quickAccess = listOf(
-            QuickAccessItem("Population", Icons.Outlined.CheckCircle, Color(0xFFD92C2C)),
-            QuickAccessItem("Feeds Refill", Icons.AutoMirrored.Outlined.List, Color(0xFFCC8A2D)),
-            QuickAccessItem("Biosecurity", Icons.Outlined.Edit, Color(0xFF2F8F45))
+            QuickAccessItem("Population", Icons.Outlined.CheckCircle, Color(0xFFD92C2C), "population"),
+            QuickAccessItem("Feeds Refill", Icons.AutoMirrored.Outlined.List, Color(0xFFCC8A2D), "feeds_refill"),
+            QuickAccessItem("Biosecurity", Icons.Outlined.Edit, Color(0xFF2F8F45), "biosecurity")
         )
     )
 }
@@ -150,6 +154,9 @@ fun DashboardScreen(
     onNavigateToTasks: () -> Unit,
     onNavigateToFarmManagement: () -> Unit,
     onNavigateToProfile: () -> Unit,
+    onQuickAccessPopulation: () -> Unit,
+    onQuickAccessFeedsRefill: () -> Unit,
+    onQuickAccessBiosecurity: () -> Unit,
     uiState: DashboardUiState
 ) {
     Scaffold(
@@ -160,7 +167,6 @@ fun DashboardScreen(
                 onFarmManagementClick = onNavigateToFarmManagement,
                 onProfileClick = onNavigateToProfile
             )
-
         }
     ) { innerPadding ->
         BoxWithConstraints(
@@ -205,6 +211,7 @@ fun DashboardScreen(
 
                 FarmOverviewCard(
                     stats = uiState.stats,
+                    overviewDateLabel = uiState.overviewDateLabel,
                     isTablet = isTablet
                 )
 
@@ -237,7 +244,14 @@ fun DashboardScreen(
 
                 QuickAccessSection(
                     items = uiState.quickAccess,
-                    isTablet = isTablet
+                    isTablet = isTablet,
+                    onItemClick = { actionKey ->
+                        when (actionKey) {
+                            "population" -> onQuickAccessPopulation()
+                            "feeds_refill" -> onQuickAccessFeedsRefill()
+                            "biosecurity" -> onQuickAccessBiosecurity()
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))
@@ -307,7 +321,8 @@ private fun MonitoringSection(
 @Composable
 private fun QuickAccessSection(
     items: List<QuickAccessItem>,
-    isTablet: Boolean
+    isTablet: Boolean,
+    onItemClick: (String) -> Unit
 ) {
     if (isTablet) {
         Row(
@@ -319,7 +334,8 @@ private fun QuickAccessSection(
                     item = item,
                     modifier = Modifier.weight(1f),
                     cardWidth = null,
-                    cardHeight = 118.dp
+                    cardHeight = 118.dp,
+                    onClick = { onItemClick(item.actionKey) }
                 )
             }
         }
@@ -336,7 +352,8 @@ private fun QuickAccessSection(
                     QuickAccessCard(
                         item = item,
                         cardWidth = 110.dp,
-                        cardHeight = 104.dp
+                        cardHeight = 104.dp,
+                        onClick = { onItemClick(item.actionKey) }
                     )
                 }
             }
@@ -347,6 +364,7 @@ private fun QuickAccessSection(
 @Composable
 private fun FarmOverviewCard(
     stats: List<DashboardStat>,
+    overviewDateLabel: String,
     isTablet: Boolean
 ) {
     Card(
@@ -390,12 +408,11 @@ private fun FarmOverviewCard(
                                     .background(stat.iconBg),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = stat.value.take(1),
-                                    fontFamily = DashboardPoppins,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = if (isTablet) 12.sp else 11.sp
+                                Icon(
+                                    imageVector = stat.icon,
+                                    contentDescription = stat.title,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(if (isTablet) 16.dp else 14.dp)
                                 )
                             }
 
@@ -421,6 +438,17 @@ private fun FarmOverviewCard(
                     }
                 }
             }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = overviewDateLabel,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.End,
+                fontFamily = DashboardPoppins,
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.78f)
+            )
         }
     }
 }
@@ -672,13 +700,14 @@ private fun QuickAccessCard(
     item: QuickAccessItem,
     modifier: Modifier = Modifier,
     cardWidth: Dp? = 110.dp,
-    cardHeight: Dp = 104.dp
+    cardHeight: Dp = 104.dp,
+    onClick: () -> Unit
 ) {
     Card(
         modifier = if (cardWidth != null) {
-            modifier.width(cardWidth).height(cardHeight).clickable { }
+            modifier.width(cardWidth).height(cardHeight).clickable { onClick() }
         } else {
-            modifier.height(cardHeight).clickable { }
+            modifier.height(cardHeight).clickable { onClick() }
         },
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
@@ -804,6 +833,9 @@ fun DashboardScreenPreview() {
         onNavigateToTasks = {},
         onNavigateToFarmManagement = {},
         onNavigateToProfile = {},
+        onQuickAccessPopulation = {},
+        onQuickAccessFeedsRefill = {},
+        onQuickAccessBiosecurity = {},
         uiState = placeholderDashboardState()
     )
 }

@@ -88,10 +88,13 @@ class MainActivity : ComponentActivity() {
 fun SmartFeatherApp() {
     val authService = remember { SupabaseAuthService() }
     val taskService = remember { TaskBackendService() }
+    val dashboardService = remember { DashboardBackendService() }
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+
     var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
     var loggedInEmployeeId by remember { mutableStateOf<Int?>(null) }
+
     var selectedPendingTask by remember {
         mutableStateOf<PendingTaskDetailUiState?>(null)
     }
@@ -99,7 +102,14 @@ fun SmartFeatherApp() {
         mutableStateOf<CompletedTaskDetailUiState?>(null)
     }
 
+    var dashboardUiState by remember { mutableStateOf(placeholderDashboardState()) }
 
+    LaunchedEffect(currentScreen, loggedInEmployeeId) {
+        if (currentScreen == AppScreen.DASHBOARD && loggedInEmployeeId != null) {
+            dashboardService.getDashboard(loggedInEmployeeId!!)
+                .onSuccess { dashboardUiState = it }
+        }
+    }
 
     when (currentScreen) {
         AppScreen.LOGIN -> LoginScreen(
@@ -112,7 +122,6 @@ fun SmartFeatherApp() {
             }
         )
 
-
         AppScreen.DASHBOARD -> DashboardScreen(
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
@@ -123,9 +132,17 @@ fun SmartFeatherApp() {
             onNavigateToProfile = {
                 currentScreen = AppScreen.PROFILE
             },
-            uiState = placeholderDashboardState()
+            onQuickAccessPopulation = {
+                currentScreen = AppScreen.POPULATION
+            },
+            onQuickAccessFeedsRefill = {
+                currentScreen = AppScreen.FEEDS_REFILL
+            },
+            onQuickAccessBiosecurity = {
+                currentScreen = AppScreen.BIOSECURITY
+            },
+            uiState = dashboardUiState
         )
-
 
         AppScreen.TASKS -> TasksScreen(
             employeeId = loggedInEmployeeId ?: 0,
@@ -191,10 +208,7 @@ fun SmartFeatherApp() {
 
                 currentScreen = AppScreen.COMPLETED_TASK_DETAIL
             }
-
         )
-
-
 
         AppScreen.TASK_DETAIL -> {
             selectedPendingTask?.let { task ->
@@ -228,10 +242,6 @@ fun SmartFeatherApp() {
                             currentScreen = AppScreen.TASKS
                         }.map { Unit }
                     }
-
-
-
-
                 )
             }
         }
@@ -280,8 +290,6 @@ fun SmartFeatherApp() {
             }
         )
 
-
-
         AppScreen.FEEDS_REFILL -> FeedsRefillScreen(
             onBackToFarm = {
                 currentScreen = AppScreen.FARM_MANAGEMENT
@@ -322,8 +330,6 @@ fun SmartFeatherApp() {
             onNavigateToTasks = { currentScreen = AppScreen.TASKS }
         )
 
-
-
         AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
             onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
             onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
@@ -343,7 +349,6 @@ fun SmartFeatherApp() {
             onNavigateToTasks = { currentScreen = AppScreen.TASKS }
         )
 
-
         AppScreen.PROFILE -> ProfileScreen(
             employeeId = loggedInEmployeeId ?: 0,
             onNavigateToDashboard = {
@@ -359,10 +364,10 @@ fun SmartFeatherApp() {
                 loggedInEmployeeId = null
                 selectedPendingTask = null
                 selectedCompletedTask = null
+                dashboardUiState = placeholderDashboardState()
                 currentScreen = AppScreen.LOGIN
             }
         )
-
 
         AppScreen.FARM_MANAGEMENT -> FarmManagementScreen(
             onNavigateToDashboard = {
@@ -395,6 +400,7 @@ fun SmartFeatherApp() {
         )
     }
 }
+
 
 @Composable
 fun LoginScreen(
