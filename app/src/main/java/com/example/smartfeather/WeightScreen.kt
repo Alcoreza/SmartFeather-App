@@ -61,6 +61,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -82,6 +86,20 @@ fun WeightScreen(
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
+
+    val openedAt = remember { LocalDateTime.now() }
+    val openedDate = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }
+    val openedTime = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }
+    val recordedDateValue = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+    }
+    val recordedTimeValue = remember(openedAt) {
+        openedAt.format(DateTimeFormatter.ofPattern("HH:mm:ss"))
+    }
 
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
@@ -164,6 +182,20 @@ fun WeightScreen(
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f)) {
+                        WeightLabel("Date")
+                        WeightReadOnlyField(openedDate)
+                    }
+
+                    Column(Modifier.weight(1f)) {
+                        WeightLabel("Time")
+                        WeightReadOnlyField(openedTime)
+                    }
+                }
+
+                Spacer(Modifier.height(10.dp))
+
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(Modifier.weight(1f)) {
                         WeightLabel("House")
                         WeightDropdownField(
                             value = house,
@@ -174,6 +206,7 @@ fun WeightScreen(
                                 house = selectedValue
                                 selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
                                 pen = ""
+                                age = ""
                                 selectedPen = null
                                 pens = emptyList()
                                 houseExpanded = false
@@ -207,6 +240,29 @@ fun WeightScreen(
                                 penExpanded = false
                                 errorMessage = null
                                 successMessage = null
+
+                                val startedAtText = selectedPen?.currentBatchStartedAt
+                                if (startedAtText.isNullOrBlank()) {
+                                    age = ""
+                                } else {
+                                    val parsedStartedAt = runCatching {
+                                        LocalDateTime.parse(
+                                            startedAtText,
+                                            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                                        )
+                                    }.getOrNull()
+
+                                    if (parsedStartedAt == null) {
+                                        age = ""
+                                    } else {
+                                        val days = ChronoUnit.DAYS.between(
+                                            parsedStartedAt.toLocalDate(),
+                                            openedAt.toLocalDate()
+                                        ).toInt()
+
+                                        age = days.toString()
+                                    }
+                                }
                             }
                         )
                     }
@@ -214,14 +270,8 @@ fun WeightScreen(
 
                 Spacer(Modifier.height(10.dp))
 
-                WeightLabel("Age")
-                WeightInputField(
-                    value = age,
-                    keyboardType = KeyboardType.Number,
-                    scrollState = scrollState
-                ) { newValue ->
-                    age = newValue.filter { it.isDigit() }
-                }
+                WeightLabel("Age (Days)")
+                WeightReadOnlyField(age)
 
                 Spacer(Modifier.height(10.dp))
 
@@ -362,8 +412,8 @@ fun WeightScreen(
                                 errorMessage = "Please select a pen."
                                 return@Button
                             }
-                            if (ageValue == null || ageValue <= 0) {
-                                errorMessage = "Please enter a valid age."
+                            if (ageValue == null) {
+                                errorMessage = "Selected pen has no running batch."
                                 return@Button
                             }
                             if (flockCount == null || flockCount <= 0) {
@@ -384,11 +434,12 @@ fun WeightScreen(
                                 weightService.submitWeightSampling(
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
-                                    age = ageValue,
                                     numberOfFlocks = flockCount,
                                     flocksWithCases = flocksWithCasesValue,
                                     targetWeight = targetWeightValue,
-                                    weights = weightValues.filterNotNull()
+                                    weights = weightValues.filterNotNull(),
+                                    recordedDate = recordedDateValue,
+                                    recordedTime = recordedTimeValue
                                 ).onSuccess { response ->
                                     if (response.success == true) {
                                         successMessage =
@@ -475,6 +526,24 @@ private fun WeightInputField(
             focusedBorderColor = Color(0xFFBDBDBD),
             unfocusedBorderColor = Color(0xFFBDBDBD),
             cursorColor = Color.Black
+        )
+    )
+}
+
+@Composable
+private fun WeightReadOnlyField(value: String) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = {},
+        readOnly = true,
+        enabled = false,
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(20.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledContainerColor = Color(0xFFE3E3E3),
+            disabledBorderColor = Color(0xFFBDBDBD),
+            disabledTextColor = Color(0xFF6E6E6E)
         )
     )
 }

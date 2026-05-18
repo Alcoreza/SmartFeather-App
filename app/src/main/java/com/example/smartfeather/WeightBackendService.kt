@@ -27,18 +27,22 @@ data class WeightHouseApiRow(
 @Serializable
 data class WeightPenApiRow(
     @SerialName("id") val id: Long,
-    @SerialName("pen_name") val penName: String? = null
+    @SerialName("pen_name") val penName: String? = null,
+    @SerialName("current_batch_id") val currentBatchId: Int? = null,
+    @SerialName("current_batch_code") val currentBatchCode: String? = null,
+    @SerialName("current_batch_started_at") val currentBatchStartedAt: String? = null
 )
 
 @Serializable
 data class WeightSubmitRequest(
     @SerialName("house_id") val houseId: Long,
     @SerialName("pen_id") val penId: Long,
-    @SerialName("age") val age: Int,
     @SerialName("number_of_flocks") val numberOfFlocks: Int,
     @SerialName("flocks_with_cases") val flocksWithCases: Int,
     @SerialName("target_weight") val targetWeight: Double,
-    @SerialName("weights") val weights: List<Double>
+    @SerialName("weights") val weights: List<Double>,
+    @SerialName("recorded_date") val recordedDate: String,
+    @SerialName("recorded_time") val recordedTime: String
 )
 
 @Serializable
@@ -47,7 +51,9 @@ data class WeightSubmitResponse(
     @SerialName("message") val message: String? = null,
     @SerialName("average_weight") val averageWeight: Double? = null,
     @SerialName("target") val target: Double? = null,
-    @SerialName("status") val status: String? = null
+    @SerialName("status") val status: String? = null,
+    @SerialName("age_days") val ageDays: Int? = null,
+    @SerialName("batch_code") val batchCode: String? = null
 )
 
 data class WeightHouseOption(
@@ -57,7 +63,10 @@ data class WeightHouseOption(
 
 data class WeightPenOption(
     val id: Long,
-    val penName: String
+    val penName: String,
+    val currentBatchId: Int? = null,
+    val currentBatchCode: String? = null,
+    val currentBatchStartedAt: String? = null
 )
 
 class WeightBackendService(
@@ -102,7 +111,10 @@ class WeightBackendService(
             json.decodeFromJsonElement<List<WeightPenApiRow>>(parsed).map {
                 WeightPenOption(
                     id = it.id,
-                    penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
+                    penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown",
+                    currentBatchId = it.currentBatchId,
+                    currentBatchCode = it.currentBatchCode,
+                    currentBatchStartedAt = it.currentBatchStartedAt
                 )
             }
         }
@@ -111,11 +123,12 @@ class WeightBackendService(
     suspend fun submitWeightSampling(
         houseId: Long,
         penId: Long,
-        age: Int,
         numberOfFlocks: Int,
         flocksWithCases: Int,
         targetWeight: Double,
-        weights: List<Double>
+        weights: List<Double>,
+        recordedDate: String,
+        recordedTime: String
     ): Result<WeightSubmitResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val responseText = httpClient.post("$baseUrl/api/mobile/weight-sampling") {
@@ -126,11 +139,12 @@ class WeightBackendService(
                         WeightSubmitRequest(
                             houseId = houseId,
                             penId = penId,
-                            age = age,
                             numberOfFlocks = numberOfFlocks,
                             flocksWithCases = flocksWithCases,
                             targetWeight = targetWeight,
-                            weights = weights
+                            weights = weights,
+                            recordedDate = recordedDate,
+                            recordedTime = recordedTime
                         )
                     )
                 )
