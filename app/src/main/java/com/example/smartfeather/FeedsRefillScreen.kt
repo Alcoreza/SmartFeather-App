@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -37,6 +38,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,9 +76,11 @@ private val FarmPoppins = FontFamily(
 
 @Composable
 fun FeedsRefillScreen(
+    employeeId: Int,
     onBackToFarm: () -> Unit,
     onNavigateToDashboard: () -> Unit,
-    onNavigateToTasks: () -> Unit
+    onNavigateToTasks: () -> Unit,
+    onGoToBiosecurity: () -> Unit
 ) {
     val feedsService = remember { FeedsRefillBackendService() }
     val coroutineScope = rememberCoroutineScope()
@@ -99,15 +103,13 @@ fun FeedsRefillScreen(
     var feederNumber by remember { mutableStateOf("") }
     var kilograms by remember { mutableStateOf("") }
 
-    var houses by remember { mutableStateOf<List<FeedHouseOption>>(emptyList()) }
+    var selectedHouse by remember { mutableStateOf<FeedHouseOption?>(null) }
     var pens by remember { mutableStateOf<List<FeedPenOption>>(emptyList()) }
     var feedOptions by remember { mutableStateOf<List<FeedInventoryOption>>(emptyList()) }
 
-    var selectedHouse by remember { mutableStateOf<FeedHouseOption?>(null) }
     var selectedPen by remember { mutableStateOf<FeedPenOption?>(null) }
     var selectedFeed by remember { mutableStateOf<FeedInventoryOption?>(null) }
 
-    var houseExpanded by remember { mutableStateOf(false) }
     var penExpanded by remember { mutableStateOf(false) }
     var feedExpanded by remember { mutableStateOf(false) }
     var feederExpanded by remember { mutableStateOf(false) }
@@ -116,15 +118,33 @@ fun FeedsRefillScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
 
+    var showBlockedDialog by remember { mutableStateOf(false) }
+    var blockedMessage by remember { mutableStateOf("") }
+
     val feederOptions = remember { feedsService.feederOptions() }
 
-    LaunchedEffect(Unit) {
-        feedsService.getHouses()
-            .onSuccess { loadedHouses ->
-                houses = loadedHouses
+    LaunchedEffect(employeeId) {
+        feedsService.getFeedsContext(employeeId)
+            .onSuccess { context ->
+                if (!context.accessAllowed) {
+                    blockedMessage = context.message
+                        ?: "Please complete personnel biosecurity before accessing feeds refill."
+                    showBlockedDialog = true
+                    house = ""
+                    selectedHouse = null
+                    pens = emptyList()
+                } else {
+                    selectedHouse = context.house
+                    house = context.house?.houseNumber.orEmpty()
+                    pens = context.pens
+                }
             }
             .onFailure {
-                errorMessage = it.message ?: "Failed to load houses."
+                blockedMessage = it.message ?: "Failed to load feeds refill context."
+                showBlockedDialog = true
+                house = ""
+                selectedHouse = null
+                pens = emptyList()
             }
 
         feedsService.getFeedInventoryOptions()
@@ -134,6 +154,35 @@ fun FeedsRefillScreen(
             .onFailure {
                 errorMessage = it.message ?: "Failed to load feed inventory."
             }
+    }
+
+    if (showBlockedDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(
+                    text = "Biosecurity Required",
+                    fontFamily = FarmPoppins,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text(
+                    text = blockedMessage,
+                    fontFamily = FarmPoppins
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = onBackToFarm) {
+                    Text("Back", fontFamily = FarmPoppins)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onGoToBiosecurity) {
+                    Text("Go to Biosecurity", fontFamily = FarmPoppins)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -205,33 +254,7 @@ fun FeedsRefillScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         FeedsLabel("House")
-                        FeedsDropdownField(
-                            value = house,
-                            options = houses.map { it.houseNumber },
-                            expanded = houseExpanded,
-                            onExpandedChange = { houseExpanded = it },
-                            onValueSelected = { selectedValue ->
-                                house = selectedValue
-                                selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
-                                pen = ""
-                                selectedPen = null
-                                pens = emptyList()
-                                houseExpanded = false
-                                errorMessage = null
-                                successMessage = null
-
-                                val houseId = selectedHouse?.id ?: return@FeedsDropdownField
-                                coroutineScope.launch {
-                                    feedsService.getPensByHouse(houseId)
-                                        .onSuccess { loadedPens ->
-                                            pens = loadedPens
-                                        }
-                                        .onFailure {
-                                            errorMessage = it.message ?: "Failed to load pens."
-                                        }
-                                }
-                            }
-                        )
+                        FeedsReadOnlyField(house)
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
@@ -338,7 +361,7 @@ fun FeedsRefillScreen(
                             val kilogramsValue = kilograms.toIntOrNull()
 
                             if (currentHouse == null) {
-                                errorMessage = "Please select a house."
+                                errorMessage = "No house is assigned from your biosecurity entry."
                                 return@Button
                             }
                             if (currentPen == null) {
@@ -361,6 +384,7 @@ fun FeedsRefillScreen(
                             coroutineScope.launch {
                                 isLoading = true
                                 feedsService.submitFeedRefill(
+                                    employeeId = employeeId,
                                     inventoryId = currentFeed.id,
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
@@ -370,15 +394,12 @@ fun FeedsRefillScreen(
                                 ).onSuccess { success ->
                                     if (success) {
                                         successMessage = "Feeds refill submitted successfully."
-                                        house = ""
                                         pen = ""
                                         feedType = ""
                                         feederNumber = ""
                                         kilograms = ""
-                                        selectedHouse = null
                                         selectedPen = null
                                         selectedFeed = null
-                                        pens = emptyList()
 
                                         feedsService.getFeedInventoryOptions()
                                             .onSuccess { refreshedFeeds ->
@@ -396,7 +417,7 @@ fun FeedsRefillScreen(
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2E7D32)),
                         modifier = Modifier.height(40.dp),
-                        enabled = !isLoading
+                        enabled = !isLoading && !showBlockedDialog
                     ) {
                         Text(
                             text = if (isLoading) "Submitting..." else "Submit",

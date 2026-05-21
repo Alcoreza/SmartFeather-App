@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -37,6 +38,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,9 +76,11 @@ private val VitaminsPoppins = FontFamily(
 
 @Composable
 fun VitaminsRefillScreen(
+    employeeId: Int,
     onBackToFarm: () -> Unit,
     onNavigateToDashboard: () -> Unit,
-    onNavigateToTasks: () -> Unit
+    onNavigateToTasks: () -> Unit,
+    onGoToBiosecurity: () -> Unit
 ) {
     val vitaminsService = remember { VitaminsRefillBackendService() }
     val coroutineScope = rememberCoroutineScope()
@@ -98,15 +102,13 @@ fun VitaminsRefillScreen(
     var typeOfVitamins by remember { mutableStateOf("") }
     var bottlesUsed by remember { mutableStateOf("") }
 
-    var houses by remember { mutableStateOf<List<VitaminHouseOption>>(emptyList()) }
+    var selectedHouse by remember { mutableStateOf<VitaminHouseOption?>(null) }
     var pens by remember { mutableStateOf<List<VitaminPenOption>>(emptyList()) }
     var vitaminOptions by remember { mutableStateOf<List<VitaminInventoryOption>>(emptyList()) }
 
-    var selectedHouse by remember { mutableStateOf<VitaminHouseOption?>(null) }
     var selectedPen by remember { mutableStateOf<VitaminPenOption?>(null) }
     var selectedVitamin by remember { mutableStateOf<VitaminInventoryOption?>(null) }
 
-    var houseExpanded by remember { mutableStateOf(false) }
     var penExpanded by remember { mutableStateOf(false) }
     var vitaminExpanded by remember { mutableStateOf(false) }
 
@@ -114,14 +116,65 @@ fun VitaminsRefillScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        vitaminsService.getHouses()
-            .onSuccess { houses = it }
-            .onFailure { errorMessage = it.message ?: "Failed to load houses." }
+    var showBlockedDialog by remember { mutableStateOf(false) }
+    var blockedMessage by remember { mutableStateOf("") }
+
+    LaunchedEffect(employeeId) {
+        vitaminsService.getVitaminsContext(employeeId)
+            .onSuccess { context ->
+                if (!context.accessAllowed) {
+                    blockedMessage = context.message
+                        ?: "Please complete personnel biosecurity before accessing vitamins refill."
+                    showBlockedDialog = true
+                    house = ""
+                    selectedHouse = null
+                    pens = emptyList()
+                } else {
+                    selectedHouse = context.house
+                    house = context.house?.houseNumber.orEmpty()
+                    pens = context.pens
+                }
+            }
+            .onFailure {
+                blockedMessage = it.message ?: "Failed to load vitamins refill context."
+                showBlockedDialog = true
+                house = ""
+                selectedHouse = null
+                pens = emptyList()
+            }
 
         vitaminsService.getVitaminInventoryOptions()
             .onSuccess { vitaminOptions = it }
             .onFailure { errorMessage = it.message ?: "Failed to load vitamin inventory." }
+    }
+
+    if (showBlockedDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(
+                    text = "Biosecurity Required",
+                    fontFamily = VitaminsPoppins,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text(
+                    text = blockedMessage,
+                    fontFamily = VitaminsPoppins
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = onBackToFarm) {
+                    Text("Back", fontFamily = VitaminsPoppins)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onGoToBiosecurity) {
+                    Text("Go to Biosecurity", fontFamily = VitaminsPoppins)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -188,31 +241,7 @@ fun VitaminsRefillScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         VitaminsLabel("House")
-                        VitaminsDropdownField(
-                            value = house,
-                            options = houses.map { it.houseNumber },
-                            expanded = houseExpanded,
-                            onExpandedChange = { houseExpanded = it },
-                            onValueSelected = { selectedValue ->
-                                house = selectedValue
-                                selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
-                                pen = ""
-                                selectedPen = null
-                                pens = emptyList()
-                                houseExpanded = false
-                                errorMessage = null
-                                successMessage = null
-
-                                val houseId = selectedHouse?.id ?: return@VitaminsDropdownField
-                                coroutineScope.launch {
-                                    vitaminsService.getPensByHouse(houseId)
-                                        .onSuccess { pens = it }
-                                        .onFailure {
-                                            errorMessage = it.message ?: "Failed to load pens."
-                                        }
-                                }
-                            }
-                        )
+                        VitaminsReadOnlyField(house)
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
@@ -302,7 +331,7 @@ fun VitaminsRefillScreen(
                             val bottlesValue = bottlesUsed.toIntOrNull()
 
                             if (currentHouse == null) {
-                                errorMessage = "Please select a house."
+                                errorMessage = "No house is assigned from your biosecurity entry."
                                 return@Button
                             }
                             if (currentPen == null) {
@@ -321,6 +350,7 @@ fun VitaminsRefillScreen(
                             coroutineScope.launch {
                                 isLoading = true
                                 vitaminsService.submitVitaminRefill(
+                                    employeeId = employeeId,
                                     inventoryId = currentVitamin.id,
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
@@ -329,14 +359,11 @@ fun VitaminsRefillScreen(
                                 ).onSuccess { success ->
                                     if (success) {
                                         successMessage = "Vitamins refill submitted successfully."
-                                        house = ""
                                         pen = ""
                                         typeOfVitamins = ""
                                         bottlesUsed = ""
-                                        selectedHouse = null
                                         selectedPen = null
                                         selectedVitamin = null
-                                        pens = emptyList()
 
                                         vitaminsService.getVitaminInventoryOptions()
                                             .onSuccess { vitaminOptions = it }
@@ -352,7 +379,7 @@ fun VitaminsRefillScreen(
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E5D36)),
                         modifier = Modifier.height(40.dp),
-                        enabled = !isLoading
+                        enabled = !isLoading && !showBlockedDialog
                     ) {
                         Text(
                             text = if (isLoading) "Submitting..." else "Submit",

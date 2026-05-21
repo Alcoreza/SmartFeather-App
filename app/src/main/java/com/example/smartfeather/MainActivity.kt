@@ -264,6 +264,7 @@ fun SmartFeatherApp() {
         }
 
         AppScreen.POPULATION -> PopulationScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onBackToFarm = {
                 currentScreen = AppScreen.FARM_MANAGEMENT
             },
@@ -272,10 +273,14 @@ fun SmartFeatherApp() {
             },
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
+            },
+            onGoToBiosecurity = {
+                currentScreen = AppScreen.PERSONNEL_LOGS
             }
         )
 
         AppScreen.WEIGHT -> WeightScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onBackToFarm = {
                 currentScreen = AppScreen.FARM_MANAGEMENT
             },
@@ -287,10 +292,14 @@ fun SmartFeatherApp() {
             },
             onNavigateToProfile = {
                 currentScreen = AppScreen.PROFILE
+            },
+            onGoToBiosecurity = {
+                currentScreen = AppScreen.PERSONNEL_LOGS
             }
         )
 
         AppScreen.FEEDS_REFILL -> FeedsRefillScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onBackToFarm = {
                 currentScreen = AppScreen.FARM_MANAGEMENT
             },
@@ -299,10 +308,14 @@ fun SmartFeatherApp() {
             },
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
+            },
+            onGoToBiosecurity = {
+                currentScreen = AppScreen.PERSONNEL_LOGS
             }
         )
 
         AppScreen.VITAMINS_REFILL -> VitaminsRefillScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onBackToFarm = {
                 currentScreen = AppScreen.FARM_MANAGEMENT
             },
@@ -311,6 +324,9 @@ fun SmartFeatherApp() {
             },
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
+            },
+            onGoToBiosecurity = {
+                currentScreen = AppScreen.PERSONNEL_LOGS
             }
         )
 
@@ -325,12 +341,22 @@ fun SmartFeatherApp() {
 
         AppScreen.DISINFECTION -> DisinfectionScreen(
             employeeId = loggedInEmployeeId ?: 0,
-            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
-            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
-            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+            onBackToBiosecurity = {
+                currentScreen = AppScreen.BIOSECURITY
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            },
+            onGoToBiosecurity = {
+                currentScreen = AppScreen.PERSONNEL_LOGS
+            }
         )
 
         AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
             onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
             onNavigateToTasks = { currentScreen = AppScreen.TASKS }
@@ -344,9 +370,11 @@ fun SmartFeatherApp() {
         )
 
         AppScreen.NEW_BIRD_BATCH -> NewBirdBatchScreen(
+            employeeId = loggedInEmployeeId ?: 0,
             onBackToFarm = { currentScreen = AppScreen.FARM_MANAGEMENT },
             onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
-            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+            onNavigateToTasks = { currentScreen = AppScreen.TASKS },
+            onGoToBiosecurity = { currentScreen = AppScreen.PERSONNEL_LOGS }
         )
 
         AppScreen.PROFILE -> ProfileScreen(

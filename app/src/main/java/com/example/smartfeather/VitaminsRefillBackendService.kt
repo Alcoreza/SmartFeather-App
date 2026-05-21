@@ -20,21 +20,27 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class VitaminHouseApiRow(
-    @SerialName("id")
-    val id: Long,
-    @SerialName("house_number")
-    val houseNumber: String? = null,
-    @SerialName("number_of_pens")
-    val numberOfPens: Long? = null
-)
-
-@Serializable
 data class VitaminPenApiRow(
     @SerialName("id")
     val id: Long,
     @SerialName("pen_name")
     val penName: String? = null
+)
+
+@Serializable
+data class VitaminContextResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("access_allowed")
+    val accessAllowed: Boolean? = null,
+    @SerialName("house_id")
+    val houseId: Long? = null,
+    @SerialName("house_number")
+    val houseNumber: String? = null,
+    @SerialName("pen_options")
+    val penOptions: List<VitaminPenApiRow> = emptyList(),
+    @SerialName("message")
+    val message: String? = null
 )
 
 @Serializable
@@ -51,6 +57,8 @@ data class VitaminInventoryApiRow(
 
 @Serializable
 data class VitaminRefillRequest(
+    @SerialName("employee_id")
+    val employeeId: Int,
     @SerialName("inventory_id")
     val inventoryId: Int,
     @SerialName("house_id")
@@ -88,6 +96,13 @@ data class VitaminInventoryOption(
     val unit: String
 )
 
+data class VitaminAccessContext(
+    val accessAllowed: Boolean,
+    val house: VitaminHouseOption?,
+    val pens: List<VitaminPenOption>,
+    val message: String?
+)
+
 class VitaminsRefillBackendService(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
@@ -97,50 +112,40 @@ class VitaminsRefillBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getHouses(): Result<List<VitaminHouseOption>> {
+    suspend fun getVitaminsContext(employeeId: Int): Result<VitaminAccessContext> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/houses") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/context?employee_id=$employeeId") {
                     accept(ContentType.Application.Json)
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
+                if (parsed is JsonObject && parsed["success"] == null && parsed["access_allowed"] == null) {
                     val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Failed to load houses.")
+                    error(errorResponse.message ?: "Failed to load vitamins refill context.")
                 }
 
-                json.decodeFromJsonElement<List<VitaminHouseApiRow>>(parsed).map {
-                    VitaminHouseOption(
-                        id = it.id,
-                        houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
-                    )
-                }
-            }
-        }
-    }
+                val response = json.decodeFromJsonElement<VitaminContextResponse>(parsed)
 
-    suspend fun getPensByHouse(houseId: Long): Result<List<VitaminPenOption>> {
-        return withContext(Dispatchers.IO) {
-            runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/houses/$houseId/pens") {
-                    accept(ContentType.Application.Json)
-                }.bodyAsText()
-
-                val parsed: JsonElement = json.parseToJsonElement(responseText)
-
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Failed to load pens.")
-                }
-
-                json.decodeFromJsonElement<List<VitaminPenApiRow>>(parsed).map {
-                    VitaminPenOption(
-                        id = it.id,
-                        penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
-                    )
-                }
+                VitaminAccessContext(
+                    accessAllowed = response.accessAllowed == true,
+                    house = if (response.houseId != null && !response.houseNumber.isNullOrBlank()) {
+                        VitaminHouseOption(
+                            id = response.houseId,
+                            houseNumber = response.houseNumber
+                        )
+                    } else {
+                        null
+                    },
+                    pens = response.penOptions.map {
+                        VitaminPenOption(
+                            id = it.id,
+                            penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
+                        )
+                    },
+                    message = response.message
+                )
             }
         }
     }
@@ -172,6 +177,7 @@ class VitaminsRefillBackendService(
     }
 
     suspend fun submitVitaminRefill(
+        employeeId: Int,
         inventoryId: Int,
         houseId: Long,
         penId: Long,
@@ -181,6 +187,7 @@ class VitaminsRefillBackendService(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val requestBody = VitaminRefillRequest(
+                    employeeId = employeeId,
                     inventoryId = inventoryId,
                     houseId = houseId,
                     penId = penId,

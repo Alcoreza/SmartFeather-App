@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -34,6 +35,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -75,7 +77,8 @@ fun DisinfectionScreen(
     employeeId: Int,
     onBackToBiosecurity: () -> Unit,
     onNavigateToDashboard: () -> Unit,
-    onNavigateToTasks: () -> Unit
+    onNavigateToTasks: () -> Unit,
+    onGoToBiosecurity: () -> Unit
 ) {
     val disinfectionService = remember { DisinfectionBackendService() }
     val coroutineScope = rememberCoroutineScope()
@@ -100,23 +103,72 @@ fun DisinfectionScreen(
     var activity by remember { mutableStateOf("") }
     var disinfectantUsed by remember { mutableStateOf("") }
 
-    var houses by remember { mutableStateOf<List<DisinfectionHouseOption>>(emptyList()) }
     var pens by remember { mutableStateOf<List<DisinfectionPenOption>>(emptyList()) }
 
     var selectedHouse by remember { mutableStateOf<DisinfectionHouseOption?>(null) }
     var selectedPen by remember { mutableStateOf<DisinfectionPenOption?>(null) }
 
-    var houseExpanded by remember { mutableStateOf(false) }
     var penExpanded by remember { mutableStateOf(false) }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        disinfectionService.getHouses()
-            .onSuccess { houses = it }
-            .onFailure { errorMessage = it.message ?: "Failed to load houses." }
+    var showBlockedDialog by remember { mutableStateOf(false) }
+    var blockedMessage by remember { mutableStateOf("") }
+
+    LaunchedEffect(employeeId) {
+        disinfectionService.getDisinfectionContext(employeeId)
+            .onSuccess { context ->
+                if (!context.accessAllowed) {
+                    blockedMessage = context.message
+                        ?: "Please complete personnel biosecurity before accessing disinfection."
+                    showBlockedDialog = true
+                    house = ""
+                    selectedHouse = null
+                    pens = emptyList()
+                } else {
+                    selectedHouse = context.house
+                    house = context.house?.houseNumber.orEmpty()
+                    pens = context.pens
+                }
+            }
+            .onFailure {
+                blockedMessage = it.message ?: "Failed to load disinfection context."
+                showBlockedDialog = true
+                house = ""
+                selectedHouse = null
+                pens = emptyList()
+            }
+    }
+
+    if (showBlockedDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(
+                    text = "Biosecurity Required",
+                    fontFamily = DisinfectionPoppins,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text(
+                    text = blockedMessage,
+                    fontFamily = DisinfectionPoppins
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = onBackToBiosecurity) {
+                    Text("Back", fontFamily = DisinfectionPoppins)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onGoToBiosecurity) {
+                    Text("Go to Biosecurity", fontFamily = DisinfectionPoppins)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -185,31 +237,7 @@ fun DisinfectionScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         DisinfectionLabel("House")
-                        DisinfectionDropdownField(
-                            value = house,
-                            options = houses.map { it.houseNumber },
-                            expanded = houseExpanded,
-                            onExpandedChange = { houseExpanded = it },
-                            onValueSelected = { selectedValue ->
-                                house = selectedValue
-                                selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
-                                pen = ""
-                                selectedPen = null
-                                pens = emptyList()
-                                houseExpanded = false
-                                errorMessage = null
-                                successMessage = null
-
-                                val houseId = selectedHouse?.id ?: return@DisinfectionDropdownField
-                                coroutineScope.launch {
-                                    disinfectionService.getPensByHouse(houseId)
-                                        .onSuccess { pens = it }
-                                        .onFailure {
-                                            errorMessage = it.message ?: "Failed to load pens."
-                                        }
-                                }
-                            }
-                        )
+                        DisinfectionReadOnlyField(house)
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
@@ -280,7 +308,7 @@ fun DisinfectionScreen(
                             val currentPen = selectedPen
 
                             if (currentHouse == null) {
-                                errorMessage = "Please select a house."
+                                errorMessage = "No house is assigned from your biosecurity entry."
                                 return@Button
                             }
                             if (currentPen == null) {
@@ -309,13 +337,10 @@ fun DisinfectionScreen(
                                 ).onSuccess { success ->
                                     if (success) {
                                         successMessage = "Disinfection submitted successfully."
-                                        house = ""
                                         pen = ""
                                         activity = ""
                                         disinfectantUsed = ""
-                                        selectedHouse = null
                                         selectedPen = null
-                                        pens = emptyList()
                                     } else {
                                         errorMessage = "Failed to submit disinfection."
                                     }
@@ -328,7 +353,7 @@ fun DisinfectionScreen(
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E5D36)),
                         modifier = Modifier.height(40.dp),
-                        enabled = !isLoading
+                        enabled = !isLoading && !showBlockedDialog
                     ) {
                         Text(
                             text = if (isLoading) "Submitting..." else "Submit",

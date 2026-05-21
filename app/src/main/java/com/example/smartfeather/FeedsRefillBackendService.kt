@@ -20,21 +20,27 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class FeedHouseApiRow(
-    @SerialName("id")
-    val id: Long,
-    @SerialName("house_number")
-    val houseNumber: String? = null,
-    @SerialName("number_of_pens")
-    val numberOfPens: Long? = null
-)
-
-@Serializable
 data class FeedPenApiRow(
     @SerialName("id")
     val id: Long,
     @SerialName("pen_name")
     val penName: String? = null
+)
+
+@Serializable
+data class FeedContextResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("access_allowed")
+    val accessAllowed: Boolean? = null,
+    @SerialName("house_id")
+    val houseId: Long? = null,
+    @SerialName("house_number")
+    val houseNumber: String? = null,
+    @SerialName("pen_options")
+    val penOptions: List<FeedPenApiRow> = emptyList(),
+    @SerialName("message")
+    val message: String? = null
 )
 
 @Serializable
@@ -51,6 +57,8 @@ data class FeedInventoryApiRow(
 
 @Serializable
 data class FeedRefillRequest(
+    @SerialName("employee_id")
+    val employeeId: Int,
     @SerialName("inventory_id")
     val inventoryId: Int,
     @SerialName("house_id")
@@ -90,6 +98,13 @@ data class FeedInventoryOption(
     val unit: String
 )
 
+data class FeedAccessContext(
+    val accessAllowed: Boolean,
+    val house: FeedHouseOption?,
+    val pens: List<FeedPenOption>,
+    val message: String?
+)
+
 class FeedsRefillBackendService(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
@@ -99,50 +114,40 @@ class FeedsRefillBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getHouses(): Result<List<FeedHouseOption>> {
+    suspend fun getFeedsContext(employeeId: Int): Result<FeedAccessContext> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/houses") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/context?employee_id=$employeeId") {
                     accept(ContentType.Application.Json)
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
+                if (parsed is JsonObject && parsed["success"] == null && parsed["access_allowed"] == null) {
                     val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Failed to load houses.")
+                    error(errorResponse.message ?: "Failed to load feeds refill context.")
                 }
 
-                json.decodeFromJsonElement<List<FeedHouseApiRow>>(parsed).map {
-                    FeedHouseOption(
-                        id = it.id,
-                        houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
-                    )
-                }
-            }
-        }
-    }
+                val response = json.decodeFromJsonElement<FeedContextResponse>(parsed)
 
-    suspend fun getPensByHouse(houseId: Long): Result<List<FeedPenOption>> {
-        return withContext(Dispatchers.IO) {
-            runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/houses/$houseId/pens") {
-                    accept(ContentType.Application.Json)
-                }.bodyAsText()
-
-                val parsed: JsonElement = json.parseToJsonElement(responseText)
-
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Failed to load pens.")
-                }
-
-                json.decodeFromJsonElement<List<FeedPenApiRow>>(parsed).map {
-                    FeedPenOption(
-                        id = it.id,
-                        penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
-                    )
-                }
+                FeedAccessContext(
+                    accessAllowed = response.accessAllowed == true,
+                    house = if (response.houseId != null && !response.houseNumber.isNullOrBlank()) {
+                        FeedHouseOption(
+                            id = response.houseId,
+                            houseNumber = response.houseNumber
+                        )
+                    } else {
+                        null
+                    },
+                    pens = response.penOptions.map {
+                        FeedPenOption(
+                            id = it.id,
+                            penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
+                        )
+                    },
+                    message = response.message
+                )
             }
         }
     }
@@ -174,6 +179,7 @@ class FeedsRefillBackendService(
     }
 
     suspend fun submitFeedRefill(
+        employeeId: Int,
         inventoryId: Int,
         houseId: Long,
         penId: Long,
@@ -184,6 +190,7 @@ class FeedsRefillBackendService(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val requestBody = FeedRefillRequest(
+                    employeeId = employeeId,
                     inventoryId = inventoryId,
                     houseId = houseId,
                     penId = penId,

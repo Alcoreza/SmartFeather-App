@@ -20,17 +20,35 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class PopulationHouseApiRow(
+data class PopulationPenApiRow(
     @SerialName("id")
     val id: Long,
+    @SerialName("pen_name")
+    val penName: String? = null,
+    @SerialName("pen_number")
+    val penNumber: String? = null
+)
+
+@Serializable
+data class PopulationContextResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("access_allowed")
+    val accessAllowed: Boolean? = null,
+    @SerialName("house_id")
+    val houseId: Long? = null,
     @SerialName("house_number")
     val houseNumber: String? = null,
-    @SerialName("number_of_pens")
-    val numberOfPens: Long? = null
+    @SerialName("pen_options")
+    val penOptions: List<PopulationPenApiRow> = emptyList(),
+    @SerialName("message")
+    val message: String? = null
 )
 
 @Serializable
 data class PopulationSubmitRequest(
+    @SerialName("employee_id")
+    val employeeId: Int,
     @SerialName("house_id")
     val houseId: Long,
     @SerialName("pen_name")
@@ -53,8 +71,14 @@ data class PopulationApiMessageResponse(
 
 data class PopulationHouseOption(
     val id: Long,
-    val houseNumber: String,
-    val numberOfPens: Int
+    val houseNumber: String
+)
+
+data class PopulationAccessContext(
+    val accessAllowed: Boolean,
+    val house: PopulationHouseOption?,
+    val penOptions: List<String>,
+    val message: String?
 )
 
 class PopulationBackendService(
@@ -66,32 +90,43 @@ class PopulationBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getHouses(): Result<List<PopulationHouseOption>> {
+    suspend fun getPopulationContext(employeeId: Int): Result<PopulationAccessContext> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/houses") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/population/context?employee_id=$employeeId") {
                     accept(ContentType.Application.Json)
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
+                if (parsed is JsonObject && parsed["success"] == null && parsed["access_allowed"] == null) {
                     val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Failed to load houses.")
+                    error(errorResponse.message ?: "Failed to load population context.")
                 }
 
-                json.decodeFromJsonElement<List<PopulationHouseApiRow>>(parsed).map {
-                    PopulationHouseOption(
-                        id = it.id,
-                        houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown",
-                        numberOfPens = (it.numberOfPens ?: 0L).toInt()
-                    )
-                }
+                val response = json.decodeFromJsonElement<PopulationContextResponse>(parsed)
+
+                PopulationAccessContext(
+                    accessAllowed = response.accessAllowed == true,
+                    house = if (response.houseId != null && !response.houseNumber.isNullOrBlank()) {
+                        PopulationHouseOption(
+                            id = response.houseId,
+                            houseNumber = response.houseNumber
+                        )
+                    } else {
+                        null
+                    },
+                    penOptions = response.penOptions.mapNotNull {
+                        it.penNumber?.ifBlank { null }
+                    },
+                    message = response.message
+                )
             }
         }
     }
 
     suspend fun submitPopulation(
+        employeeId: Int,
         houseId: Long,
         penNumber: String,
         eggsHatched: Int,
@@ -101,6 +136,7 @@ class PopulationBackendService(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val requestBody = PopulationSubmitRequest(
+                    employeeId = employeeId,
                     houseId = houseId,
                     penName = "Pen $penNumber",
                     eggsHatched = eggsHatched,
@@ -125,10 +161,5 @@ class PopulationBackendService(
                 result.success == true
             }
         }
-    }
-
-    fun buildPenOptions(selectedHouse: PopulationHouseOption?): List<String> {
-        val count = selectedHouse?.numberOfPens ?: 0
-        return (1..count).map { it.toString() }
     }
 }

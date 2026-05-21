@@ -78,9 +78,11 @@ private val NewBatchPoppins = FontFamily(
 
 @Composable
 fun NewBirdBatchScreen(
+    employeeId: Int,
     onBackToFarm: () -> Unit,
     onNavigateToDashboard: () -> Unit,
-    onNavigateToTasks: () -> Unit
+    onNavigateToTasks: () -> Unit,
+    onGoToBiosecurity: () -> Unit
 ) {
     val batchService = remember { NewBatchBackendService() }
     val coroutineScope = rememberCoroutineScope()
@@ -106,13 +108,11 @@ fun NewBirdBatchScreen(
     var house by remember { mutableStateOf("") }
     var pen by remember { mutableStateOf("") }
 
-    var houses by remember { mutableStateOf<List<NewBatchHouseOption>>(emptyList()) }
     var pens by remember { mutableStateOf<List<NewBatchPenOption>>(emptyList()) }
 
     var selectedHouse by remember { mutableStateOf<NewBatchHouseOption?>(null) }
     var selectedPen by remember { mutableStateOf<NewBatchPenOption?>(null) }
 
-    var houseExpanded by remember { mutableStateOf(false) }
     var penExpanded by remember { mutableStateOf(false) }
 
     var isLoading by remember { mutableStateOf(false) }
@@ -122,10 +122,32 @@ fun NewBirdBatchScreen(
     var showConflictDialog by remember { mutableStateOf(false) }
     var conflictMessage by remember { mutableStateOf("") }
 
-    LaunchedEffect(Unit) {
-        batchService.getHouses()
-            .onSuccess { houses = it }
-            .onFailure { errorMessage = it.message ?: "Failed to load houses." }
+    var showBlockedDialog by remember { mutableStateOf(false) }
+    var blockedMessage by remember { mutableStateOf("") }
+
+    LaunchedEffect(employeeId) {
+        batchService.getNewBatchContext(employeeId)
+            .onSuccess { context ->
+                if (!context.accessAllowed) {
+                    blockedMessage = context.message
+                        ?: "Please complete personnel biosecurity before accessing add new batch."
+                    showBlockedDialog = true
+                    house = ""
+                    selectedHouse = null
+                    pens = emptyList()
+                } else {
+                    selectedHouse = context.house
+                    house = context.house?.houseNumber.orEmpty()
+                    pens = context.pens
+                }
+            }
+            .onFailure {
+                blockedMessage = it.message ?: "Failed to load add new batch context."
+                showBlockedDialog = true
+                house = ""
+                selectedHouse = null
+                pens = emptyList()
+            }
     }
 
     if (showConflictDialog) {
@@ -147,6 +169,35 @@ fun NewBirdBatchScreen(
             confirmButton = {
                 TextButton(onClick = { showConflictDialog = false }) {
                     Text("OK", fontFamily = NewBatchPoppins)
+                }
+            }
+        )
+    }
+
+    if (showBlockedDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(
+                    text = "Biosecurity Required",
+                    fontFamily = NewBatchPoppins,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text(
+                    text = blockedMessage,
+                    fontFamily = NewBatchPoppins
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = onBackToFarm) {
+                    Text("Back", fontFamily = NewBatchPoppins)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onGoToBiosecurity) {
+                    Text("Go to Biosecurity", fontFamily = NewBatchPoppins)
                 }
             }
         )
@@ -260,31 +311,7 @@ fun NewBirdBatchScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         NewBatchLabel("House")
-                        NewBatchDropdownField(
-                            value = house,
-                            options = houses.map { it.houseNumber },
-                            expanded = houseExpanded,
-                            onExpandedChange = { houseExpanded = it },
-                            onValueSelected = { selectedValue ->
-                                house = selectedValue
-                                selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
-                                pen = ""
-                                selectedPen = null
-                                pens = emptyList()
-                                houseExpanded = false
-                                errorMessage = null
-                                successMessage = null
-
-                                val houseId = selectedHouse?.id ?: return@NewBatchDropdownField
-                                coroutineScope.launch {
-                                    batchService.getPensByHouse(houseId)
-                                        .onSuccess { pens = it }
-                                        .onFailure {
-                                            errorMessage = it.message ?: "Failed to load pens."
-                                        }
-                                }
-                            }
-                        )
+                        NewBatchReadOnlyField(house)
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
@@ -354,7 +381,7 @@ fun NewBirdBatchScreen(
                                 return@Button
                             }
                             if (currentHouse == null) {
-                                errorMessage = "Please select a house."
+                                errorMessage = "No house is assigned from your biosecurity entry."
                                 return@Button
                             }
                             if (currentPen == null) {
@@ -365,6 +392,7 @@ fun NewBirdBatchScreen(
                             coroutineScope.launch {
                                 isLoading = true
                                 batchService.submitNewBatch(
+                                    employeeId = employeeId,
                                     batchCode = batchCode.trim(),
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
@@ -387,11 +415,8 @@ fun NewBirdBatchScreen(
                                         successMessage = result.message
                                         batchCode = ""
                                         initialPopulation = ""
-                                        house = ""
                                         pen = ""
-                                        selectedHouse = null
                                         selectedPen = null
-                                        pens = emptyList()
                                     } else {
                                         errorMessage = result.message
                                     }
@@ -404,7 +429,7 @@ fun NewBirdBatchScreen(
                         shape = RoundedCornerShape(50),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E5D36)),
                         modifier = Modifier.height(40.dp),
-                        enabled = !isLoading
+                        enabled = !isLoading && !showBlockedDialog
                     ) {
                         Text(
                             text = if (isLoading) "Submitting..." else "Submit",

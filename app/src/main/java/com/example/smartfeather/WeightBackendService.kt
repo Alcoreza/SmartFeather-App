@@ -15,14 +15,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
-
-@Serializable
-data class WeightHouseApiRow(
-    @SerialName("id") val id: Long,
-    @SerialName("house_number") val houseNumber: String? = null
-)
 
 @Serializable
 data class WeightPenApiRow(
@@ -34,7 +29,18 @@ data class WeightPenApiRow(
 )
 
 @Serializable
+data class WeightContextResponse(
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("access_allowed") val accessAllowed: Boolean? = null,
+    @SerialName("house_id") val houseId: Long? = null,
+    @SerialName("house_number") val houseNumber: String? = null,
+    @SerialName("pen_options") val penOptions: List<WeightPenApiRow> = emptyList(),
+    @SerialName("message") val message: String? = null
+)
+
+@Serializable
 data class WeightSubmitRequest(
+    @SerialName("employee_id") val employeeId: Int,
     @SerialName("house_id") val houseId: Long,
     @SerialName("pen_id") val penId: Long,
     @SerialName("number_of_flocks") val numberOfFlocks: Int,
@@ -69,58 +75,60 @@ data class WeightPenOption(
     val currentBatchStartedAt: String? = null
 )
 
+data class WeightAccessContext(
+    val accessAllowed: Boolean,
+    val house: WeightHouseOption?,
+    val pens: List<WeightPenOption>,
+    val message: String?
+)
+
 class WeightBackendService(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getHouses(): Result<List<WeightHouseOption>> = withContext(Dispatchers.IO) {
+    suspend fun getWeightContext(employeeId: Int): Result<WeightAccessContext> = withContext(Dispatchers.IO) {
         runCatching {
-            val responseText = httpClient.get("$baseUrl/api/mobile/weight-sampling/houses") {
+            val responseText = httpClient.get("$baseUrl/api/mobile/weight-sampling/context?employee_id=$employeeId") {
                 accept(ContentType.Application.Json)
             }.bodyAsText()
 
-            val parsed = json.parseToJsonElement(responseText)
-            if (parsed is JsonObject && parsed["message"] != null) {
+            val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+            if (parsed is JsonObject && parsed["success"] == null && parsed["access_allowed"] == null) {
                 val error = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                error(error.message ?: "Failed to load houses.")
+                error(error.message ?: "Failed to load weight sampling context.")
             }
 
-            json.decodeFromJsonElement<List<WeightHouseApiRow>>(parsed).map {
-                WeightHouseOption(
-                    id = it.id,
-                    houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
-                )
-            }
-        }
-    }
+            val response = json.decodeFromJsonElement<WeightContextResponse>(parsed)
 
-    suspend fun getPensByHouse(houseId: Long): Result<List<WeightPenOption>> = withContext(Dispatchers.IO) {
-        runCatching {
-            val responseText = httpClient.get("$baseUrl/api/mobile/weight-sampling/houses/$houseId/pens") {
-                accept(ContentType.Application.Json)
-            }.bodyAsText()
-
-            val parsed = json.parseToJsonElement(responseText)
-            if (parsed is JsonObject && parsed["message"] != null) {
-                val error = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                error(error.message ?: "Failed to load pens.")
-            }
-
-            json.decodeFromJsonElement<List<WeightPenApiRow>>(parsed).map {
-                WeightPenOption(
-                    id = it.id,
-                    penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown",
-                    currentBatchId = it.currentBatchId,
-                    currentBatchCode = it.currentBatchCode,
-                    currentBatchStartedAt = it.currentBatchStartedAt
-                )
-            }
+            WeightAccessContext(
+                accessAllowed = response.accessAllowed == true,
+                house = if (response.houseId != null && !response.houseNumber.isNullOrBlank()) {
+                    WeightHouseOption(
+                        id = response.houseId,
+                        houseNumber = response.houseNumber
+                    )
+                } else {
+                    null
+                },
+                pens = response.penOptions.map {
+                    WeightPenOption(
+                        id = it.id,
+                        penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown",
+                        currentBatchId = it.currentBatchId,
+                        currentBatchCode = it.currentBatchCode,
+                        currentBatchStartedAt = it.currentBatchStartedAt
+                    )
+                },
+                message = response.message
+            )
         }
     }
 
     suspend fun submitWeightSampling(
+        employeeId: Int,
         houseId: Long,
         penId: Long,
         numberOfFlocks: Int,
@@ -137,6 +145,7 @@ class WeightBackendService(
                 setBody(
                     json.encodeToString(
                         WeightSubmitRequest(
+                            employeeId = employeeId,
                             houseId = houseId,
                             penId = penId,
                             numberOfFlocks = numberOfFlocks,

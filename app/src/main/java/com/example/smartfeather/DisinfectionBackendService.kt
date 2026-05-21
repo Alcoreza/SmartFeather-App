@@ -20,21 +20,27 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class DisinfectionHouseApiRow(
-    @SerialName("id")
-    val id: Long,
-    @SerialName("house_number")
-    val houseNumber: String? = null,
-    @SerialName("number_of_pens")
-    val numberOfPens: Long? = null
-)
-
-@Serializable
 data class DisinfectionPenApiRow(
     @SerialName("id")
     val id: Long,
     @SerialName("pen_name")
     val penName: String? = null
+)
+
+@Serializable
+data class DisinfectionContextResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("access_allowed")
+    val accessAllowed: Boolean? = null,
+    @SerialName("house_id")
+    val houseId: Long? = null,
+    @SerialName("house_number")
+    val houseNumber: String? = null,
+    @SerialName("pen_options")
+    val penOptions: List<DisinfectionPenApiRow> = emptyList(),
+    @SerialName("message")
+    val message: String? = null
 )
 
 @Serializable
@@ -73,6 +79,13 @@ data class DisinfectionPenOption(
     val penName: String
 )
 
+data class DisinfectionAccessContext(
+    val accessAllowed: Boolean,
+    val house: DisinfectionHouseOption?,
+    val pens: List<DisinfectionPenOption>,
+    val message: String?
+)
+
 class DisinfectionBackendService(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
@@ -82,50 +95,40 @@ class DisinfectionBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getHouses(): Result<List<DisinfectionHouseOption>> {
+    suspend fun getDisinfectionContext(employeeId: Int): Result<DisinfectionAccessContext> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/disinfection/houses") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/disinfection/context?employee_id=$employeeId") {
                     accept(ContentType.Application.Json)
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null) {
+                if (parsed is JsonObject && parsed["success"] == null && parsed["access_allowed"] == null) {
                     val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Failed to load houses.")
+                    error(errorResponse.message ?: "Failed to load disinfection context.")
                 }
 
-                json.decodeFromJsonElement<List<DisinfectionHouseApiRow>>(parsed).map {
-                    DisinfectionHouseOption(
-                        id = it.id,
-                        houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
-                    )
-                }
-            }
-        }
-    }
+                val response = json.decodeFromJsonElement<DisinfectionContextResponse>(parsed)
 
-    suspend fun getPensByHouse(houseId: Long): Result<List<DisinfectionPenOption>> {
-        return withContext(Dispatchers.IO) {
-            runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/disinfection/houses/$houseId/pens") {
-                    accept(ContentType.Application.Json)
-                }.bodyAsText()
-
-                val parsed: JsonElement = json.parseToJsonElement(responseText)
-
-                if (parsed is JsonObject && parsed["message"] != null) {
-                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Failed to load pens.")
-                }
-
-                json.decodeFromJsonElement<List<DisinfectionPenApiRow>>(parsed).map {
-                    DisinfectionPenOption(
-                        id = it.id,
-                        penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
-                    )
-                }
+                DisinfectionAccessContext(
+                    accessAllowed = response.accessAllowed == true,
+                    house = if (response.houseId != null && !response.houseNumber.isNullOrBlank()) {
+                        DisinfectionHouseOption(
+                            id = response.houseId,
+                            houseNumber = response.houseNumber
+                        )
+                    } else {
+                        null
+                    },
+                    pens = response.penOptions.map {
+                        DisinfectionPenOption(
+                            id = it.id,
+                            penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
+                        )
+                    },
+                    message = response.message
+                )
             }
         }
     }

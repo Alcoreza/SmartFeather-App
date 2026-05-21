@@ -15,23 +15,32 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class NewBatchHouseApiRow(
+data class NewBatchPenApiRow(
     @SerialName("id") val id: Long,
-    @SerialName("house_number") val houseNumber: String? = null
+    @SerialName("pen_name") val penName: String? = null,
+    @SerialName("current_batch_id") val currentBatchId: Int? = null,
+    @SerialName("current_batch_code") val currentBatchCode: String? = null,
+    @SerialName("current_batch_status") val currentBatchStatus: String? = null
 )
 
 @Serializable
-data class NewBatchPenApiRow(
-    @SerialName("id") val id: Long,
-    @SerialName("pen_name") val penName: String? = null
+data class NewBatchContextResponse(
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("access_allowed") val accessAllowed: Boolean? = null,
+    @SerialName("house_id") val houseId: Long? = null,
+    @SerialName("house_number") val houseNumber: String? = null,
+    @SerialName("pen_options") val penOptions: List<NewBatchPenApiRow> = emptyList(),
+    @SerialName("message") val message: String? = null
 )
 
 @Serializable
 data class NewBatchSubmitRequest(
+    @SerialName("employee_id") val employeeId: Int,
     @SerialName("batch_code") val batchCode: String,
     @SerialName("house_id") val houseId: Long,
     @SerialName("pen_id") val penId: Long,
@@ -60,7 +69,17 @@ data class NewBatchHouseOption(
 
 data class NewBatchPenOption(
     val id: Long,
-    val penName: String
+    val penName: String,
+    val currentBatchId: Int? = null,
+    val currentBatchCode: String? = null,
+    val currentBatchStatus: String? = null
+)
+
+data class NewBatchAccessContext(
+    val accessAllowed: Boolean,
+    val house: NewBatchHouseOption?,
+    val pens: List<NewBatchPenOption>,
+    val message: String?
 )
 
 data class NewBatchSubmitResult(
@@ -77,49 +96,46 @@ class NewBatchBackendService(
     private val httpClient = HttpClient(Android)
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getHouses(): Result<List<NewBatchHouseOption>> = withContext(Dispatchers.IO) {
+    suspend fun getNewBatchContext(employeeId: Int): Result<NewBatchAccessContext> = withContext(Dispatchers.IO) {
         runCatching {
-            val responseText = httpClient.get("$baseUrl/api/mobile/new-batch/houses") {
+            val responseText = httpClient.get("$baseUrl/api/mobile/new-batch/context?employee_id=$employeeId") {
                 accept(ContentType.Application.Json)
             }.bodyAsText()
 
-            val parsed = json.parseToJsonElement(responseText)
-            if (parsed is JsonObject && parsed["message"] != null) {
+            val parsed: JsonElement = json.parseToJsonElement(responseText)
+            if (parsed is JsonObject && parsed["success"] == null && parsed["access_allowed"] == null) {
                 val error = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                error(error.message ?: "Failed to load houses.")
+                error(error.message ?: "Failed to load add new batch context.")
             }
 
-            json.decodeFromJsonElement<List<NewBatchHouseApiRow>>(parsed).map {
-                NewBatchHouseOption(
-                    id = it.id,
-                    houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
-                )
-            }
-        }
-    }
+            val response = json.decodeFromJsonElement<NewBatchContextResponse>(parsed)
 
-    suspend fun getPensByHouse(houseId: Long): Result<List<NewBatchPenOption>> = withContext(Dispatchers.IO) {
-        runCatching {
-            val responseText = httpClient.get("$baseUrl/api/mobile/new-batch/houses/$houseId/pens") {
-                accept(ContentType.Application.Json)
-            }.bodyAsText()
-
-            val parsed = json.parseToJsonElement(responseText)
-            if (parsed is JsonObject && parsed["message"] != null) {
-                val error = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                error(error.message ?: "Failed to load pens.")
-            }
-
-            json.decodeFromJsonElement<List<NewBatchPenApiRow>>(parsed).map {
-                NewBatchPenOption(
-                    id = it.id,
-                    penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
-                )
-            }
+            NewBatchAccessContext(
+                accessAllowed = response.accessAllowed == true,
+                house = if (response.houseId != null && !response.houseNumber.isNullOrBlank()) {
+                    NewBatchHouseOption(
+                        id = response.houseId,
+                        houseNumber = response.houseNumber
+                    )
+                } else {
+                    null
+                },
+                pens = response.penOptions.map {
+                    NewBatchPenOption(
+                        id = it.id,
+                        penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown",
+                        currentBatchId = it.currentBatchId,
+                        currentBatchCode = it.currentBatchCode,
+                        currentBatchStatus = it.currentBatchStatus
+                    )
+                },
+                message = response.message
+            )
         }
     }
 
     suspend fun submitNewBatch(
+        employeeId: Int,
         batchCode: String,
         houseId: Long,
         penId: Long,
@@ -134,6 +150,7 @@ class NewBatchBackendService(
                 setBody(
                     json.encodeToString(
                         NewBatchSubmitRequest(
+                            employeeId = employeeId,
                             batchCode = batchCode,
                             houseId = houseId,
                             penId = penId,

@@ -30,6 +30,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
@@ -39,6 +40,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -77,10 +79,12 @@ private val FarmPoppins = FontFamily(
 
 @Composable
 fun WeightScreen(
+    employeeId: Int,
     onBackToFarm: () -> Unit,
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit,
-    onNavigateToProfile: () -> Unit
+    onNavigateToProfile: () -> Unit,
+    onGoToBiosecurity: () -> Unit
 ) {
     val weightService = remember { WeightBackendService() }
     val coroutineScope = rememberCoroutineScope()
@@ -109,22 +113,71 @@ fun WeightScreen(
     var targetWeight by remember { mutableStateOf("") }
     var weights by remember { mutableStateOf<List<String>>(emptyList()) }
 
-    var houses by remember { mutableStateOf<List<WeightHouseOption>>(emptyList()) }
-    var pens by remember { mutableStateOf<List<WeightPenOption>>(emptyList()) }
     var selectedHouse by remember { mutableStateOf<WeightHouseOption?>(null) }
     var selectedPen by remember { mutableStateOf<WeightPenOption?>(null) }
+    var pens by remember { mutableStateOf<List<WeightPenOption>>(emptyList()) }
 
-    var houseExpanded by remember { mutableStateOf(false) }
     var penExpanded by remember { mutableStateOf(false) }
 
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        weightService.getHouses()
-            .onSuccess { houses = it }
-            .onFailure { errorMessage = it.message ?: "Failed to load houses." }
+    var showBlockedDialog by remember { mutableStateOf(false) }
+    var blockedMessage by remember { mutableStateOf("") }
+
+    LaunchedEffect(employeeId) {
+        weightService.getWeightContext(employeeId)
+            .onSuccess { context ->
+                if (!context.accessAllowed) {
+                    blockedMessage = context.message
+                        ?: "Please complete personnel biosecurity before accessing weight sampling."
+                    showBlockedDialog = true
+                    house = ""
+                    selectedHouse = null
+                    pens = emptyList()
+                } else {
+                    selectedHouse = context.house
+                    house = context.house?.houseNumber.orEmpty()
+                    pens = context.pens
+                }
+            }
+            .onFailure {
+                blockedMessage = it.message ?: "Failed to load weight sampling context."
+                showBlockedDialog = true
+                house = ""
+                selectedHouse = null
+                pens = emptyList()
+            }
+    }
+
+    if (showBlockedDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            title = {
+                Text(
+                    text = "Biosecurity Required",
+                    fontFamily = FarmPoppins,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text(
+                    text = blockedMessage,
+                    fontFamily = FarmPoppins
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = onBackToFarm) {
+                    Text("Back", fontFamily = FarmPoppins)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = onGoToBiosecurity) {
+                    Text("Go to Biosecurity", fontFamily = FarmPoppins)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -197,32 +250,7 @@ fun WeightScreen(
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Column(Modifier.weight(1f)) {
                         WeightLabel("House")
-                        WeightDropdownField(
-                            value = house,
-                            options = houses.map { it.houseNumber },
-                            expanded = houseExpanded,
-                            onExpandedChange = { houseExpanded = it },
-                            onValueSelected = { selectedValue ->
-                                house = selectedValue
-                                selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
-                                pen = ""
-                                age = ""
-                                selectedPen = null
-                                pens = emptyList()
-                                houseExpanded = false
-                                errorMessage = null
-                                successMessage = null
-
-                                val houseId = selectedHouse?.id ?: return@WeightDropdownField
-                                coroutineScope.launch {
-                                    weightService.getPensByHouse(houseId)
-                                        .onSuccess { pens = it }
-                                        .onFailure {
-                                            errorMessage = it.message ?: "Failed to load pens."
-                                        }
-                                }
-                            }
-                        )
+                        WeightReadOnlyField(house)
                     }
 
                     Column(Modifier.weight(1f)) {
@@ -405,7 +433,7 @@ fun WeightScreen(
                             val weightValues = weights.map { it.toDoubleOrNull() }
 
                             if (currentHouse == null) {
-                                errorMessage = "Please select a house."
+                                errorMessage = "No house is assigned from your biosecurity entry."
                                 return@Button
                             }
                             if (currentPen == null) {
@@ -432,6 +460,7 @@ fun WeightScreen(
                             coroutineScope.launch {
                                 isLoading = true
                                 weightService.submitWeightSampling(
+                                    employeeId = employeeId,
                                     houseId = currentHouse.id,
                                     penId = currentPen.id,
                                     numberOfFlocks = flockCount,
@@ -444,16 +473,13 @@ fun WeightScreen(
                                     if (response.success == true) {
                                         successMessage =
                                             "Average: ${response.averageWeight} | Target: ${response.target} | Status: ${response.status}"
-                                        house = ""
                                         pen = ""
                                         age = ""
                                         flocks = ""
                                         flocksWithCases = ""
                                         targetWeight = ""
                                         weights = emptyList()
-                                        selectedHouse = null
                                         selectedPen = null
-                                        pens = emptyList()
                                     } else {
                                         errorMessage = response.message ?: "Failed to submit weight sampling."
                                     }
@@ -468,7 +494,7 @@ fun WeightScreen(
                             containerColor = Color(0xFF1E5D36)
                         ),
                         modifier = Modifier.height(40.dp),
-                        enabled = !isLoading
+                        enabled = !isLoading && !showBlockedDialog
                     ) {
                         Text(
                             text = if (isLoading) "Submitting..." else "Submit",
