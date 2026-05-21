@@ -31,6 +31,7 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -40,6 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -96,12 +98,15 @@ fun PendingTaskDetailScreen(
     onBackClick: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
     onNavigateToTasks: () -> Unit = {},
+    onGoToBiosecurity: () -> Unit = {},
     onSubmit: suspend (notes: String, photoUri: Uri?) -> Result<Unit> = { _, _ -> Result.success(Unit) }
 ) {
     var notes by remember { mutableStateOf("") }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var submitError by remember { mutableStateOf<String?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
+    var showBiosecurityDialog by remember { mutableStateOf(false) }
+    var biosecurityMessage by remember { mutableStateOf("") }
 
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
@@ -110,6 +115,40 @@ fun PendingTaskDetailScreen(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         selectedPhotoUri = uri
+    }
+
+    if (showBiosecurityDialog) {
+        AlertDialog(
+            onDismissRequest = { showBiosecurityDialog = false },
+            title = {
+                Text(
+                    text = "Biosecurity Required",
+                    fontFamily = DetailPoppins,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Text(
+                    text = biosecurityMessage,
+                    fontFamily = DetailPoppins
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { showBiosecurityDialog = false }) {
+                    Text("Back", fontFamily = DetailPoppins)
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBiosecurityDialog = false
+                        onGoToBiosecurity()
+                    }
+                ) {
+                    Text("Go to Personnel Logs", fontFamily = DetailPoppins)
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -370,7 +409,19 @@ fun PendingTaskDetailScreen(
                                 isSubmitting = true
                                 onSubmit(notes, selectedPhotoUri)
                                     .onFailure {
-                                        submitError = it.message ?: "Failed to submit task."
+                                        val message = it.message ?: "Failed to submit task."
+
+                                        if (
+                                            message.contains("personnel biosecurity", ignoreCase = true) ||
+                                            message.contains("scan IN", ignoreCase = true) ||
+                                            message.contains("different house", ignoreCase = true) ||
+                                            message.contains("correct house", ignoreCase = true)
+                                        ) {
+                                            biosecurityMessage = message
+                                            showBiosecurityDialog = true
+                                        } else {
+                                            submitError = message
+                                        }
                                     }
                                 isSubmitting = false
                             }

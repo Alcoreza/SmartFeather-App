@@ -2,18 +2,16 @@ package com.example.smartfeather
 
 import android.content.Context
 import android.net.Uri
+import io.github.jan.supabase.storage.storage
+import io.github.jan.supabase.storage.uploadToSignedUrl
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.Headers
-import io.ktor.http.HttpHeaders
+import io.ktor.http.ContentType
 import io.ktor.http.contentType
-import io.ktor.http.isSuccess
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -28,9 +26,6 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
-import io.github.jan.supabase.storage.storage
-import io.github.jan.supabase.storage.uploadToSignedUrl
-
 
 @Serializable
 data class FlockmanTasksRequest(
@@ -76,7 +71,6 @@ data class TaskPhotoUploadUrlResponse(
     val message: String? = null
 )
 
-
 @Serializable
 data class TaskApiRow(
     @SerialName("taskid")
@@ -104,7 +98,11 @@ data class TaskApiRow(
     @SerialName("prioritylevel")
     val priorityLevel: String? = null,
     @SerialName("photourl")
-    val photoUrl: String? = null
+    val photoUrl: String? = null,
+    @SerialName("house_number")
+    val houseNumber: String? = null,
+    @SerialName("pen_name")
+    val penName: String? = null
 )
 
 @Serializable
@@ -232,7 +230,6 @@ class TaskBackendService(
         return path
     }
 
-
     private fun TaskApiRow.toTaskItem(): TaskItem {
         val statusEnum = when (status.trim().lowercase(Locale.ROOT)) {
             "completed" -> TaskStatus.COMPLETED
@@ -254,8 +251,8 @@ class TaskBackendService(
             id = taskId,
             title = taskType,
             description = descriptionText,
-            houseLabel = "House: ${houseId ?: "-"}",
-            penLabel = "Pen: ${penNumber ?: "-"}",
+            houseLabel = houseNumber ?: "-",
+            penLabel = penName ?: "-",
             assignedLabel = if (!timeAssigned.isNullOrBlank()) {
                 formatTaskTimestamp(timeAssigned)
             } else {
@@ -282,7 +279,6 @@ class TaskBackendService(
             hasPhoto = !photoUrl.isNullOrBlank(),
             photoUrl = photoUrl
         )
-
     }
 
     private fun formatTaskTimestamp(value: String?): String {

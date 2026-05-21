@@ -364,7 +364,7 @@ private fun TaskRow(
             horizontalAlignment = Alignment.End
         ) {
             Text(
-                text = "${item.houseLabel}  ${item.penLabel}",
+                text = "${item.houseLabel} | ${item.penLabel}",
                 fontFamily = AppPoppins,
                 fontWeight = FontWeight.Medium,
                 fontSize = 12.sp,

@@ -223,12 +223,19 @@ fun SmartFeatherApp() {
                     onNavigateToTasks = {
                         currentScreen = AppScreen.TASKS
                     },
+                    onGoToBiosecurity = {
+                        currentScreen = AppScreen.PERSONNEL_LOGS
+                    },
                     onSubmit = { notes, photoUri ->
                         val employeeId = loggedInEmployeeId
-                            ?: return@PendingTaskDetailScreen Result.failure(IllegalStateException("Missing employee ID."))
+                            ?: return@PendingTaskDetailScreen Result.failure(
+                                IllegalStateException("Missing employee ID.")
+                            )
 
                         val taskId = selectedPendingTask?.id
-                            ?: return@PendingTaskDetailScreen Result.failure(IllegalStateException("Missing task ID."))
+                            ?: return@PendingTaskDetailScreen Result.failure(
+                                IllegalStateException("Missing task ID.")
+                            )
 
                         val result = taskService.submitTaskForApproval(
                             context = context,
@@ -245,7 +252,6 @@ fun SmartFeatherApp() {
                 )
             }
         }
-
         AppScreen.COMPLETED_TASK_DETAIL -> {
             selectedCompletedTask?.let { task ->
                 CompletedTaskDetailScreen(
