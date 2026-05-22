@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -46,7 +45,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 
-
 data class CompletedTaskDetailUiState(
     val id: Int,
     val title: String,
@@ -63,9 +61,6 @@ data class CompletedTaskDetailUiState(
     val photoUrl: String? = null
 )
 
-
-
-
 private val CompletedPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
     Font(R.font.poppins_medium, FontWeight.Medium),
@@ -80,8 +75,6 @@ private fun completedPriorityChipColor(priority: TaskPriority): Color {
         TaskPriority.HIGH -> Color(0xFFC92222)
     }
 }
-
-
 
 @Composable
 fun CompletedTaskDetailScreen(
@@ -127,11 +120,7 @@ fun CompletedTaskDetailScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                if (isTablet) {
-                    TabletStatusRow(task)
-                } else {
-                    MobileStatusRow(task)
-                }
+                CompletedStatusSummaryCard(task = task)
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -188,7 +177,6 @@ fun CompletedTaskDetailScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-
                     Spacer(modifier = Modifier.height(18.dp))
 
                     NotesCard(
@@ -240,64 +228,93 @@ private fun TopHeader(
 }
 
 @Composable
-private fun MobileStatusRow(task: CompletedTaskDetailUiState) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+private fun CompletedStatusSummaryCard(task: CompletedTaskDetailUiState) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)
         ) {
-            DetailChip(task.statusLabel, if (task.statusLabel == "For Approval") Color(0xFFD88913) else Color(0xFF266F33))
-            StatusChip("Time Assigned", task.timeAssigned, Color(0xFF103824))
-            StatusChip("Finish By", task.finishBy, Color(0xFFD88913))
-        }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                DetailChip(
+                    text = task.statusLabel,
+                    containerColor = if (task.statusLabel == "For Approval") {
+                        Color(0xFFD88913)
+                    } else {
+                        Color(0xFF266F33)
+                    }
+                )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            StatusChip(
-                task.timeCompletedLabel,
-                task.timeCompleted,
-                Color(0xFF52B84F)
-            )
+                DetailChip(
+                    text = task.priorityLabel,
+                    containerColor = completedPriorityChipColor(task.priority)
+                )
+            }
 
-            StatusChip(
-                "Priority",
-                task.priorityLabel,
-                completedPriorityChipColor(task.priority)
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                CompletedPlainInfo(
+                    title = "Time Assigned",
+                    value = task.timeAssigned,
+                    modifier = Modifier.weight(1f)
+                )
+
+                CompletedPlainInfo(
+                    title = "Finish By",
+                    value = task.finishBy,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            CompletedPlainInfo(
+                title = task.timeCompletedLabel,
+                value = task.timeCompleted,
+                modifier = Modifier.fillMaxWidth()
             )
         }
     }
 }
-
-
 
 @Composable
-private fun TabletStatusRow(task: CompletedTaskDetailUiState) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            DetailChip(task.statusLabel, if (task.statusLabel == "For Approval") Color(0xFFD88913) else Color(0xFF266F33))
-            StatusChip("Time Assigned", task.timeAssigned, Color(0xFF103824))
-            StatusChip("Finish By", task.finishBy, Color(0xFFD88913))
-        }
+private fun CompletedPlainInfo(
+    title: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = title,
+            fontFamily = CompletedPoppins,
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            color = Color(0xFF7A7A7A)
+        )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            StatusChip(task.timeCompletedLabel, task.timeCompleted, Color(0xFF52B84F))
-            StatusChip("Priority", task.priorityLabel, completedPriorityChipColor(task.priority))
-        }
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = value,
+            fontFamily = CompletedPoppins,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 15.sp,
+            color = Color(0xFF252525),
+            lineHeight = 20.sp
+        )
     }
 }
-
 
 @Composable
 private fun DetailChip(
@@ -319,40 +336,6 @@ private fun DetailChip(
         )
     }
 }
-
-@Composable
-private fun StatusChip(
-    title: String,
-    value: String,
-    containerColor: Color
-) {
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(containerColor)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = title,
-            fontFamily = CompletedPoppins,
-            fontSize = 9.sp,
-            color = Color.White.copy(alpha = 0.9f),
-            textAlign = TextAlign.Center,
-            lineHeight = 10.sp
-        )
-        Text(
-            text = value,
-            fontFamily = CompletedPoppins,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            color = Color.White,
-            textAlign = TextAlign.Center,
-            lineHeight = 11.sp
-        )
-    }
-}
-
 
 @Composable
 private fun PhotoCard(
@@ -399,7 +382,9 @@ private fun PhotoCard(
                             tint = Color(0xFF9A9A9A),
                             modifier = Modifier.size(42.dp)
                         )
+
                         Spacer(modifier = Modifier.height(8.dp))
+
                         Text(
                             text = "No photo provided",
                             fontFamily = CompletedPoppins,
@@ -412,7 +397,6 @@ private fun PhotoCard(
         }
     }
 }
-
 
 @Composable
 private fun NotesCard(

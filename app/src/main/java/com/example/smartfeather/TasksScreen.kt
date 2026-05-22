@@ -1,5 +1,11 @@
 package com.example.smartfeather
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,9 +29,12 @@ import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,6 +58,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.border
 
 enum class TaskStatus {
     PENDING,
@@ -79,8 +89,6 @@ data class TaskItem(
     val photoUrl: String? = null
 )
 
-
-
 private val AppPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
     Font(R.font.poppins_medium, FontWeight.Medium),
@@ -102,6 +110,10 @@ fun TasksScreen(
     val tasks = remember { mutableStateListOf<TaskItem>() }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var showPendingTasks by remember { mutableStateOf(true) }
+    var showForApprovalTasks by remember { mutableStateOf(true) }
+    var showCompletedTasks by remember { mutableStateOf(true) }
 
     LaunchedEffect(employeeId) {
         isLoading = true
@@ -132,7 +144,6 @@ fun TasksScreen(
                 onFarmManagementClick = onNavigateToFarmManagement,
                 onProfileClick = onNavigateToProfile
             )
-
         }
     ) { innerPadding ->
         Box(
@@ -201,14 +212,17 @@ fun TasksScreen(
                     Spacer(modifier = Modifier.height(18.dp))
                 }
 
-                SectionChip(
+                SectionHeader(
                     text = "Pending",
-                    containerColor = Color(0xFFF4A46E)
+                    containerColor = Color(0xFFF4A46E),
+                    isExpanded = showPendingTasks,
+                    onToggleClick = { showPendingTasks = !showPendingTasks }
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                TaskListSection(
+                AnimatedTaskListSection(
+                    visible = showPendingTasks,
                     items = pendingTasks,
                     emptyText = "No pending tasks right now.",
                     onTaskClick = onPendingTaskClick
@@ -216,14 +230,17 @@ fun TasksScreen(
 
                 Spacer(modifier = Modifier.height(26.dp))
 
-                SectionChip(
+                SectionHeader(
                     text = "For Approval",
-                    containerColor = Color(0xFFD88913)
+                    containerColor = Color(0xFFD88913),
+                    isExpanded = showForApprovalTasks,
+                    onToggleClick = { showForApprovalTasks = !showForApprovalTasks }
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                TaskListSection(
+                AnimatedTaskListSection(
+                    visible = showForApprovalTasks,
                     items = forApprovalTasks,
                     emptyText = "No tasks waiting for verification.",
                     onTaskClick = onCompletedTaskClick
@@ -231,14 +248,17 @@ fun TasksScreen(
 
                 Spacer(modifier = Modifier.height(26.dp))
 
-                SectionChip(
+                SectionHeader(
                     text = "Completed",
-                    containerColor = Color(0xFF266F33)
+                    containerColor = Color(0xFF266F33),
+                    isExpanded = showCompletedTasks,
+                    onToggleClick = { showCompletedTasks = !showCompletedTasks }
                 )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                TaskListSection(
+                AnimatedTaskListSection(
+                    visible = showCompletedTasks,
                     items = completedTasks,
                     emptyText = "No completed tasks yet.",
                     onTaskClick = onCompletedTaskClick
@@ -246,6 +266,54 @@ fun TasksScreen(
 
                 Spacer(modifier = Modifier.height(20.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionHeader(
+    text: String,
+    containerColor: Color,
+    isExpanded: Boolean,
+    onToggleClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        SectionChip(
+            text = text,
+            containerColor = containerColor
+        )
+
+        Box(
+            modifier = Modifier
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.85f))
+                .border(
+                    width = 1.dp,
+                    color = Color(0xFFE1DDD6),
+                    shape = CircleShape
+                )
+                .clickable { onToggleClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = if (isExpanded) {
+                    Icons.Outlined.VisibilityOff
+                } else {
+                    Icons.Outlined.Visibility
+                },
+                contentDescription = if (isExpanded) {
+                    "Hide $text tasks"
+                } else {
+                    "Show $text tasks"
+                },
+                tint = Color(0xFF6F6A63),
+                modifier = Modifier.size(15.dp)
+            )
         }
     }
 }
@@ -267,6 +335,32 @@ private fun SectionChip(
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
             color = Color.White
+        )
+    }
+}
+
+@Composable
+private fun AnimatedTaskListSection(
+    visible: Boolean,
+    items: List<TaskItem>,
+    emptyText: String,
+    onTaskClick: (TaskItem) -> Unit
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(180)) + expandVertically(
+            animationSpec = tween(220),
+            expandFrom = Alignment.Top
+        ),
+        exit = fadeOut(animationSpec = tween(120)) + shrinkVertically(
+            animationSpec = tween(180),
+            shrinkTowards = Alignment.Top
+        )
+    ) {
+        TaskListSection(
+            items = items,
+            emptyText = emptyText,
+            onTaskClick = onTaskClick
         )
     }
 }
@@ -417,7 +511,6 @@ private fun TaskRow(
                 }
             }
 
-
             Spacer(modifier = Modifier.height(14.dp))
 
             Box(
@@ -483,7 +576,6 @@ private fun TasksBottomNavBar(
             label = "Profile",
             selected = false,
             onClick = onProfileClick
-
         )
     }
 }

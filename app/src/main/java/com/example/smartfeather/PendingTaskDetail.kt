@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -214,32 +213,50 @@ fun PendingTaskDetailScreen(
 
                 Spacer(modifier = Modifier.height(18.dp))
 
-                Row(
+                Card(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    DetailSectionChip(
-                        text = "Pending",
-                        containerColor = Color(0xFFF4A46E)
-                    )
+                    Column(
+                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            DetailSectionChip(
+                                text = "Pending",
+                                containerColor = Color(0xFFF4A46E)
+                            )
 
-                    DetailInfoChip(
-                        title = "Time Assigned",
-                        value = task.timeAssigned,
-                        containerColor = Color(0xFF103824)
-                    )
+                            DetailSectionChip(
+                                text = task.priorityLabel,
+                                containerColor = priorityChipColor(task.priority)
+                            )
+                        }
 
-                    DetailInfoChip(
-                        title = "Finish By",
-                        value = task.finishBy,
-                        containerColor = Color(0xFFD88913)
-                    )
+                        Spacer(modifier = Modifier.height(14.dp))
 
-                    DetailInfoChip(
-                        title = "Priority",
-                        value = task.priorityLabel,
-                        containerColor = priorityChipColor(task.priority)
-                    )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp)
+                        ) {
+                            DetailPlainInfo(
+                                title = "Time Assigned",
+                                value = task.timeAssigned,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            DetailPlainInfo(
+                                title = "Finish By",
+                                value = task.finishBy,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -393,6 +410,7 @@ fun PendingTaskDetailScreen(
                         fontSize = 13.sp,
                         color = Color(0xFFC92222)
                     )
+
                     Spacer(modifier = Modifier.height(10.dp))
                 }
 
@@ -470,29 +488,29 @@ private fun DetailSectionChip(
 }
 
 @Composable
-private fun DetailInfoChip(
+private fun DetailPlainInfo(
     title: String,
     value: String,
-    containerColor: Color
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(containerColor)
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    ) {
+    Column(modifier = modifier) {
         Text(
             text = title,
             fontFamily = DetailPoppins,
-            fontSize = 9.sp,
-            color = Color.White.copy(alpha = 0.9f)
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            color = Color(0xFF7A7A7A)
         )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
         Text(
             text = value,
             fontFamily = DetailPoppins,
             fontWeight = FontWeight.SemiBold,
-            fontSize = 10.sp,
-            color = Color.White
+            fontSize = 15.sp,
+            color = Color(0xFF252525),
+            lineHeight = 20.sp
         )
     }
 }
