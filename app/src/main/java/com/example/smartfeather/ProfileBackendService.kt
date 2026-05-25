@@ -4,12 +4,16 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.put
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -40,6 +44,24 @@ data class MobileProfileResponse(
     val birthday: String? = null,
     @SerialName("gender")
     val gender: String? = null
+)
+
+@Serializable
+data class UpdateProfileRequest(
+    @SerialName("phone_number")
+    val phoneNumber: String,
+    @SerialName("address")
+    val address: String?
+)
+
+@Serializable
+data class UpdateProfileResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("message")
+    val message: String? = null,
+    @SerialName("profile")
+    val profile: MobileProfileResponse? = null
 )
 
 data class FlockmanProfileUiState(
@@ -78,23 +100,61 @@ class ProfileBackendService(
                     error(errorResponse.message ?: "Failed to load profile.")
                 }
 
-                val profile = json.decodeFromJsonElement<MobileProfileResponse>(parsed)
-
-                FlockmanProfileUiState(
-                    firstName = profile.firstName.orEmpty(),
-                    middleName = profile.middleName.orEmpty(),
-                    lastName = profile.lastName.orEmpty(),
-                    suffix = profile.suffix.orEmpty(),
-                    employeeId = profile.employeeId.toString(),
-                    role = profile.role.orEmpty(),
-                    birthday = formatBirthday(profile.birthday),
-                    phoneNumber = profile.phoneNumber.orEmpty(),
-                    gender = profile.gender.orEmpty(),
-                    address = profile.address.orEmpty()
-                )
+                json.decodeFromJsonElement<MobileProfileResponse>(parsed).toUiState()
             }
         }
     }
+
+    suspend fun updateFlockmanProfile(
+        employeeId: Int,
+        phoneNumber: String,
+        address: String
+    ): Result<Pair<String, FlockmanProfileUiState>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val responseText = httpClient.put("$baseUrl/api/mobile/profile/$employeeId") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(
+                        json.encodeToString(
+                            UpdateProfileRequest(
+                                phoneNumber = phoneNumber,
+                                address = address.ifBlank { "" }
+                            )
+                        )
+                    )
+                }.bodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Failed to update profile.")
+                }
+
+                val response = json.decodeFromJsonElement<UpdateProfileResponse>(parsed)
+                val updatedProfile = response.profile?.toUiState()
+                    ?: error("Updated profile was not returned.")
+
+                (response.message ?: "Profile updated successfully.") to updatedProfile
+            }
+        }
+    }
+}
+
+private fun MobileProfileResponse.toUiState(): FlockmanProfileUiState {
+    return FlockmanProfileUiState(
+        firstName = firstName.orEmpty(),
+        middleName = middleName.orEmpty(),
+        lastName = lastName.orEmpty(),
+        suffix = suffix.orEmpty(),
+        employeeId = employeeId.toString(),
+        role = role.orEmpty(),
+        birthday = formatBirthday(birthday),
+        phoneNumber = phoneNumber.orEmpty(),
+        gender = gender.orEmpty(),
+        address = address.orEmpty()
+    )
 }
 
 private fun formatBirthday(value: String?): String {
