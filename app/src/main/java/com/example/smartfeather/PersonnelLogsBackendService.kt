@@ -20,6 +20,14 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
+data class PersonnelHouseApiRow(
+    @SerialName("id")
+    val id: Long,
+    @SerialName("house_number")
+    val houseNumber: String? = null
+)
+
+@Serializable
 data class PersonnelLogsContextResponse(
     @SerialName("success")
     val success: Boolean? = null,
@@ -31,16 +39,14 @@ data class PersonnelLogsContextResponse(
     val name: String? = null,
     @SerialName("role")
     val role: String? = null,
-    @SerialName("house_id")
-    val houseId: Long? = null,
-    @SerialName("house")
-    val house: String? = null,
     @SerialName("status")
     val status: String? = null,
     @SerialName("date")
     val date: String? = null,
     @SerialName("time")
     val time: String? = null,
+    @SerialName("houses")
+    val houses: List<PersonnelHouseApiRow> = emptyList(),
     @SerialName("message")
     val message: String? = null
 )
@@ -51,6 +57,8 @@ data class PersonnelLogsSubmitRequest(
     val employeeId: Int,
     @SerialName("personnel_entry_log_id")
     val personnelEntryLogId: Long,
+    @SerialName("house_id")
+    val houseId: Long,
     @SerialName("foot_bath")
     val footBath: Boolean,
     @SerialName("boots_changed")
@@ -67,16 +75,20 @@ data class PersonnelLogsSubmitResponse(
     val message: String? = null
 )
 
+data class PersonnelHouseOption(
+    val id: Long,
+    val houseNumber: String
+)
+
 data class PersonnelLogsContext(
     val employeeId: Int,
     val personnelEntryLogId: Long,
     val name: String,
     val role: String,
-    val houseId: Long?,
-    val house: String,
     val status: String,
     val date: String,
-    val time: String
+    val time: String,
+    val houses: List<PersonnelHouseOption>
 )
 
 class PersonnelLogsBackendService(
@@ -106,11 +118,15 @@ class PersonnelLogsBackendService(
                     personnelEntryLogId = result.personnelEntryLogId ?: error("Missing personnel entry log ID."),
                     name = result.name.orEmpty(),
                     role = result.role.orEmpty(),
-                    houseId = result.houseId,
-                    house = result.house.orEmpty(),
                     status = result.status.orEmpty(),
                     date = result.date.orEmpty(),
-                    time = result.time.orEmpty()
+                    time = result.time.orEmpty(),
+                    houses = result.houses.map {
+                        PersonnelHouseOption(
+                            id = it.id,
+                            houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
+                        )
+                    }
                 )
             }
         }
@@ -119,15 +135,17 @@ class PersonnelLogsBackendService(
     suspend fun submit(
         employeeId: Int,
         personnelEntryLogId: Long,
+        houseId: Long,
         footBath: Boolean,
         bootsChanged: Boolean,
         protectiveClothing: Boolean
-    ): Result<Boolean> {
+    ): Result<String> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val requestBody = PersonnelLogsSubmitRequest(
                     employeeId = employeeId,
                     personnelEntryLogId = personnelEntryLogId,
+                    houseId = houseId,
                     footBath = footBath,
                     bootsChanged = bootsChanged,
                     protectiveClothing = protectiveClothing
@@ -147,7 +165,7 @@ class PersonnelLogsBackendService(
                 }
 
                 val result = json.decodeFromJsonElement<PersonnelLogsSubmitResponse>(parsed)
-                result.success == true
+                result.message ?: "Personnel biosecurity log submitted successfully."
             }
         }
     }

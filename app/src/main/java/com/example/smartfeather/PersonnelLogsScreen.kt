@@ -27,6 +27,8 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -72,62 +74,67 @@ fun PersonnelLogsScreen(
 
     var date by remember { mutableStateOf("") }
     var time by remember { mutableStateOf("") }
-    var house by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("") }
+
+    var houses by remember { mutableStateOf<List<PersonnelHouseOption>>(emptyList()) }
+    var selectedHouse by remember { mutableStateOf<PersonnelHouseOption?>(null) }
+    var houseExpanded by remember { mutableStateOf(false) }
+
     var footBath by remember { mutableStateOf(false) }
     var bootsChanged by remember { mutableStateOf(false) }
     var protectiveClothing by remember { mutableStateOf(false) }
 
     var personnelEntryLogId by remember { mutableStateOf<Long?>(null) }
-
     var isLoading by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var successMessage by remember { mutableStateOf<String?>(null) }
 
-    var showIncompleteDialog by remember { mutableStateOf(false) }
-    var incompleteMessage by remember { mutableStateOf("") }
+    var showDialog by remember { mutableStateOf(false) }
+    var dialogTitle by remember { mutableStateOf("") }
+    var dialogMessage by remember { mutableStateOf("") }
 
     LaunchedEffect(employeeId) {
         personnelService.getContext(employeeId)
             .onSuccess { context ->
                 date = context.date
                 time = context.time
-                house = context.house
                 name = context.name
                 role = context.role
+                houses = context.houses
+                selectedHouse = null
                 personnelEntryLogId = context.personnelEntryLogId
-                errorMessage = null
             }
             .onFailure {
                 date = ""
                 time = ""
-                house = ""
                 name = ""
                 role = ""
+                houses = emptyList()
+                selectedHouse = null
                 personnelEntryLogId = null
-                errorMessage = it.message ?: "Failed to load personnel biosecurity context."
+                dialogTitle = "Unable to Continue"
+                dialogMessage = it.message ?: "Failed to load personnel biosecurity context."
+                showDialog = true
             }
     }
 
-    if (showIncompleteDialog) {
+    if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showIncompleteDialog = false },
+            onDismissRequest = { showDialog = false },
             title = {
                 Text(
-                    text = "Incomplete Biosecurity",
+                    text = dialogTitle,
                     fontFamily = PersonnelPoppins,
                     fontWeight = FontWeight.SemiBold
                 )
             },
             text = {
                 Text(
-                    text = incompleteMessage,
+                    text = dialogMessage,
                     fontFamily = PersonnelPoppins
                 )
             },
             confirmButton = {
-                TextButton(onClick = { showIncompleteDialog = false }) {
+                TextButton(onClick = { showDialog = false }) {
                     Text("OK", fontFamily = PersonnelPoppins)
                 }
             }
@@ -193,7 +200,16 @@ fun PersonnelLogsScreen(
 
                 Column(modifier = Modifier.fillMaxWidth(0.5f)) {
                     PersonnelLabel("House")
-                    PersonnelReadOnlyField(house)
+                    PersonnelDropdownField(
+                        value = selectedHouse?.houseNumber.orEmpty(),
+                        options = houses.map { it.houseNumber },
+                        expanded = houseExpanded,
+                        onExpandedChange = { houseExpanded = it },
+                        onValueSelected = { selectedValue ->
+                            selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
+                            houseExpanded = false
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -229,28 +245,6 @@ fun PersonnelLogsScreen(
                     onCheckedChange = { protectiveClothing = it }
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                errorMessage?.let {
-                    Text(
-                        text = it,
-                        color = Color(0xFFB00020),
-                        fontFamily = PersonnelPoppins,
-                        fontSize = 13.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
-                successMessage?.let {
-                    Text(
-                        text = it,
-                        color = Color(0xFF2E7D32),
-                        fontFamily = PersonnelPoppins,
-                        fontSize = 13.sp
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                }
-
                 Spacer(modifier = Modifier.height(24.dp))
 
                 Row(
@@ -259,12 +253,20 @@ fun PersonnelLogsScreen(
                 ) {
                     Button(
                         onClick = {
-                            errorMessage = null
-                            successMessage = null
-
                             val currentEntryLogId = personnelEntryLogId
+                            val currentHouse = selectedHouse
+
                             if (currentEntryLogId == null) {
-                                errorMessage = "Missing personnel entry log context."
+                                dialogTitle = "Missing Context"
+                                dialogMessage = "Missing personnel entry log context."
+                                showDialog = true
+                                return@Button
+                            }
+
+                            if (currentHouse == null) {
+                                dialogTitle = "House Required"
+                                dialogMessage = "Please select the house you will go to."
+                                showDialog = true
                                 return@Button
                             }
 
@@ -275,8 +277,9 @@ fun PersonnelLogsScreen(
                             }
 
                             if (uncheckedItems.isNotEmpty()) {
-                                incompleteMessage = "Please complete: ${uncheckedItems.joinToString(", ")}."
-                                showIncompleteDialog = true
+                                dialogTitle = "Incomplete Biosecurity"
+                                dialogMessage = "Please complete: ${uncheckedItems.joinToString(", ")}."
+                                showDialog = true
                                 return@Button
                             }
 
@@ -285,17 +288,18 @@ fun PersonnelLogsScreen(
                                 personnelService.submit(
                                     employeeId = employeeId,
                                     personnelEntryLogId = currentEntryLogId,
+                                    houseId = currentHouse.id,
                                     footBath = footBath,
                                     bootsChanged = bootsChanged,
                                     protectiveClothing = protectiveClothing
-                                ).onSuccess { success ->
-                                    if (success) {
-                                        successMessage = "Personnel biosecurity log submitted successfully."
-                                    } else {
-                                        errorMessage = "Failed to submit personnel biosecurity log."
-                                    }
+                                ).onSuccess { message ->
+                                    dialogTitle = "Submitted"
+                                    dialogMessage = message
+                                    showDialog = true
                                 }.onFailure {
-                                    errorMessage = it.message ?: "Failed to submit personnel biosecurity log."
+                                    dialogTitle = "Submission Failed"
+                                    dialogMessage = it.message ?: "Failed to submit personnel biosecurity log."
+                                    showDialog = true
                                 }
                                 isLoading = false
                             }
@@ -365,6 +369,59 @@ private fun PersonnelReadOnlyField(value: String) {
             disabledTextColor = Color(0xFF6E6E6E)
         )
     )
+}
+
+@Composable
+private fun PersonnelDropdownField(
+    value: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onValueSelected: (String) -> Unit
+) {
+    Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
+                .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
+                .clickable { onExpandedChange(true) }
+                .padding(horizontal = 16.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (value.isBlank()) "Select" else value,
+                    fontFamily = PersonnelPoppins,
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
+                Text(
+                    text = "⌄",
+                    fontFamily = PersonnelPoppins,
+                    fontSize = 18.sp,
+                    color = Color.Black
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option, fontFamily = PersonnelPoppins) },
+                    onClick = { onValueSelected(option) }
+                )
+            }
+        }
+    }
 }
 
 @Composable
