@@ -20,8 +20,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 data class MobileLoginRequest(
-    @SerialName("user_id")
-    val userId: Int,
+    @SerialName("username")
+    val username: String,
     @SerialName("password")
     val password: String
 )
@@ -35,7 +35,9 @@ data class MobileLoginUser(
     @SerialName("LastName")
     val lastName: String? = null,
     @SerialName("Role")
-    val role: String
+    val role: String,
+    @SerialName("Username")
+    val username: String? = null
 )
 
 @Serializable
@@ -71,14 +73,11 @@ class SupabaseAuthService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun signInFlockman(employeeId: String, password: String): Result<Unit> {
+    suspend fun signInFlockman(username: String, password: String): Result<Int> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val employeeIdValue = employeeId.toIntOrNull()
-                    ?: error("Employee ID should contain numbers only.")
-
                 val requestBody = MobileLoginRequest(
-                    userId = employeeIdValue,
+                    username = username,
                     password = password
                 )
 
@@ -96,13 +95,13 @@ class SupabaseAuthService(
                 }
 
                 val loginResponse = json.decodeFromJsonElement<MobileLoginResponse>(parsed)
-                val user = loginResponse.user ?: error("Invalid employee ID or password.")
+                val user = loginResponse.user ?: error("Invalid username or password.")
 
                 if (!user.role.equals("Flockman", ignoreCase = true)) {
                     error("Only Flockman accounts can sign in on mobile.")
                 }
 
-                Unit
+                user.employeeId
             }
         }
     }

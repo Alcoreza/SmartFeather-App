@@ -300,8 +300,8 @@ fun ProfileScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 ProfileFieldRow(
-                    leftLabel = "ID",
-                    leftValue = user.employeeId,
+                    leftLabel = "Username",
+                    leftValue = user.username,
                     rightLabel = "Role",
                     rightValue = user.role,
                     grayOut = isEditing

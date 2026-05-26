@@ -77,10 +77,10 @@ private suspend fun ScrollState.smoothLoginScrollTo(value: Int) {
 
 @Composable
 fun LoginScreen(
-    onLoginClick: suspend (String, String) -> Result<Unit>,
-    onLoginSuccess: (String) -> Unit
+    onLoginClick: suspend (String, String) -> Result<Int>,
+    onLoginSuccess: (Int) -> Unit
 ) {
-    var userId by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
@@ -249,7 +249,7 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(if (isKeyboardVisible) 18.dp else 24.dp))
 
                     Text(
-                        text = "Employee ID",
+                        text = "Username",
                         fontFamily = LoginPoppins,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp,
@@ -259,14 +259,14 @@ fun LoginScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     OutlinedTextField(
-                        value = userId,
+                        value = username,
                         onValueChange = {
-                            userId = it
+                            username = it
                             errorMessage = null
                         },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions.Default.copy(
-                            keyboardType = KeyboardType.Number
+                            keyboardType = KeyboardType.Text
                         ),
                         modifier = Modifier
                             .fillMaxWidth()
@@ -280,7 +280,7 @@ fun LoginScreen(
                         shape = RoundedCornerShape(18.dp),
                         placeholder = {
                             Text(
-                                text = "Enter your employee ID",
+                                text = "Enter your username",
                                 fontFamily = LoginPoppins,
                                 color = Color(0xFF9A9A9A),
                                 fontSize = 14.sp
@@ -365,25 +365,20 @@ fun LoginScreen(
                         onClick = {
                             focusManager.clearFocus()
 
-                            if (userId.isBlank() || password.isBlank()) {
-                                errorMessage = "Please provide both employee ID and password."
-                                return@Button
-                            }
-
-                            if (userId.any { !it.isDigit() }) {
-                                errorMessage = "Employee ID should contain numbers only."
+                            if (username.isBlank() || password.isBlank()) {
+                                errorMessage = "Please provide both username and password."
                                 return@Button
                             }
 
                             coroutineScope.launch {
                                 isLoading = true
-                                val result = onLoginClick(userId.trim(), password)
+                                val result = onLoginClick(username.trim(), password)
                                 isLoading = false
 
                                 result
                                     .onSuccess {
                                         errorMessage = null
-                                        onLoginSuccess(userId.trim())
+                                        onLoginSuccess(it)
                                     }
                                     .onFailure {
                                         errorMessage = it.message ?: "Unable to sign in."
@@ -431,7 +426,7 @@ fun LoginScreen(
 @Composable
 fun LoginScreenPreview() {
     LoginScreen(
-        onLoginClick = { _, _ -> Result.success(Unit) },
+        onLoginClick = { _, _ -> Result.success(2) },
         onLoginSuccess = {}
     )
 }

@@ -112,12 +112,13 @@ fun SmartFeatherApp() {
     }
 
     when (currentScreen) {
+
         AppScreen.LOGIN -> LoginScreen(
-            onLoginClick = { employeeId, password ->
-                authService.signInFlockman(employeeId = employeeId, password = password)
+            onLoginClick = { username, password ->
+                authService.signInFlockman(username = username, password = password)
             },
             onLoginSuccess = { employeeId ->
-                loggedInEmployeeId = employeeId.toIntOrNull()
+                loggedInEmployeeId = employeeId
                 currentScreen = AppScreen.DASHBOARD
             }
         )

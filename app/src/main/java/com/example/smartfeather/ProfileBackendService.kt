@@ -26,6 +26,8 @@ import java.util.Locale
 data class MobileProfileResponse(
     @SerialName("employee_id")
     val employeeId: Int,
+    @SerialName("username")
+    val username: String? = null,
     @SerialName("first_name")
     val firstName: String? = null,
     @SerialName("middle_name")
@@ -69,7 +71,7 @@ data class FlockmanProfileUiState(
     val middleName: String,
     val lastName: String,
     val suffix: String,
-    val employeeId: String,
+    val username: String,
     val role: String,
     val birthday: String,
     val phoneNumber: String,
@@ -148,7 +150,7 @@ private fun MobileProfileResponse.toUiState(): FlockmanProfileUiState {
         middleName = middleName.orEmpty(),
         lastName = lastName.orEmpty(),
         suffix = suffix.orEmpty(),
-        employeeId = employeeId.toString(),
+        username = username.orEmpty(),
         role = role.orEmpty(),
         birthday = formatBirthday(birthday),
         phoneNumber = phoneNumber.orEmpty(),
