@@ -3,51 +3,13 @@ package com.example.smartfeather
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-
 
 enum class AppScreen {
     LOGIN,
@@ -68,13 +30,6 @@ enum class AppScreen {
     PROFILE,
 }
 
-private val LoginPoppins = FontFamily(
-    Font(R.font.poppins_regular, FontWeight.Normal),
-    Font(R.font.poppins_medium, FontWeight.Medium),
-    Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold)
-)
-
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -89,7 +44,6 @@ fun SmartFeatherApp() {
     val authService = remember { SupabaseAuthService() }
     val taskService = remember { TaskBackendService() }
     val dashboardService = remember { DashboardBackendService() }
-    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
 
     var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
@@ -104,15 +58,40 @@ fun SmartFeatherApp() {
 
     var dashboardUiState by remember { mutableStateOf(placeholderDashboardState()) }
 
-    LaunchedEffect(currentScreen, loggedInEmployeeId) {
-        if (currentScreen == AppScreen.DASHBOARD && loggedInEmployeeId != null) {
-            dashboardService.getDashboard(loggedInEmployeeId!!)
-                .onSuccess { dashboardUiState = it }
+    var selectedEnvironmentHouseId by remember { mutableStateOf<Int?>(null) }
+    var selectedEnvironmentPenId by remember { mutableStateOf<Int?>(null) }
+    var selectedResourceHouseId by remember { mutableStateOf<Int?>(null) }
+    var selectedResourcePenId by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(
+        currentScreen,
+        loggedInEmployeeId,
+        selectedEnvironmentHouseId,
+        selectedEnvironmentPenId,
+        selectedResourceHouseId,
+        selectedResourcePenId
+    ) {
+        val employeeId = loggedInEmployeeId
+
+        if (currentScreen == AppScreen.DASHBOARD && employeeId != null) {
+            dashboardService.getDashboard(
+                employeeId = employeeId,
+                environmentHouseId = selectedEnvironmentHouseId,
+                environmentPenId = selectedEnvironmentPenId,
+                resourceHouseId = selectedResourceHouseId,
+                resourcePenId = selectedResourcePenId
+            ).onSuccess { state ->
+                dashboardUiState = state
+
+                selectedEnvironmentHouseId = state.environmentFilter.selectedHouseId
+                selectedEnvironmentPenId = state.environmentFilter.selectedPenId
+                selectedResourceHouseId = state.resourceFilter.selectedHouseId
+                selectedResourcePenId = state.resourceFilter.selectedPenId
+            }
         }
     }
 
     when (currentScreen) {
-
         AppScreen.LOGIN -> LoginScreen(
             onLoginClick = { username, password ->
                 authService.signInFlockman(username = username, password = password)
@@ -142,7 +121,29 @@ fun SmartFeatherApp() {
             onQuickAccessBiosecurity = {
                 currentScreen = AppScreen.BIOSECURITY
             },
-            uiState = dashboardUiState
+            uiState = dashboardUiState,
+            onEnvironmentFilterChange = { option: SensorFilterOption ->
+                selectedEnvironmentHouseId = option.houseId
+                selectedEnvironmentPenId = option.penId
+
+                dashboardUiState = dashboardUiState.copy(
+                    environmentFilter = dashboardUiState.environmentFilter.copy(
+                        selectedHouseId = option.houseId,
+                        selectedPenId = option.penId
+                    )
+                )
+            },
+            onResourceFilterChange = { option: SensorFilterOption ->
+                selectedResourceHouseId = option.houseId
+                selectedResourcePenId = option.penId
+
+                dashboardUiState = dashboardUiState.copy(
+                    resourceFilter = dashboardUiState.resourceFilter.copy(
+                        selectedHouseId = option.houseId,
+                        selectedPenId = option.penId
+                    )
+                )
+            }
         )
 
         AppScreen.TASKS -> TasksScreen(
@@ -253,6 +254,7 @@ fun SmartFeatherApp() {
                 )
             }
         }
+
         AppScreen.COMPLETED_TASK_DETAIL -> {
             selectedCompletedTask?.let { task ->
                 CompletedTaskDetailScreen(
@@ -338,12 +340,24 @@ fun SmartFeatherApp() {
         )
 
         AppScreen.BIOSECURITY -> BiosecurityScreen(
-            onBackToFarm = { currentScreen = AppScreen.FARM_MANAGEMENT },
-            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
-            onNavigateToTasks = { currentScreen = AppScreen.TASKS },
-            onDisinfectionClick = { currentScreen = AppScreen.DISINFECTION },
-            onPersonnelLogsClick = { currentScreen = AppScreen.PERSONNEL_LOGS },
-            onVisitorClick = { currentScreen = AppScreen.VISITOR },
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            },
+            onDisinfectionClick = {
+                currentScreen = AppScreen.DISINFECTION
+            },
+            onPersonnelLogsClick = {
+                currentScreen = AppScreen.PERSONNEL_LOGS
+            },
+            onVisitorClick = {
+                currentScreen = AppScreen.VISITOR
+            }
         )
 
         AppScreen.DISINFECTION -> DisinfectionScreen(
@@ -364,24 +378,44 @@ fun SmartFeatherApp() {
 
         AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
             employeeId = loggedInEmployeeId ?: 0,
-            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
-            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
-            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+            onBackToBiosecurity = {
+                currentScreen = AppScreen.BIOSECURITY
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
         )
 
         AppScreen.VISITOR -> VisitorScreen(
             employeeId = loggedInEmployeeId ?: 0,
-            onBackToBiosecurity = { currentScreen = AppScreen.BIOSECURITY },
-            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
-            onNavigateToTasks = { currentScreen = AppScreen.TASKS }
+            onBackToBiosecurity = {
+                currentScreen = AppScreen.BIOSECURITY
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            }
         )
 
         AppScreen.NEW_BIRD_BATCH -> NewBirdBatchScreen(
             employeeId = loggedInEmployeeId ?: 0,
-            onBackToFarm = { currentScreen = AppScreen.FARM_MANAGEMENT },
-            onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
-            onNavigateToTasks = { currentScreen = AppScreen.TASKS },
-            onGoToBiosecurity = { currentScreen = AppScreen.PERSONNEL_LOGS }
+            onBackToFarm = {
+                currentScreen = AppScreen.FARM_MANAGEMENT
+            },
+            onNavigateToDashboard = {
+                currentScreen = AppScreen.DASHBOARD
+            },
+            onNavigateToTasks = {
+                currentScreen = AppScreen.TASKS
+            },
+            onGoToBiosecurity = {
+                currentScreen = AppScreen.PERSONNEL_LOGS
+            }
         )
 
         AppScreen.PROFILE -> ProfileScreen(
@@ -400,6 +434,10 @@ fun SmartFeatherApp() {
                 selectedPendingTask = null
                 selectedCompletedTask = null
                 dashboardUiState = placeholderDashboardState()
+                selectedEnvironmentHouseId = null
+                selectedEnvironmentPenId = null
+                selectedResourceHouseId = null
+                selectedResourcePenId = null
                 currentScreen = AppScreen.LOGIN
             }
         )

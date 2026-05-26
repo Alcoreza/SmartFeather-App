@@ -1,7 +1,11 @@
 package com.example.smartfeather
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,12 +37,20 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -57,6 +69,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.TextButton
+import androidx.compose.foundation.border
 
 data class DashboardStat(
     val title: String,
@@ -72,7 +88,8 @@ data class GaugeData(
     val unit: String,
     val min: Float,
     val max: Float,
-    val color: Color
+    val color: Color,
+    val recordedAt: String? = null
 )
 
 data class ResourceData(
@@ -80,7 +97,8 @@ data class ResourceData(
     val value: Float,
     val unit: String,
     val max: Float,
-    val color: Color
+    val color: Color,
+    val recordedAt: String? = null
 )
 
 data class QuickAccessItem(
@@ -88,16 +106,6 @@ data class QuickAccessItem(
     val icon: ImageVector,
     val tint: Color,
     val actionKey: String
-)
-
-data class DashboardUiState(
-    val welcomeText: String,
-    val overviewDateLabel: String,
-    val stats: List<DashboardStat>,
-    val gauges: List<GaugeData>,
-    val resources: List<ResourceData>,
-    val pendingTasks: String,
-    val quickAccess: List<QuickAccessItem>
 )
 
 private val DashboardPoppins = FontFamily(
@@ -124,6 +132,22 @@ fun placeholderDashboardState(): DashboardUiState {
             ResourceData("Feed", 90f, "%", 100f, Color(0xFFC88A3D)),
             ResourceData("Water", 40f, "%", 100f, Color(0xFF6CDDE5))
         ),
+        environmentFilter = SensorFilterState(
+            selectedHouseId = 1,
+            selectedPenId = 1,
+            options = listOf(
+                SensorFilterOption(1, "House 1", 1, "Pen 1"),
+                SensorFilterOption(1, "House 1", 2, "Pen 2")
+            )
+        ),
+        resourceFilter = SensorFilterState(
+            selectedHouseId = 2,
+            selectedPenId = 3,
+            options = listOf(
+                SensorFilterOption(2, "House 2", 3, "Pen 3"),
+                SensorFilterOption(2, "House 2", 4, "Pen 4")
+            )
+        ),
         pendingTasks = "2",
         quickAccess = listOf(
             QuickAccessItem("Population", Icons.Outlined.CheckCircle, Color(0xFFD92C2C), "population"),
@@ -145,7 +169,7 @@ private fun resourceProgress(value: Float, max: Float): Float {
 }
 
 private fun formatValue(value: Float, unit: String): String {
-    val display = if (value % 1f == 0f) value.roundToInt().toString() else value.toString()
+    val display = if (value % 1f == 0f) value.roundToInt().toString() else String.format("%.1f", value)
     return "$display$unit"
 }
 
@@ -157,8 +181,16 @@ fun DashboardScreen(
     onQuickAccessPopulation: () -> Unit,
     onQuickAccessFeedsRefill: () -> Unit,
     onQuickAccessBiosecurity: () -> Unit,
-    uiState: DashboardUiState
+    uiState: DashboardUiState,
+    onEnvironmentFilterChange: (SensorFilterOption) -> Unit = {},
+    onResourceFilterChange: (SensorFilterOption) -> Unit = {}
 ) {
+    var contentVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(uiState) {
+        contentVisible = true
+    }
+
     Scaffold(
         containerColor = Color(0xFFF6F3EF),
         bottomBar = {
@@ -174,7 +206,7 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF9F7F4), Color(0xFFF2EEEA))
+                        colors = listOf(Color(0xFFF8F6F2), Color(0xFFF0ECE7))
                     )
                 )
                 .padding(innerPadding)
@@ -183,78 +215,90 @@ fun DashboardScreen(
 
             Box(
                 modifier = Modifier
-                    .size(if (isTablet) 320.dp else 220.dp)
+                    .size(if (isTablet) 360.dp else 240.dp)
                     .align(Alignment.TopEnd)
                     .background(
                         brush = Brush.radialGradient(
-                            colors = listOf(Color(0x1438A34A), Color.Transparent)
+                            colors = listOf(Color(0x1636A24D), Color.Transparent)
                         ),
                         shape = CircleShape
                     )
             )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = 18.dp)
+            AnimatedVisibility(
+                visible = contentVisible,
+                enter = fadeIn(animationSpec = tween(500)) + slideInVertically(
+                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    initialOffsetY = { it / 8 }
+                )
             ) {
-                Text(
-                    text = uiState.welcomeText,
-                    fontFamily = DashboardPoppins,
-                    fontSize = if (isTablet) 32.sp else 26.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFF171717)
-                )
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = 18.dp)
+                ) {
+                    Text(
+                        text = uiState.welcomeText,
+                        fontFamily = DashboardPoppins,
+                        fontSize = if (isTablet) 32.sp else 26.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF171717)
+                    )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                FarmOverviewCard(
-                    stats = uiState.stats,
-                    overviewDateLabel = uiState.overviewDateLabel,
-                    isTablet = isTablet
-                )
+                    FarmOverviewCard(
+                        stats = uiState.stats,
+                        overviewDateLabel = uiState.overviewDateLabel,
+                        isTablet = isTablet
+                    )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                MonitoringSection(
-                    gauges = uiState.gauges,
-                    resources = uiState.resources,
-                    isTablet = isTablet
-                )
+                    MonitoringSection(
+                        gauges = uiState.gauges,
+                        resources = uiState.resources,
+                        environmentFilter = uiState.environmentFilter,
+                        resourceFilter = uiState.resourceFilter,
+                        isTablet = isTablet,
+                        onEnvironmentFilterChange = onEnvironmentFilterChange,
+                        onResourceFilterChange = onResourceFilterChange
+                    )
 
-                Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(20.dp))
 
-                PendingTaskBanner(
-                    count = uiState.pendingTasks,
-                    isTablet = isTablet
-                )
+                    PendingTaskBanner(
+                        count = uiState.pendingTasks,
+                        isTablet = isTablet
+                    )
 
-                Spacer(modifier = Modifier.height(22.dp))
+                    Spacer(modifier = Modifier.height(22.dp))
 
-                Text(
-                    text = "Quick Access",
-                    fontFamily = DashboardPoppins,
-                    fontSize = if (isTablet) 22.sp else 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF181818)
-                )
+                    Text(
+                        text = "Quick Access",
+                        fontFamily = DashboardPoppins,
+                        fontSize = if (isTablet) 22.sp else 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF181818)
+                    )
 
-                Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
 
-                QuickAccessSection(
-                    items = uiState.quickAccess,
-                    isTablet = isTablet,
-                    onItemClick = { actionKey ->
-                        when (actionKey) {
-                            "population" -> onQuickAccessPopulation()
-                            "feeds_refill" -> onQuickAccessFeedsRefill()
-                            "biosecurity" -> onQuickAccessBiosecurity()
+                    QuickAccessSection(
+                        items = uiState.quickAccess,
+                        isTablet = isTablet,
+                        onItemClick = { actionKey ->
+                            when (actionKey) {
+                                "population" -> onQuickAccessPopulation()
+                                "feeds_refill" -> onQuickAccessFeedsRefill()
+                                "biosecurity" -> onQuickAccessBiosecurity()
+                            }
                         }
-                    }
-                )
+                    )
 
-                Spacer(modifier = Modifier.height(18.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
+                }
             }
         }
     }
@@ -264,7 +308,11 @@ fun DashboardScreen(
 private fun MonitoringSection(
     gauges: List<GaugeData>,
     resources: List<ResourceData>,
-    isTablet: Boolean
+    environmentFilter: SensorFilterState,
+    resourceFilter: SensorFilterState,
+    isTablet: Boolean,
+    onEnvironmentFilterChange: (SensorFilterOption) -> Unit,
+    onResourceFilterChange: (SensorFilterOption) -> Unit
 ) {
     if (isTablet) {
         Row(
@@ -273,22 +321,26 @@ private fun MonitoringSection(
         ) {
             MonitoringCard(
                 title = "Environmental Monitoring",
+                filterState = environmentFilter,
                 modifier = Modifier.weight(1f),
-                cardHeight = 240.dp
+                cardHeight = 300.dp,
+                onFilterChange = onEnvironmentFilterChange
             ) {
-                GaugeBlock(gauges[0], modifier = Modifier.weight(1f))
+                GaugeBlock(gauges.getOrElse(0) { GaugeData("Temperature", 0f, "deg", 0f, 40f, Color(0xFF6ABF4B)) }, modifier = Modifier.weight(1f))
                 DividerLine()
-                GaugeBlock(gauges[1], modifier = Modifier.weight(1f))
+                GaugeBlock(gauges.getOrElse(1) { GaugeData("Ammonia", 0f, "ppm", 0f, 40f, Color(0xFFF4B43A)) }, modifier = Modifier.weight(1f))
             }
 
             MonitoringCard(
                 title = "Feed and Water Monitoring",
+                filterState = resourceFilter,
                 modifier = Modifier.weight(1f),
-                cardHeight = 240.dp
+                cardHeight = 300.dp,
+                onFilterChange = onResourceFilterChange
             ) {
-                ResourceBlock(resources[0], modifier = Modifier.weight(1f))
+                ResourceBlock(resources.getOrElse(0) { ResourceData("Feed", 0f, "%", 100f, Color(0xFFC88A3D)) }, modifier = Modifier.weight(1f))
                 DividerLine()
-                ResourceBlock(resources[1], modifier = Modifier.weight(1f))
+                ResourceBlock(resources.getOrElse(1) { ResourceData("Water", 0f, "%", 100f, Color(0xFF6CDDE5)) }, modifier = Modifier.weight(1f))
             }
         }
     } else {
@@ -297,67 +349,274 @@ private fun MonitoringSection(
         ) {
             MonitoringCard(
                 title = "Environmental Monitoring",
+                filterState = environmentFilter,
                 modifier = Modifier.fillMaxWidth(),
-                cardHeight = 220.dp
+                cardHeight = 290.dp,
+                onFilterChange = onEnvironmentFilterChange
             ) {
-                GaugeBlock(gauges[0], modifier = Modifier.weight(1f))
+                GaugeBlock(gauges.getOrElse(0) { GaugeData("Temperature", 0f, "deg", 0f, 40f, Color(0xFF6ABF4B)) }, modifier = Modifier.weight(1f))
                 DividerLine()
-                GaugeBlock(gauges[1], modifier = Modifier.weight(1f))
+                GaugeBlock(gauges.getOrElse(1) { GaugeData("Ammonia", 0f, "ppm", 0f, 40f, Color(0xFFF4B43A)) }, modifier = Modifier.weight(1f))
             }
 
             MonitoringCard(
                 title = "Feed and Water Monitoring",
+                filterState = resourceFilter,
                 modifier = Modifier.fillMaxWidth(),
-                cardHeight = 220.dp
+                cardHeight = 290.dp,
+                onFilterChange = onResourceFilterChange
             ) {
-                ResourceBlock(resources[0], modifier = Modifier.weight(1f))
+                ResourceBlock(resources.getOrElse(0) { ResourceData("Feed", 0f, "%", 100f, Color(0xFFC88A3D)) }, modifier = Modifier.weight(1f))
                 DividerLine()
-                ResourceBlock(resources[1], modifier = Modifier.weight(1f))
+                ResourceBlock(resources.getOrElse(1) { ResourceData("Water", 0f, "%", 100f, Color(0xFF6CDDE5)) }, modifier = Modifier.weight(1f))
             }
         }
     }
 }
 
 @Composable
-private fun QuickAccessSection(
-    items: List<QuickAccessItem>,
-    isTablet: Boolean,
-    onItemClick: (String) -> Unit
+private fun MonitoringCard(
+    title: String,
+    filterState: SensorFilterState,
+    modifier: Modifier = Modifier,
+    cardHeight: Dp,
+    onFilterChange: (SensorFilterOption) -> Unit,
+    content: @Composable RowScope.() -> Unit
 ) {
-    if (isTablet) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
-        ) {
-            items.forEach { item ->
-                QuickAccessCard(
-                    item = item,
-                    modifier = Modifier.weight(1f),
-                    cardWidth = null,
-                    cardHeight = 118.dp,
-                    onClick = { onItemClick(item.actionKey) }
-                )
-            }
-        }
-    } else {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
-        ) {
+    Card(
+        modifier = modifier.height(cardHeight),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
+            Text(
+                text = title,
+                fontFamily = DashboardPoppins,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFF171717),
+                lineHeight = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SensorFilterDropdown(
+                filterState = filterState,
+                onSelected = onFilterChange
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                items.forEach { item ->
-                    QuickAccessCard(
-                        item = item,
-                        cardWidth = 110.dp,
-                        cardHeight = 104.dp,
-                        onClick = { onItemClick(item.actionKey) }
-                    )
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+                content = content
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SensorFilterDropdown(
+    filterState: SensorFilterState,
+    onSelected: (SensorFilterOption) -> Unit
+) {
+    var showPicker by remember { mutableStateOf(false) }
+
+    val selected = filterState.options.firstOrNull {
+        it.houseId == filterState.selectedHouseId && it.penId == filterState.selectedPenId
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFF8F7F4))
+            .border(1.dp, Color(0xFFD7DDD6), RoundedCornerShape(16.dp))
+            .clickable(enabled = filterState.options.isNotEmpty()) {
+                showPicker = true
+            }
+            .padding(horizontal = 14.dp, vertical = 12.dp)
+    ) {
+        Column {
+            Text(
+                text = "House and Pen",
+                fontFamily = DashboardPoppins,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color(0xFF657064)
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = selected?.displayLabel ?: "No sensor assignment",
+                fontFamily = DashboardPoppins,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = if (selected == null) Color(0xFF8A8A8A) else Color(0xFF1D241E)
+            )
+        }
+    }
+
+    if (showPicker) {
+        AlertDialog(
+            onDismissRequest = { showPicker = false },
+            title = {
+                Text(
+                    text = "Select Sensor Location",
+                    fontFamily = DashboardPoppins,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Column {
+                    filterState.options.forEach { option ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .clickable {
+                                    showPicker = false
+                                    onSelected(option)
+                                }
+                                .padding(horizontal = 10.dp, vertical = 12.dp)
+                        ) {
+                            Text(
+                                text = option.displayLabel,
+                                fontFamily = DashboardPoppins,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF1E2A20)
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showPicker = false }) {
+                    Text("Close", fontFamily = DashboardPoppins)
                 }
             }
+        )
+    }
+}
+
+@Composable
+private fun GaugeBlock(
+    data: GaugeData,
+    modifier: Modifier = Modifier
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = gaugeProgress(data.value, data.min, data.max),
+        animationSpec = tween(800),
+        label = "gaugeProgress"
+    )
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        CircularGauge(
+            progress = animatedProgress,
+            color = data.color,
+            modifier = Modifier.size(88.dp),
+            centerText = formatValue(data.value, data.unit)
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = data.label,
+            fontFamily = DashboardPoppins,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            color = Color(0xFF1B1B1B)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = data.recordedAt ?: "No recent reading",
+            fontFamily = DashboardPoppins,
+            fontSize = 10.sp,
+            color = Color(0xFF6B6B6B),
+            textAlign = TextAlign.Center,
+            lineHeight = 11.sp
+        )
+    }
+}
+
+@Composable
+private fun ResourceBlock(
+    data: ResourceData,
+    modifier: Modifier = Modifier
+) {
+    val animatedProgress by animateFloatAsState(
+        targetValue = resourceProgress(data.value, data.max),
+        animationSpec = tween(800),
+        label = "resourceProgress"
+    )
+
+    val containerHeight = 108.dp
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = modifier
+    ) {
+        Box(
+            modifier = Modifier
+                .width(68.dp)
+                .height(containerHeight)
+                .clip(RoundedCornerShape(18.dp))
+                .background(Color(0xFFF0F4EE)),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.72f)
+                    .fillMaxHeight(animatedProgress)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(data.color)
+            )
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Text(
+            text = data.label,
+            fontFamily = DashboardPoppins,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFF1B1B1B)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = formatValue(data.value, data.unit),
+            fontFamily = DashboardPoppins,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = data.color
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = data.recordedAt ?: "No recent reading",
+            fontFamily = DashboardPoppins,
+            fontSize = 10.sp,
+            color = Color(0xFF6B6B6B),
+            textAlign = TextAlign.Center,
+            lineHeight = 11.sp
+        )
     }
 }
 
@@ -454,133 +713,6 @@ private fun FarmOverviewCard(
 }
 
 @Composable
-private fun MonitoringCard(
-    title: String,
-    modifier: Modifier = Modifier,
-    cardHeight: Dp,
-    content: @Composable RowScope.() -> Unit
-) {
-    Card(
-        modifier = modifier.height(cardHeight),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 9.dp)
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)) {
-            Text(
-                text = title,
-                fontFamily = DashboardPoppins,
-                fontSize = 15.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF171717),
-                lineHeight = 17.sp
-            )
-
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                content = content
-            )
-        }
-    }
-}
-
-@Composable
-private fun GaugeBlock(
-    data: GaugeData,
-    modifier: Modifier = Modifier
-) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = gaugeProgress(data.value, data.min, data.max),
-        animationSpec = tween(700),
-        label = "gaugeProgress"
-    )
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        CircularGauge(
-            progress = animatedProgress,
-            color = data.color,
-            modifier = Modifier.size(86.dp),
-            centerText = formatValue(data.value, data.unit)
-        )
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = data.label,
-            fontFamily = DashboardPoppins,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center,
-            color = Color(0xFF1B1B1B),
-            lineHeight = 14.sp
-        )
-    }
-}
-
-@Composable
-private fun ResourceBlock(
-    data: ResourceData,
-    modifier: Modifier = Modifier
-) {
-    val animatedProgress by animateFloatAsState(
-        targetValue = resourceProgress(data.value, data.max),
-        animationSpec = tween(700),
-        label = "resourceProgress"
-    )
-
-    val containerHeight = 108.dp
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-        modifier = modifier
-    ) {
-        Box(
-            modifier = Modifier
-                .width(68.dp)
-                .height(containerHeight)
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color(0xFFF0F4EE)),
-            contentAlignment = Alignment.BottomCenter
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(0.72f)
-                    .fillMaxHeight(animatedProgress)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(data.color)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Text(
-            text = formatValue(data.value, data.unit),
-            fontFamily = DashboardPoppins,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = data.color
-        )
-
-        Text(
-            text = data.label,
-            fontFamily = DashboardPoppins,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B1B1B)
-        )
-    }
-}
-
-@Composable
 private fun CircularGauge(
     progress: Float,
     color: Color,
@@ -636,7 +768,7 @@ private fun DividerLine() {
     Box(
         modifier = Modifier
             .width(1.dp)
-            .height(96.dp)
+            .height(116.dp)
             .background(Color(0xFFDCDCDC))
     )
 }
@@ -691,6 +823,49 @@ private fun PendingTaskBanner(
                 fontWeight = FontWeight.Bold,
                 color = Color.White
             )
+        }
+    }
+}
+
+@Composable
+private fun QuickAccessSection(
+    items: List<QuickAccessItem>,
+    isTablet: Boolean,
+    onItemClick: (String) -> Unit
+) {
+    if (isTablet) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+        ) {
+            items.forEach { item ->
+                QuickAccessCard(
+                    item = item,
+                    modifier = Modifier.weight(1f),
+                    cardWidth = null,
+                    cardHeight = 118.dp,
+                    onClick = { onItemClick(item.actionKey) }
+                )
+            }
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                items.forEach { item ->
+                    QuickAccessCard(
+                        item = item,
+                        cardWidth = 110.dp,
+                        cardHeight = 104.dp,
+                        onClick = { onItemClick(item.actionKey) }
+                    )
+                }
+            }
         }
     }
 }

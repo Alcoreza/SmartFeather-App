@@ -14,6 +14,7 @@ import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.URLBuilder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
@@ -38,7 +39,8 @@ data class GaugeApiRow(
     @SerialName("unit") val unit: String,
     @SerialName("min") val min: Float,
     @SerialName("max") val max: Float,
-    @SerialName("color") val color: String
+    @SerialName("color") val color: String,
+    @SerialName("recorded_at") val recordedAt: String? = null
 )
 
 @Serializable
@@ -47,7 +49,8 @@ data class ResourceApiRow(
     @SerialName("value") val value: Float,
     @SerialName("unit") val unit: String,
     @SerialName("max") val max: Float,
-    @SerialName("color") val color: String
+    @SerialName("color") val color: String,
+    @SerialName("recorded_at") val recordedAt: String? = null
 )
 
 @Serializable
@@ -59,15 +62,60 @@ data class QuickAccessApiRow(
 )
 
 @Serializable
+data class SensorFilterOptionApiRow(
+    @SerialName("house_id") val houseId: Int,
+    @SerialName("house_number") val houseNumber: String,
+    @SerialName("pen_id") val penId: Int,
+    @SerialName("pen_name") val penName: String
+)
+
+@Serializable
+data class SensorFilterApiRow(
+    @SerialName("selected_house_id") val selectedHouseId: Int? = null,
+    @SerialName("selected_pen_id") val selectedPenId: Int? = null,
+    @SerialName("options") val options: List<SensorFilterOptionApiRow> = emptyList()
+)
+
+@Serializable
 data class DashboardApiResponse(
     @SerialName("success") val success: Boolean? = null,
     @SerialName("welcome_text") val welcomeText: String? = null,
     @SerialName("overview_date_label") val overviewDateLabel: String? = null,
     @SerialName("stats") val stats: List<DashboardStatApiRow> = emptyList(),
+    @SerialName("environment_filter") val environmentFilter: SensorFilterApiRow? = null,
+    @SerialName("resource_filter") val resourceFilter: SensorFilterApiRow? = null,
     @SerialName("gauges") val gauges: List<GaugeApiRow> = emptyList(),
     @SerialName("resources") val resources: List<ResourceApiRow> = emptyList(),
     @SerialName("pending_tasks") val pendingTasks: String? = null,
     @SerialName("quick_access") val quickAccess: List<QuickAccessApiRow> = emptyList()
+)
+
+data class SensorFilterOption(
+    val houseId: Int,
+    val houseNumber: String,
+    val penId: Int,
+    val penName: String
+) {
+    val displayLabel: String
+        get() = "$houseNumber | $penName"
+}
+
+data class SensorFilterState(
+    val selectedHouseId: Int?,
+    val selectedPenId: Int?,
+    val options: List<SensorFilterOption>
+)
+
+data class DashboardUiState(
+    val welcomeText: String,
+    val overviewDateLabel: String,
+    val stats: List<DashboardStat>,
+    val gauges: List<GaugeData>,
+    val resources: List<ResourceData>,
+    val environmentFilter: SensorFilterState,
+    val resourceFilter: SensorFilterState,
+    val pendingTasks: String,
+    val quickAccess: List<QuickAccessItem>
 )
 
 class DashboardBackendService(
@@ -76,9 +124,23 @@ class DashboardBackendService(
     private val httpClient = HttpClient(Android)
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getDashboard(employeeId: Int): Result<DashboardUiState> = withContext(Dispatchers.IO) {
+    suspend fun getDashboard(
+        employeeId: Int,
+        environmentHouseId: Int? = null,
+        environmentPenId: Int? = null,
+        resourceHouseId: Int? = null,
+        resourcePenId: Int? = null
+    ): Result<DashboardUiState> = withContext(Dispatchers.IO) {
         runCatching {
-            val responseText = httpClient.get("$baseUrl/api/mobile/dashboard?employee_id=$employeeId") {
+            val url = URLBuilder("$baseUrl/api/mobile/dashboard").apply {
+                parameters.append("employee_id", employeeId.toString())
+                environmentHouseId?.let { parameters.append("environment_house_id", it.toString()) }
+                environmentPenId?.let { parameters.append("environment_pen_id", it.toString()) }
+                resourceHouseId?.let { parameters.append("resource_house_id", it.toString()) }
+                resourcePenId?.let { parameters.append("resource_pen_id", it.toString()) }
+            }.buildString()
+
+            val responseText = httpClient.get(url) {
                 accept(ContentType.Application.Json)
             }.bodyAsText()
 
@@ -109,7 +171,8 @@ class DashboardBackendService(
                         unit = it.unit,
                         min = it.min,
                         max = it.max,
-                        color = parseColor(it.color)
+                        color = parseColor(it.color),
+                        recordedAt = it.recordedAt
                     )
                 },
                 resources = response.resources.map {
@@ -118,9 +181,12 @@ class DashboardBackendService(
                         value = it.value,
                         unit = it.unit,
                         max = it.max,
-                        color = parseColor(it.color)
+                        color = parseColor(it.color),
+                        recordedAt = it.recordedAt
                     )
                 },
+                environmentFilter = response.environmentFilter.toUiState(),
+                resourceFilter = response.resourceFilter.toUiState(),
                 pendingTasks = response.pendingTasks ?: "0",
                 quickAccess = response.quickAccess.map {
                     QuickAccessItem(
@@ -132,6 +198,21 @@ class DashboardBackendService(
                 }
             )
         }
+    }
+
+    private fun SensorFilterApiRow?.toUiState(): SensorFilterState {
+        return SensorFilterState(
+            selectedHouseId = this?.selectedHouseId,
+            selectedPenId = this?.selectedPenId,
+            options = this?.options?.map {
+                SensorFilterOption(
+                    houseId = it.houseId,
+                    houseNumber = it.houseNumber,
+                    penId = it.penId,
+                    penName = it.penName
+                )
+            } ?: emptyList()
+        )
     }
 
     private fun parseColor(hex: String): Color {
