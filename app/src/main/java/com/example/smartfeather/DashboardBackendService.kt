@@ -77,6 +77,16 @@ data class SensorFilterApiRow(
 )
 
 @Serializable
+data class PendingTaskApiRow(
+    @SerialName("title") val title: String? = null,
+    @SerialName("detail") val detail: String? = null,
+    @SerialName("priority") val priority: String? = null,
+    @SerialName("finish_by") val finishBy: String? = null,
+    @SerialName("house_label") val houseLabel: String? = null,
+    @SerialName("pen_label") val penLabel: String? = null
+)
+
+@Serializable
 data class DashboardApiResponse(
     @SerialName("success") val success: Boolean? = null,
     @SerialName("welcome_text") val welcomeText: String? = null,
@@ -86,7 +96,8 @@ data class DashboardApiResponse(
     @SerialName("resource_filter") val resourceFilter: SensorFilterApiRow? = null,
     @SerialName("gauges") val gauges: List<GaugeApiRow> = emptyList(),
     @SerialName("resources") val resources: List<ResourceApiRow> = emptyList(),
-    @SerialName("pending_tasks") val pendingTasks: String? = null,
+    @SerialName("pending_task_count") val pendingTaskCount: Int? = null,
+    @SerialName("pending_task") val pendingTask: PendingTaskApiRow? = null,
     @SerialName("quick_access") val quickAccess: List<QuickAccessApiRow> = emptyList()
 )
 
@@ -106,6 +117,15 @@ data class SensorFilterState(
     val options: List<SensorFilterOption>
 )
 
+data class PendingTaskSummary(
+    val title: String,
+    val detail: String,
+    val priority: String,
+    val finishBy: String,
+    val houseLabel: String,
+    val penLabel: String
+)
+
 data class DashboardUiState(
     val welcomeText: String,
     val overviewDateLabel: String,
@@ -114,7 +134,8 @@ data class DashboardUiState(
     val resources: List<ResourceData>,
     val environmentFilter: SensorFilterState,
     val resourceFilter: SensorFilterState,
-    val pendingTasks: String,
+    val pendingTaskCount: Int,
+    val pendingTask: PendingTaskSummary?,
     val quickAccess: List<QuickAccessItem>
 )
 
@@ -187,7 +208,17 @@ class DashboardBackendService(
                 },
                 environmentFilter = response.environmentFilter.toUiState(),
                 resourceFilter = response.resourceFilter.toUiState(),
-                pendingTasks = response.pendingTasks ?: "0",
+                pendingTaskCount = response.pendingTaskCount ?: 0,
+                pendingTask = response.pendingTask?.let {
+                    PendingTaskSummary(
+                        title = it.title.orEmpty(),
+                        detail = it.detail.orEmpty(),
+                        priority = it.priority.orEmpty(),
+                        finishBy = it.finishBy.orEmpty(),
+                        houseLabel = it.houseLabel.orEmpty(),
+                        penLabel = it.penLabel.orEmpty()
+                    )
+                },
                 quickAccess = response.quickAccess.map {
                     QuickAccessItem(
                         title = it.title,

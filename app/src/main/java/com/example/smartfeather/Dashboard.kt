@@ -148,7 +148,15 @@ fun placeholderDashboardState(): DashboardUiState {
                 SensorFilterOption(2, "House 2", 4, "Pen 4")
             )
         ),
-        pendingTasks = "2",
+        pendingTaskCount = 1,
+        pendingTask = PendingTaskSummary(
+            title = "Cleaning",
+            detail = "Clean the feeder area and inspect drinker lines.",
+            priority = "High",
+            finishBy = "May 28, 4:30 PM",
+            houseLabel = "House 11",
+            penLabel = "Pen 25"
+        ),
         quickAccess = listOf(
             QuickAccessItem("Population", Icons.Outlined.CheckCircle, Color(0xFFD92C2C), "population"),
             QuickAccessItem("Feeds Refill", Icons.AutoMirrored.Outlined.List, Color(0xFFCC8A2D), "feeds_refill"),
@@ -269,7 +277,8 @@ fun DashboardScreen(
                     Spacer(modifier = Modifier.height(20.dp))
 
                     PendingTaskBanner(
-                        count = uiState.pendingTasks,
+                        count = uiState.pendingTaskCount,
+                        task = uiState.pendingTask,
                         isTablet = isTablet
                     )
 
@@ -775,7 +784,8 @@ private fun DividerLine() {
 
 @Composable
 private fun PendingTaskBanner(
-    count: String,
+    count: Int,
+    task: PendingTaskSummary?,
     isTablet: Boolean
 ) {
     Box(
@@ -784,45 +794,130 @@ private fun PendingTaskBanner(
             .clip(RoundedCornerShape(24.dp))
             .background(
                 brush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF33944A), Color(0xFF256C36))
+                    colors = listOf(Color(0xFF2E8B46), Color(0xFF215F31))
                 )
             )
-            .padding(horizontal = 20.dp, vertical = 22.dp)
+            .padding(horizontal = 20.dp, vertical = 20.dp)
     ) {
         Box(
             modifier = Modifier
                 .align(Alignment.CenterEnd)
-                .size(if (isTablet) 110.dp else 88.dp)
+                .size(if (isTablet) 120.dp else 92.dp)
                 .background(
                     brush = Brush.radialGradient(
-                        colors = listOf(Color(0x1CFFFFFF), Color.Transparent)
+                        colors = listOf(Color(0x16FFFFFF), Color.Transparent)
                     ),
                     shape = CircleShape
                 )
         )
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = count,
-                fontFamily = DashboardPoppins,
-                fontSize = if (isTablet) 62.sp else 54.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White
-            )
+        if (count <= 0 || task == null) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "0",
+                    fontFamily = DashboardPoppins,
+                    fontSize = if (isTablet) 56.sp else 48.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
 
-            Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(16.dp))
 
-            Text(
-                text = "Pending Tasks",
-                fontFamily = DashboardPoppins,
-                fontSize = if (isTablet) 26.sp else 23.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
+                Column {
+                    Text(
+                        text = "No Pending Task",
+                        fontFamily = DashboardPoppins,
+                        fontSize = if (isTablet) 24.sp else 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "You're clear for now.",
+                        fontFamily = DashboardPoppins,
+                        fontSize = 12.sp,
+                        color = Color.White.copy(alpha = 0.82f)
+                    )
+                }
+            }
+        } else {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top
+            ) {
+                Text(
+                    text = count.toString(),
+                    fontFamily = DashboardPoppins,
+                    fontSize = if (isTablet) 56.sp else 48.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(
+                        text = if (count == 1) "Pending Task" else "Pending Tasks",
+                        fontFamily = DashboardPoppins,
+                        fontSize = if (isTablet) 24.sp else 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color.White.copy(alpha = 0.14f))
+                            .padding(horizontal = 10.dp, vertical = 5.dp)
+                    ) {
+                        Text(
+                            text = task.title.ifBlank { "Task" },
+                            fontFamily = DashboardPoppins,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White
+                        )
+                    }
+
+                    if (task.detail.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = task.detail,
+                            fontFamily = DashboardPoppins,
+                            fontSize = 12.sp,
+                            color = Color.White.copy(alpha = 0.96f),
+                            lineHeight = 16.sp,
+                            maxLines = 2
+                        )
+                    }
+
+                    val meta = listOfNotNull(
+                        task.finishBy.takeIf { it.isNotBlank() }?.let { "Due $it" },
+                        listOf(task.houseLabel, task.penLabel)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" | ")
+                            .takeIf { it.isNotBlank() }
+                    ).joinToString("  •  ")
+
+                    if (meta.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = meta,
+                            fontFamily = DashboardPoppins,
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.78f),
+                            lineHeight = 13.sp
+                        )
+                    }
+                }
+            }
         }
     }
 }
