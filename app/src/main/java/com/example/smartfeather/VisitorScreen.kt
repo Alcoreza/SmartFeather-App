@@ -1,7 +1,9 @@
 package com.example.smartfeather
 
+import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -22,6 +24,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -43,6 +46,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,14 +66,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Calendar
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.core.content.ContextCompat
 
 private val VisitorPoppins = FontFamily(
     Font(R.font.poppins_regular, FontWeight.Normal),
@@ -77,6 +79,11 @@ private val VisitorPoppins = FontFamily(
     Font(R.font.poppins_semibold, FontWeight.SemiBold),
     Font(R.font.poppins_bold, FontWeight.Bold)
 )
+
+private enum class VisitorMode {
+    TIME_IN,
+    TIME_OUT
+}
 
 @Composable
 fun VisitorScreen(
@@ -90,6 +97,8 @@ fun VisitorScreen(
     val focusManager = LocalFocusManager.current
     val context = LocalContext.current
 
+    var mode by remember { mutableStateOf(VisitorMode.TIME_IN) }
+
     var date by remember { mutableStateOf("") }
     var timeIn by remember { mutableStateOf("") }
     var timeOut by remember { mutableStateOf("") }
@@ -99,11 +108,17 @@ fun VisitorScreen(
     var sanitation by remember { mutableStateOf(false) }
     var ppe by remember { mutableStateOf(false) }
     var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedPhotoUrl by remember { mutableStateOf<String?>(null) }
 
     var isLoading by remember { mutableStateOf(false) }
+    var isLoadingOpenVisitors by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     var dialogTitle by remember { mutableStateOf("") }
     var dialogMessage by remember { mutableStateOf("") }
+
+    var openVisitors by remember { mutableStateOf<List<OpenVisitorUiState>>(emptyList()) }
+    var selectedVisitorId by remember { mutableStateOf<Int?>(null) }
+    var showVisitorPicker by remember { mutableStateOf(false) }
 
     var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
 
@@ -112,6 +127,7 @@ fun VisitorScreen(
     ) { uri ->
         if (uri != null) {
             selectedPhotoUri = uri
+            selectedPhotoUrl = null
         }
     }
 
@@ -120,6 +136,7 @@ fun VisitorScreen(
     ) { success ->
         if (success) {
             selectedPhotoUri = cameraImageUri
+            selectedPhotoUrl = null
         }
     }
 
@@ -147,6 +164,47 @@ fun VisitorScreen(
             dialogTitle = "Camera Permission Required"
             dialogMessage = "Please allow camera access to take a visitor photo."
             showDialog = true
+        }
+    }
+
+    val selectedOpenVisitor = openVisitors.firstOrNull { it.id == selectedVisitorId }
+
+    LaunchedEffect(mode) {
+        if (mode == VisitorMode.TIME_IN) {
+            date = ""
+            timeIn = ""
+            timeOut = ""
+            name = ""
+            purpose = ""
+            footBath = false
+            sanitation = false
+            ppe = false
+            selectedVisitorId = null
+            selectedPhotoUri = null
+            selectedPhotoUrl = null
+        } else {
+            isLoadingOpenVisitors = true
+            visitorService.getOpenVisitors(employeeId)
+                .onSuccess { visitors ->
+                    openVisitors = visitors
+                    selectedVisitorId = null
+                    date = ""
+                    timeIn = ""
+                    timeOut = ""
+                    name = ""
+                    purpose = ""
+                    footBath = false
+                    sanitation = false
+                    ppe = false
+                    selectedPhotoUri = null
+                    selectedPhotoUrl = null
+                }
+                .onFailure {
+                    dialogTitle = "Load Failed"
+                    dialogMessage = it.message ?: "Failed to load open visitors."
+                    showDialog = true
+                }
+            isLoadingOpenVisitors = false
         }
     }
 
@@ -195,6 +253,54 @@ fun VisitorScreen(
             confirmButton = {
                 TextButton(onClick = { showDialog = false }) {
                     Text("OK", fontFamily = VisitorPoppins)
+                }
+            }
+        )
+    }
+
+    if (showVisitorPicker) {
+        AlertDialog(
+            onDismissRequest = { showVisitorPicker = false },
+            title = {
+                Text(
+                    text = "Select Visitor",
+                    fontFamily = VisitorPoppins,
+                    fontWeight = FontWeight.SemiBold
+                )
+            },
+            text = {
+                Column {
+                    openVisitors.forEach { visitor ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedVisitorId = visitor.id
+                                    date = visitor.date
+                                    timeIn = visitor.timeIn
+                                    name = visitor.name
+                                    purpose = visitor.purpose
+                                    footBath = visitor.footBath
+                                    sanitation = visitor.sanitation
+                                    ppe = visitor.ppe
+                                    selectedPhotoUri = null
+                                    selectedPhotoUrl = visitor.photoUrl
+                                    showVisitorPicker = false
+                                }
+                                .padding(vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = "${visitor.name} | ${visitor.date} | ${visitor.timeIn}",
+                                fontFamily = VisitorPoppins,
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showVisitorPicker = false }) {
+                    Text("Close", fontFamily = VisitorPoppins)
                 }
             }
         )
@@ -249,80 +355,131 @@ fun VisitorScreen(
             Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                 Spacer(modifier = Modifier.height(10.dp))
 
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    VisitorModeButton(
+                        label = "Time In",
+                        selected = mode == VisitorMode.TIME_IN,
+                        onClick = { mode = VisitorMode.TIME_IN }
+                    )
+                    VisitorModeButton(
+                        label = "Time Out",
+                        selected = mode == VisitorMode.TIME_OUT,
+                        onClick = { mode = VisitorMode.TIME_OUT }
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                VisitorLabel(if (mode == VisitorMode.TIME_IN) "Name" else "Visitor")
+                if (mode == VisitorMode.TIME_IN) {
+                    VisitorInputField(
+                        value = name,
+                        onValueChange = { name = it },
+                        enabled = true,
+                        readOnlyStyle = false
+                    )
+                } else {
+                    VisitorPickerField(
+                        value = selectedOpenVisitor?.name ?: "",
+                        placeholder = if (isLoadingOpenVisitors) "Loading visitors..." else "Select visitor",
+                        onClick = {
+                            if (openVisitors.isNotEmpty()) {
+                                showVisitorPicker = true
+                            }
+                        },
+                        enabled = openVisitors.isNotEmpty(),
+                        readOnlyStyle = false
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         VisitorLabel("Date")
                         VisitorPickerField(
                             value = date,
                             placeholder = "Date",
-                            onClick = { showDatePicker() }
+                            onClick = { if (mode == VisitorMode.TIME_IN) showDatePicker() },
+                            enabled = mode == VisitorMode.TIME_IN,
+                            readOnlyStyle = mode == VisitorMode.TIME_OUT
                         )
                     }
+
                     Column(modifier = Modifier.weight(1f)) {
                         VisitorLabel("Time In")
                         VisitorPickerField(
                             value = timeIn,
                             placeholder = "Time in",
-                            onClick = { showTimePicker { timeIn = it } }
+                            onClick = { if (mode == VisitorMode.TIME_IN) showTimePicker { timeIn = it } },
+                            enabled = mode == VisitorMode.TIME_IN,
+                            readOnlyStyle = mode == VisitorMode.TIME_OUT
                         )
                     }
-                    Column(modifier = Modifier.weight(1f)) {
-                        VisitorLabel("Time Out")
-                        VisitorPickerField(
-                            value = timeOut,
-                            placeholder = "Time out",
-                            onClick = { showTimePicker { timeOut = it } }
-                        )
+
+                    if (mode == VisitorMode.TIME_OUT) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            VisitorLabel("Time Out")
+                            VisitorPickerField(
+                                value = timeOut,
+                                placeholder = "Time out",
+                                onClick = { showTimePicker { timeOut = it } },
+                                enabled = true,
+                                readOnlyStyle = false
+                            )
+                        }
                     }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                VisitorLabel("Name")
-                VisitorInputField(name) { name = it }
-
-                Spacer(modifier = Modifier.height(10.dp))
-
                 VisitorLabel("Purpose")
-                VisitorInputField(purpose) { purpose = it }
+                VisitorInputField(
+                    value = purpose,
+                    onValueChange = { purpose = it },
+                    enabled = mode == VisitorMode.TIME_IN,
+                    readOnlyStyle = mode == VisitorMode.TIME_OUT
+                )
 
                 Spacer(modifier = Modifier.height(10.dp))
 
                 VisitorLabel("Visitor Photo")
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Button(
-                        onClick = {
-                            galleryLauncher.launch(
-                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                            )
-                        },
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF455A64))
-                    ) {
-                        Icon(Icons.Outlined.Upload, contentDescription = "Upload")
-                        Spacer(modifier = Modifier.size(6.dp))
-                        Text("Upload", fontFamily = VisitorPoppins, color = Color.White)
-                    }
+                if (mode == VisitorMode.TIME_IN) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(
+                            onClick = {
+                                galleryLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            shape = RoundedCornerShape(50),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF455A64))
+                        ) {
+                            Icon(Icons.Outlined.Upload, contentDescription = "Upload")
+                            Spacer(modifier = Modifier.size(6.dp))
+                            Text("Upload", fontFamily = VisitorPoppins, color = Color.White)
+                        }
 
-                    Button(
-                        onClick = {
-                            if (
-                                ContextCompat.checkSelfPermission(
-                                    context,
-                                    Manifest.permission.CAMERA
-                                ) == PackageManager.PERMISSION_GRANTED
-                            ) {
-                                launchCamera()
-                            } else {
-                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            }
-                        },
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF546E7A))
-                    ) {
-                        Icon(Icons.Outlined.PhotoCamera, contentDescription = "Camera")
-                        Spacer(modifier = Modifier.size(6.dp))
-                        Text("Camera", fontFamily = VisitorPoppins, color = Color.White)
+                        Button(
+                            onClick = {
+                                if (
+                                    ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.CAMERA
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    launchCamera()
+                                } else {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
+                            },
+                            shape = RoundedCornerShape(50),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF546E7A))
+                        ) {
+                            Icon(Icons.Outlined.PhotoCamera, contentDescription = "Camera")
+                            Spacer(modifier = Modifier.size(6.dp))
+                            Text("Camera", fontFamily = VisitorPoppins, color = Color.White)
+                        }
                     }
                 }
 
@@ -336,19 +493,29 @@ fun VisitorScreen(
                         .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp)),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (selectedPhotoUri != null) {
-                        AsyncImage(
-                            model = selectedPhotoUri,
-                            contentDescription = "Visitor photo preview",
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        Text(
-                            text = "No photo selected",
-                            fontFamily = VisitorPoppins,
-                            fontSize = 14.sp,
-                            color = Color(0xFF6E6E6E)
-                        )
+                    when {
+                        selectedPhotoUri != null -> {
+                            AsyncImage(
+                                model = selectedPhotoUri,
+                                contentDescription = "Visitor photo preview",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        !selectedPhotoUrl.isNullOrBlank() -> {
+                            AsyncImage(
+                                model = selectedPhotoUrl,
+                                contentDescription = "Visitor photo preview",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                        else -> {
+                            Text(
+                                text = "No photo selected",
+                                fontFamily = VisitorPoppins,
+                                fontSize = 14.sp,
+                                color = Color(0xFF6E6E6E)
+                            )
+                        }
                     }
                 }
 
@@ -358,17 +525,23 @@ fun VisitorScreen(
                     VisitorCheckbox(
                         label = "Foot Bath",
                         checked = footBath,
-                        onCheckedChange = { footBath = it }
+                        onCheckedChange = { footBath = it },
+                        enabled = mode == VisitorMode.TIME_IN,
+                        readOnlyStyle = mode == VisitorMode.TIME_OUT
                     )
                     VisitorCheckbox(
                         label = "Sanitation",
                         checked = sanitation,
-                        onCheckedChange = { sanitation = it }
+                        onCheckedChange = { sanitation = it },
+                        enabled = mode == VisitorMode.TIME_IN,
+                        readOnlyStyle = mode == VisitorMode.TIME_OUT
                     )
                     VisitorCheckbox(
                         label = "PPE",
                         checked = ppe,
-                        onCheckedChange = { ppe = it }
+                        onCheckedChange = { ppe = it },
+                        enabled = mode == VisitorMode.TIME_IN,
+                        readOnlyStyle = mode == VisitorMode.TIME_OUT
                     )
                 }
 
@@ -382,78 +555,126 @@ fun VisitorScreen(
                         onClick = {
                             focusManager.clearFocus()
 
-                            when {
-                                date.isBlank() -> {
-                                    dialogTitle = "Missing Date"
-                                    dialogMessage = "Please select a date."
-                                    showDialog = true
-                                    return@Button
-                                }
-                                timeIn.isBlank() -> {
-                                    dialogTitle = "Missing Time In"
-                                    dialogMessage = "Please select time in."
-                                    showDialog = true
-                                    return@Button
-                                }
-                                timeOut.isBlank() -> {
-                                    dialogTitle = "Missing Time Out"
-                                    dialogMessage = "Please select time out."
-                                    showDialog = true
-                                    return@Button
-                                }
-                                name.isBlank() -> {
-                                    dialogTitle = "Missing Name"
-                                    dialogMessage = "Please enter the visitor name."
-                                    showDialog = true
-                                    return@Button
-                                }
-                                purpose.isBlank() -> {
-                                    dialogTitle = "Missing Purpose"
-                                    dialogMessage = "Please enter the purpose."
-                                    showDialog = true
-                                    return@Button
-                                }
-                            }
-
-                            coroutineScope.launch {
-                                isLoading = true
-                                visitorService.submitVisitorLog(
-                                    context = context,
-                                    employeeId = employeeId,
-                                    date = date,
-                                    timeIn = timeIn,
-                                    timeOut = timeOut,
-                                    name = name.trim(),
-                                    purpose = purpose.trim(),
-                                    footBath = footBath,
-                                    sanitation = sanitation,
-                                    ppe = ppe,
-                                    photoUri = selectedPhotoUri
-                                ).onSuccess { success ->
-                                    if (success) {
-                                        dialogTitle = "Submitted"
-                                        dialogMessage = "Visitor log submitted successfully."
+                            if (mode == VisitorMode.TIME_IN) {
+                                when {
+                                    date.isBlank() -> {
+                                        dialogTitle = "Missing Date"
+                                        dialogMessage = "Please select a date."
                                         showDialog = true
-                                        date = ""
-                                        timeIn = ""
-                                        timeOut = ""
-                                        name = ""
-                                        purpose = ""
-                                        footBath = false
-                                        sanitation = false
-                                        ppe = false
-                                        selectedPhotoUri = null
-                                    } else {
+                                        return@Button
+                                    }
+                                    timeIn.isBlank() -> {
+                                        dialogTitle = "Missing Time In"
+                                        dialogMessage = "Please select time in."
+                                        showDialog = true
+                                        return@Button
+                                    }
+                                    name.isBlank() -> {
+                                        dialogTitle = "Missing Name"
+                                        dialogMessage = "Please enter the visitor name."
+                                        showDialog = true
+                                        return@Button
+                                    }
+                                    purpose.isBlank() -> {
+                                        dialogTitle = "Missing Purpose"
+                                        dialogMessage = "Please enter the purpose."
+                                        showDialog = true
+                                        return@Button
+                                    }
+                                }
+
+                                coroutineScope.launch {
+                                    isLoading = true
+                                    visitorService.submitVisitorTimeIn(
+                                        context = context,
+                                        employeeId = employeeId,
+                                        date = date,
+                                        timeIn = timeIn,
+                                        name = name.trim(),
+                                        purpose = purpose.trim(),
+                                        footBath = footBath,
+                                        sanitation = sanitation,
+                                        ppe = ppe,
+                                        photoUri = selectedPhotoUri
+                                    ).onSuccess { success ->
+                                        if (success) {
+                                            dialogTitle = "Submitted"
+                                            dialogMessage = "Visitor timed in successfully."
+                                            showDialog = true
+                                            date = ""
+                                            timeIn = ""
+                                            timeOut = ""
+                                            name = ""
+                                            purpose = ""
+                                            footBath = false
+                                            sanitation = false
+                                            ppe = false
+                                            selectedPhotoUri = null
+                                            selectedPhotoUrl = null
+                                        } else {
+                                            dialogTitle = "Submission Failed"
+                                            dialogMessage = "Failed to submit visitor time in."
+                                            showDialog = true
+                                        }
+                                    }.onFailure {
                                         dialogTitle = "Submission Failed"
-                                        dialogMessage = "Failed to submit visitor log."
+                                        dialogMessage = it.message ?: "Failed to submit visitor time in."
                                         showDialog = true
                                     }
-                                }.onFailure {
-                                    dialogTitle = "Submission Failed"
-                                    dialogMessage = it.message ?: "Failed to submit visitor log."
-                                    showDialog = true
+                                    isLoading = false
                                 }
-                                isLoading = false
+                            } else {
+                                when {
+                                    selectedVisitorId == null -> {
+                                        dialogTitle = "Missing Visitor"
+                                        dialogMessage = "Please select a visitor to time out."
+                                        showDialog = true
+                                        return@Button
+                                    }
+                                    timeOut.isBlank() -> {
+                                        dialogTitle = "Missing Time Out"
+                                        dialogMessage = "Please select time out."
+                                        showDialog = true
+                                        return@Button
+                                    }
+                                }
+
+                                coroutineScope.launch {
+                                    isLoading = true
+                                    visitorService.submitVisitorTimeOut(
+                                        employeeId = employeeId,
+                                        visitorLogId = selectedVisitorId!!,
+                                        timeOut = timeOut
+                                    ).onSuccess { success ->
+                                        if (success) {
+                                            dialogTitle = "Submitted"
+                                            dialogMessage = "Visitor timed out successfully."
+                                            showDialog = true
+                                            mode = VisitorMode.TIME_IN
+                                            openVisitors = emptyList()
+                                            selectedVisitorId = null
+                                            date = ""
+                                            timeIn = ""
+                                            timeOut = ""
+                                            name = ""
+                                            purpose = ""
+                                            footBath = false
+                                            sanitation = false
+                                            ppe = false
+                                            selectedPhotoUri = null
+                                            selectedPhotoUrl = null
+                                        } else {
+                                            dialogTitle = "Submission Failed"
+                                            dialogMessage = "Failed to submit visitor time out."
+                                            showDialog = true
+                                        }
+                                    }.onFailure {
+                                        dialogTitle = "Submission Failed"
+                                        dialogMessage = it.message ?: "Failed to submit visitor time out."
+                                        showDialog = true
+                                    }
+                                    isLoading = false
+                                }
                             }
                         },
                         shape = RoundedCornerShape(50),
@@ -462,7 +683,13 @@ fun VisitorScreen(
                         enabled = !isLoading
                     ) {
                         Text(
-                            text = if (isLoading) "Submitting..." else "Submit",
+                            text = if (isLoading) {
+                                "Submitting..."
+                            } else if (mode == VisitorMode.TIME_IN) {
+                                "Time In"
+                            } else {
+                                "Time Out"
+                            },
                             color = Color.White,
                             fontFamily = VisitorPoppins
                         )
@@ -474,22 +701,55 @@ fun VisitorScreen(
 }
 
 @Composable
+private fun VisitorModeButton(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        shape = RoundedCornerShape(50),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (selected) Color(0xFF1E5D36) else Color(0xFFDCE6DE),
+            contentColor = if (selected) Color.White else Color(0xFF1E5D36)
+        )
+    ) {
+        Text(
+            text = label,
+            fontFamily = VisitorPoppins,
+            fontWeight = FontWeight.SemiBold
+        )
+    }
+}
+
+@Composable
 private fun VisitorCheckbox(
     label: String,
     checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean,
+    readOnlyStyle: Boolean
 ) {
     Column {
         VisitorLabel(label)
         Box(
             modifier = Modifier
                 .size(28.dp)
-                .border(2.dp, Color(0xFF6A6A6A), RoundedCornerShape(4.dp))
-                .background(
-                    if (checked) Color(0xFF1E5D36) else Color.Transparent,
+                .border(
+                    2.dp,
+                    if (readOnlyStyle) Color(0xFFB0B0B0) else Color(0xFF6A6A6A),
                     RoundedCornerShape(4.dp)
                 )
-                .clickable { onCheckedChange(!checked) }
+                .background(
+                    when {
+                        checked && readOnlyStyle -> Color(0xFF9AA59C)
+                        checked -> Color(0xFF1E5D36)
+                        readOnlyStyle -> Color(0xFFE0E0E0)
+                        else -> Color.Transparent
+                    },
+                    RoundedCornerShape(4.dp)
+                )
+                .clickable(enabled = enabled) { onCheckedChange(!checked) }
         )
     }
 }
@@ -506,19 +766,28 @@ private fun VisitorLabel(text: String) {
 }
 
 @Composable
-private fun VisitorInputField(value: String, onValueChange: (String) -> Unit) {
+private fun VisitorInputField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    enabled: Boolean,
+    readOnlyStyle: Boolean
+) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
+        enabled = enabled,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         shape = RoundedCornerShape(20.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFEDEDED),
-            unfocusedContainerColor = Color(0xFFEDEDED),
-            focusedBorderColor = Color(0xFFBDBDBD),
-            unfocusedBorderColor = Color(0xFFBDBDBD),
-            cursorColor = Color.Black
+            focusedContainerColor = if (readOnlyStyle) Color(0xFFE2E2E2) else Color(0xFFEDEDED),
+            unfocusedContainerColor = if (readOnlyStyle) Color(0xFFE2E2E2) else Color(0xFFEDEDED),
+            disabledContainerColor = Color(0xFFE2E2E2),
+            focusedBorderColor = if (readOnlyStyle) Color(0xFFB8B8B8) else Color(0xFFBDBDBD),
+            unfocusedBorderColor = if (readOnlyStyle) Color(0xFFB8B8B8) else Color(0xFFBDBDBD),
+            disabledBorderColor = Color(0xFFB8B8B8),
+            cursorColor = Color.Black,
+            disabledTextColor = Color(0xFF666666)
         )
     )
 }
@@ -527,15 +796,24 @@ private fun VisitorInputField(value: String, onValueChange: (String) -> Unit) {
 private fun VisitorPickerField(
     value: String,
     placeholder: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    enabled: Boolean,
+    readOnlyStyle: Boolean
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
-            .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
-            .clickable { onClick() }
+            .background(
+                if (readOnlyStyle) Color(0xFFE2E2E2) else Color(0xFFEDEDED),
+                RoundedCornerShape(20.dp)
+            )
+            .border(
+                1.dp,
+                if (readOnlyStyle) Color(0xFFB8B8B8) else Color(0xFFBDBDBD),
+                RoundedCornerShape(20.dp)
+            )
+            .clickable(enabled = enabled) { onClick() }
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart
     ) {
@@ -543,7 +821,7 @@ private fun VisitorPickerField(
             text = if (value.isBlank()) placeholder else value,
             fontFamily = VisitorPoppins,
             fontSize = 14.sp,
-            color = if (value.isBlank()) Color(0xFF6E6E6E) else Color.Black,
+            color = if (value.isBlank()) Color(0xFF6E6E6E) else if (readOnlyStyle) Color(0xFF666666) else Color.Black,
             maxLines = 1
         )
     }

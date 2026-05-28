@@ -7,6 +7,7 @@ import io.github.jan.supabase.storage.uploadToSignedUrl
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -23,15 +24,13 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
-data class VisitorSubmitRequest(
+data class VisitorTimeInRequest(
     @SerialName("employee_id")
     val employeeId: Int,
     @SerialName("date")
     val date: String,
     @SerialName("time_in")
     val timeIn: String,
-    @SerialName("time_out")
-    val timeOut: String,
     @SerialName("name")
     val name: String,
     @SerialName("purpose")
@@ -44,6 +43,16 @@ data class VisitorSubmitRequest(
     val ppe: Boolean,
     @SerialName("photo_path")
     val photoPath: String? = null
+)
+
+@Serializable
+data class VisitorTimeOutRequest(
+    @SerialName("employee_id")
+    val employeeId: Int,
+    @SerialName("visitor_log_id")
+    val visitorLogId: Int,
+    @SerialName("time_out")
+    val timeOut: String
 )
 
 @Serializable
@@ -78,6 +87,50 @@ data class VisitorApiMessageResponse(
     val message: String? = null
 )
 
+@Serializable
+data class OpenVisitorApiRow(
+    @SerialName("id")
+    val id: Int,
+    @SerialName("date")
+    val date: String? = null,
+    @SerialName("time_in")
+    val timeIn: String? = null,
+    @SerialName("name")
+    val name: String? = null,
+    @SerialName("purpose")
+    val purpose: String? = null,
+    @SerialName("foot_bath")
+    val footBath: Boolean? = null,
+    @SerialName("sanitation")
+    val sanitation: Boolean? = null,
+    @SerialName("ppe")
+    val ppe: Boolean? = null,
+    @SerialName("photo_url")
+    val photoUrl: String? = null
+)
+
+@Serializable
+data class OpenVisitorsResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("visitors")
+    val visitors: List<OpenVisitorApiRow> = emptyList(),
+    @SerialName("message")
+    val message: String? = null
+)
+
+data class OpenVisitorUiState(
+    val id: Int,
+    val date: String,
+    val timeIn: String,
+    val name: String,
+    val purpose: String,
+    val footBath: Boolean,
+    val sanitation: Boolean,
+    val ppe: Boolean,
+    val photoUrl: String?
+)
+
 class VisitorBackendService(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
@@ -87,12 +140,11 @@ class VisitorBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun submitVisitorLog(
+    suspend fun submitVisitorTimeIn(
         context: Context,
         employeeId: Int,
         date: String,
         timeIn: String,
-        timeOut: String,
         name: String,
         purpose: String,
         footBath: Boolean,
@@ -108,11 +160,10 @@ class VisitorBackendService(
                     null
                 }
 
-                val requestBody = VisitorSubmitRequest(
+                val requestBody = VisitorTimeInRequest(
                     employeeId = employeeId,
                     date = date,
                     timeIn = timeIn,
-                    timeOut = timeOut,
                     name = name,
                     purpose = purpose,
                     footBath = footBath,
@@ -121,7 +172,7 @@ class VisitorBackendService(
                     photoPath = uploadedPath
                 )
 
-                val responseText = httpClient.post("$baseUrl/api/mobile/visitor") {
+                val responseText = httpClient.post("$baseUrl/api/mobile/visitor/time-in") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
                     setBody(json.encodeToString(requestBody))
@@ -131,7 +182,72 @@ class VisitorBackendService(
 
                 if (parsed is JsonObject && parsed["success"] == null) {
                     val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Failed to submit visitor log.")
+                    error(errorResponse.message ?: "Failed to submit visitor time in.")
+                }
+
+                val response = json.decodeFromJsonElement<VisitorApiMessageResponse>(parsed)
+                response.success == true
+            }
+        }
+    }
+
+    suspend fun getOpenVisitors(employeeId: Int): Result<List<OpenVisitorUiState>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val responseText = httpClient.get("$baseUrl/api/mobile/visitor/open?employee_id=$employeeId") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Failed to load open visitors.")
+                }
+
+                val response = json.decodeFromJsonElement<OpenVisitorsResponse>(parsed)
+
+                response.visitors.map {
+                    OpenVisitorUiState(
+                        id = it.id,
+                        date = it.date.orEmpty(),
+                        timeIn = it.timeIn.orEmpty(),
+                        name = it.name.orEmpty(),
+                        purpose = it.purpose.orEmpty(),
+                        footBath = it.footBath == true,
+                        sanitation = it.sanitation == true,
+                        ppe = it.ppe == true,
+                        photoUrl = it.photoUrl
+                    )
+                }
+            }
+        }
+    }
+
+    suspend fun submitVisitorTimeOut(
+        employeeId: Int,
+        visitorLogId: Int,
+        timeOut: String
+    ): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val requestBody = VisitorTimeOutRequest(
+                    employeeId = employeeId,
+                    visitorLogId = visitorLogId,
+                    timeOut = timeOut
+                )
+
+                val responseText = httpClient.post("$baseUrl/api/mobile/visitor/time-out") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(json.encodeToString(requestBody))
+                }.bodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Failed to submit visitor time out.")
                 }
 
                 val response = json.decodeFromJsonElement<VisitorApiMessageResponse>(parsed)
