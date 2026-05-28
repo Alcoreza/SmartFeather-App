@@ -8,6 +8,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -35,16 +36,14 @@ import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -69,10 +68,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.roundToInt
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.foundation.border
 
 data class DashboardStat(
     val title: String,
@@ -151,8 +146,6 @@ fun placeholderDashboardState(): DashboardUiState {
         pendingTaskCount = 1,
         pendingTask = PendingTaskSummary(
             title = "Cleaning",
-            detail = "Clean the feeder area and inspect drinker lines.",
-            priority = "High",
             finishBy = "May 28, 4:30 PM",
             houseLabel = "House 11",
             penLabel = "Pen 25"
@@ -886,18 +879,6 @@ private fun PendingTaskBanner(
                         )
                     }
 
-                    if (task.detail.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = task.detail,
-                            fontFamily = DashboardPoppins,
-                            fontSize = 12.sp,
-                            color = Color.White.copy(alpha = 0.96f),
-                            lineHeight = 16.sp,
-                            maxLines = 2
-                        )
-                    }
-
                     val meta = listOfNotNull(
                         task.finishBy.takeIf { it.isNotBlank() }?.let { "Due $it" },
                         listOf(task.houseLabel, task.penLabel)
@@ -912,7 +893,7 @@ private fun PendingTaskBanner(
                             text = meta,
                             fontFamily = DashboardPoppins,
                             fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.78f),
+                            color = Color.White.copy(alpha = 0.80f),
                             lineHeight = 13.sp
                         )
                     }

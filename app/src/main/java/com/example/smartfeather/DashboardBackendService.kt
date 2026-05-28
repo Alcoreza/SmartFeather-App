@@ -119,8 +119,6 @@ data class SensorFilterState(
 
 data class PendingTaskSummary(
     val title: String,
-    val detail: String,
-    val priority: String,
     val finishBy: String,
     val houseLabel: String,
     val penLabel: String
@@ -212,8 +210,6 @@ class DashboardBackendService(
                 pendingTask = response.pendingTask?.let {
                     PendingTaskSummary(
                         title = it.title.orEmpty(),
-                        detail = it.detail.orEmpty(),
-                        priority = it.priority.orEmpty(),
                         finishBy = it.finishBy.orEmpty(),
                         houseLabel = it.houseLabel.orEmpty(),
                         penLabel = it.penLabel.orEmpty()
