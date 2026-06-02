@@ -1,12 +1,19 @@
 package com.example.smartfeather
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,7 +41,6 @@ import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -47,7 +53,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -55,10 +60,11 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.foundation.layout.fillMaxHeight
 
 enum class TaskStatus {
     PENDING,
@@ -90,11 +96,25 @@ data class TaskItem(
 )
 
 private val AppPoppins = FontFamily(
-    Font(R.font.poppins_regular, FontWeight.Normal),
-    Font(R.font.poppins_medium, FontWeight.Medium),
-    Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold)
+    Font(R.font.manrope_regular, FontWeight.Normal),
+    Font(R.font.manrope_medium, FontWeight.Medium),
+    Font(R.font.manrope_semibold, FontWeight.SemiBold),
+    Font(R.font.manrope_bold, FontWeight.Bold),
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold)
 )
+
+private val TaskCream = Color(0xFFF1ECE2)
+private val TaskSurface = Color(0xFFFFFCF6)
+private val TaskSurfaceAlt = Color(0xFFE9E1D4)
+private val TaskInk = Color(0xFF101A13)
+private val TaskMuted = Color(0xFF6A7068)
+private val TaskLine = Color(0xFFD7CFC1)
+private val TaskGreen = Color(0xFF1F7A3A)
+private val TaskDeepGreen = Color(0xFF032416)
+private val TaskPanelDark = Color(0xFF10271A)
+private val PendingColor = Color(0xFFE79A43)
+private val ApprovalColor = Color(0xFFC98213)
+private val CompletedColor = Color(0xFF3C9A52)
 
 @Composable
 fun TasksScreen(
@@ -110,6 +130,7 @@ fun TasksScreen(
     val tasks = remember { mutableStateListOf<TaskItem>() }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var contentVisible by remember { mutableStateOf(false) }
 
     var showPendingTasks by remember { mutableStateOf(true) }
     var showForApprovalTasks by remember { mutableStateOf(true) }
@@ -117,6 +138,7 @@ fun TasksScreen(
 
     LaunchedEffect(employeeId) {
         isLoading = true
+        contentVisible = false
         errorMessage = null
 
         taskService.getTasksForFlockman(employeeId)
@@ -130,6 +152,7 @@ fun TasksScreen(
             }
 
         isLoading = false
+        contentVisible = true
     }
 
     val pendingTasks = tasks.filter { it.status == TaskStatus.PENDING }
@@ -137,7 +160,7 @@ fun TasksScreen(
     val completedTasks = tasks.filter { it.status == TaskStatus.COMPLETED }
 
     Scaffold(
-        containerColor = Color(0xFFF5F2EE),
+        containerColor = TaskCream,
         bottomBar = {
             TasksBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
@@ -151,7 +174,7 @@ fun TasksScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF8F6F2), Color(0xFFF1EEEA))
+                        colors = listOf(Color(0xFFFFFCF7), TaskCream, Color(0xFFF2EEE5))
                     )
                 )
                 .padding(innerPadding)
@@ -162,110 +185,264 @@ fun TasksScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 18.dp, vertical = 18.dp)
             ) {
-                Text(
-                    text = "Tasks",
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                    fontFamily = AppPoppins,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 22.sp,
-                    color = Color(0xFF171717)
+                TaskHeader(
+                    pendingCount = pendingTasks.size,
+                    approvalCount = forApprovalTasks.size,
+                    completedCount = completedTasks.size
                 )
 
                 Spacer(modifier = Modifier.height(18.dp))
 
                 if (isLoading) {
-                    Card(
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "Loading tasks...",
-                            modifier = Modifier.padding(18.dp),
-                            fontFamily = AppPoppins,
-                            fontSize = 14.sp,
-                            color = Color(0xFF6A6A6A)
-                        )
-                    }
+                    TaskLoadingSkeleton()
+                    Spacer(modifier = Modifier.height(20.dp))
+                    return@Column
+                }
 
+                errorMessage?.let {
+                    ErrorCard(message = it)
                     Spacer(modifier = Modifier.height(18.dp))
                 }
 
-                if (errorMessage != null) {
-                    Card(
-                        shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = errorMessage ?: "Something went wrong.",
-                            modifier = Modifier.padding(18.dp),
-                            fontFamily = AppPoppins,
-                            fontSize = 14.sp,
-                            color = Color(0xFFC51E1E)
+                AnimatedVisibility(
+                    visible = contentVisible,
+                    enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
+                        animationSpec = tween(420, easing = FastOutSlowInEasing),
+                        initialOffsetY = { it / 10 }
+                    )
+                ) {
+                    Column {
+                        TaskStatusSection(
+                            title = "Pending",
+                            subtitle = "Tasks waiting to be completed",
+                            count = pendingTasks.size,
+                            color = PendingColor,
+                            isExpanded = showPendingTasks,
+                            onToggleClick = { showPendingTasks = !showPendingTasks },
+                            visible = showPendingTasks,
+                            items = pendingTasks,
+                            emptyText = "No pending tasks right now.",
+                            onTaskClick = onPendingTaskClick
                         )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        TaskStatusSection(
+                            title = "For Approval",
+                            subtitle = "Submitted tasks waiting for verification",
+                            count = forApprovalTasks.size,
+                            color = ApprovalColor,
+                            isExpanded = showForApprovalTasks,
+                            onToggleClick = { showForApprovalTasks = !showForApprovalTasks },
+                            visible = showForApprovalTasks,
+                            items = forApprovalTasks,
+                            emptyText = "No tasks waiting for verification.",
+                            onTaskClick = onCompletedTaskClick
+                        )
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        TaskStatusSection(
+                            title = "Completed",
+                            subtitle = "Verified and finished work",
+                            count = completedTasks.size,
+                            color = CompletedColor,
+                            isExpanded = showCompletedTasks,
+                            onToggleClick = { showCompletedTasks = !showCompletedTasks },
+                            visible = showCompletedTasks,
+                            items = completedTasks,
+                            emptyText = "No completed tasks yet.",
+                            onTaskClick = onCompletedTaskClick
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
                     }
-
-                    Spacer(modifier = Modifier.height(18.dp))
                 }
-
-                SectionHeader(
-                    text = "Pending",
-                    containerColor = Color(0xFFF4A46E),
-                    isExpanded = showPendingTasks,
-                    onToggleClick = { showPendingTasks = !showPendingTasks }
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                AnimatedTaskListSection(
-                    visible = showPendingTasks,
-                    items = pendingTasks,
-                    emptyText = "No pending tasks right now.",
-                    onTaskClick = onPendingTaskClick
-                )
-
-                Spacer(modifier = Modifier.height(26.dp))
-
-                SectionHeader(
-                    text = "For Approval",
-                    containerColor = Color(0xFFD88913),
-                    isExpanded = showForApprovalTasks,
-                    onToggleClick = { showForApprovalTasks = !showForApprovalTasks }
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                AnimatedTaskListSection(
-                    visible = showForApprovalTasks,
-                    items = forApprovalTasks,
-                    emptyText = "No tasks waiting for verification.",
-                    onTaskClick = onCompletedTaskClick
-                )
-
-                Spacer(modifier = Modifier.height(26.dp))
-
-                SectionHeader(
-                    text = "Completed",
-                    containerColor = Color(0xFF266F33),
-                    isExpanded = showCompletedTasks,
-                    onToggleClick = { showCompletedTasks = !showCompletedTasks }
-                )
-
-                Spacer(modifier = Modifier.height(14.dp))
-
-                AnimatedTaskListSection(
-                    visible = showCompletedTasks,
-                    items = completedTasks,
-                    emptyText = "No completed tasks yet.",
-                    onTaskClick = onCompletedTaskClick
-                )
-
-                Spacer(modifier = Modifier.height(20.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun TaskHeader(
+    pendingCount: Int,
+    approvalCount: Int,
+    completedCount: Int
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = "Tasks",
+            fontFamily = AppPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 30.sp,
+            color = TaskInk
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = "Assigned work, submissions, and completed tasks.",
+            fontFamily = AppPoppins,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            color = TaskMuted,
+            lineHeight = 18.sp
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .background(Color(0xFFF4F0E8))
+                .border(1.dp, TaskLine, RoundedCornerShape(22.dp))
+                .padding(horizontal = 10.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            QuietMetric(
+                label = "Pending",
+                value = pendingCount.toString(),
+                color = PendingColor,
+                modifier = Modifier.weight(1f)
+            )
+
+            QuietMetric(
+                label = "Approval",
+                value = approvalCount.toString(),
+                color = ApprovalColor,
+                modifier = Modifier.weight(1f)
+            )
+
+            QuietMetric(
+                label = "Done",
+                value = completedCount.toString(),
+                color = CompletedColor,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun QuietMetric(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color.White.copy(alpha = 0.62f))
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = value,
+            fontFamily = AppPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = color
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = label,
+            fontFamily = AppPoppins,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 10.sp,
+            color = TaskMuted,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun HeaderMetric(
+    label: String,
+    value: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.13f))
+            .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+
+        Spacer(modifier = Modifier.width(7.dp))
+
+        Column {
+            Text(
+                text = value,
+                fontFamily = AppPoppins,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 16.sp,
+                color = Color.White
+            )
+
+            Text(
+                text = label,
+                fontFamily = AppPoppins,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 10.sp,
+                color = Color.White.copy(alpha = 0.76f),
+                lineHeight = 11.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun TaskStatusSection(
+    title: String,
+    subtitle: String,
+    count: Int,
+    color: Color,
+    isExpanded: Boolean,
+    onToggleClick: () -> Unit,
+    visible: Boolean,
+    items: List<TaskItem>,
+    emptyText: String,
+    onTaskClick: (TaskItem) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = TaskPanelDark),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                text = title,
+                subtitle = subtitle,
+                count = count,
+                containerColor = color,
+                isExpanded = isExpanded,
+                onToggleClick = onToggleClick
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            AnimatedTaskListSection(
+                visible = visible,
+                items = items,
+                emptyText = emptyText,
+                onTaskClick = onTaskClick
+            )
         }
     }
 }
@@ -273,69 +450,80 @@ fun TasksScreen(
 @Composable
 private fun SectionHeader(
     text: String,
+    subtitle: String,
+    count: Int,
     containerColor: Color,
     isExpanded: Boolean,
     onToggleClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SectionChip(
-            text = text,
-            containerColor = containerColor
-        )
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(containerColor.copy(alpha = 0.18f))
+                .border(1.dp, containerColor.copy(alpha = 0.45f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = count.toString(),
+                fontFamily = AppPoppins,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 15.sp,
+                color = containerColor
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = text,
+                fontFamily = AppPoppins,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 18.sp,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = subtitle,
+                fontFamily = AppPoppins,
+                fontWeight = FontWeight.Medium,
+                fontSize = 11.sp,
+                color = Color.White.copy(alpha = 0.68f),
+                lineHeight = 13.sp
+            )
+        }
 
         Box(
             modifier = Modifier
-                .size(30.dp)
+                .size(32.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.85f))
-                .border(
-                    width = 1.dp,
-                    color = Color(0xFFE1DDD6),
-                    shape = CircleShape
-                )
+                .background(Color.White.copy(alpha = 0.10f))
+                .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape)
                 .clickable { onToggleClick() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = if (isExpanded) {
-                    Icons.Outlined.VisibilityOff
-                } else {
-                    Icons.Outlined.Visibility
-                },
-                contentDescription = if (isExpanded) {
-                    "Hide $text tasks"
-                } else {
-                    "Show $text tasks"
-                },
-                tint = Color(0xFF6F6A63),
+                imageVector = if (isExpanded) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                contentDescription = if (isExpanded) "Hide $text tasks" else "Show $text tasks",
+                tint = Color.White.copy(alpha = 0.82f),
                 modifier = Modifier.size(15.dp)
             )
         }
     }
 }
 
-@Composable
-private fun SectionChip(
-    text: String,
-    containerColor: Color
-) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(containerColor)
-            .padding(horizontal = 14.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = text,
-            fontFamily = AppPoppins,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
-            color = Color.White
-        )
+private fun statusShortLabel(text: String): String {
+    return when (text) {
+        "For Approval" -> "Review"
+        "Completed" -> "Done"
+        else -> text
     }
 }
 
@@ -348,12 +536,12 @@ private fun AnimatedTaskListSection(
 ) {
     AnimatedVisibility(
         visible = visible,
-        enter = fadeIn(animationSpec = tween(180)) + expandVertically(
-            animationSpec = tween(220),
+        enter = fadeIn(animationSpec = tween(220)) + expandVertically(
+            animationSpec = tween(260, easing = FastOutSlowInEasing),
             expandFrom = Alignment.Top
         ),
-        exit = fadeOut(animationSpec = tween(120)) + shrinkVertically(
-            animationSpec = tween(180),
+        exit = fadeOut(animationSpec = tween(140)) + shrinkVertically(
+            animationSpec = tween(210, easing = FastOutSlowInEasing),
             shrinkTowards = Alignment.Top
         )
     ) {
@@ -372,48 +560,47 @@ private fun TaskListSection(
     onTaskClick: (TaskItem) -> Unit
 ) {
     if (items.isEmpty()) {
-        Card(
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 5.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = emptyText,
-                modifier = Modifier.padding(18.dp),
-                fontFamily = AppPoppins,
-                fontSize = 14.sp,
-                color = Color(0xFF6A6A6A)
-            )
-        }
+        EmptyTaskCard(emptyText)
         return
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(28.dp)),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(modifier = Modifier.padding(vertical = 4.dp)) {
-            items.forEachIndexed { index, item ->
+        items.forEachIndexed { index, item ->
+            AnimatedVisibility(
+                visible = true,
+                enter = fadeIn(animationSpec = tween(240 + index * 35)) + slideInVertically(
+                    animationSpec = tween(260 + index * 35, easing = FastOutSlowInEasing),
+                    initialOffsetY = { it / 5 }
+                )
+            ) {
                 TaskRow(
                     item = item,
                     onTaskClick = onTaskClick
                 )
-
-                if (index != items.lastIndex) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(1.dp)
-                            .background(Color(0xFFEDE8E2))
-                    )
-                }
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyTaskCard(emptyText: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color.White.copy(alpha = 0.08f))
+            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
+            .padding(horizontal = 16.dp, vertical = 18.dp)
+    ) {
+        Text(
+            text = emptyText,
+            fontFamily = AppPoppins,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            color = Color.White.copy(alpha = 0.72f)
+        )
     }
 }
 
@@ -422,104 +609,327 @@ private fun TaskRow(
     item: TaskItem,
     onTaskClick: (TaskItem) -> Unit
 ) {
-    Row(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onTaskClick(item) }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.Bottom
+            .clickable { onTaskClick(item) },
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFCF6)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
-            modifier = Modifier.weight(1f)
+        Row(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                text = item.title,
-                fontFamily = AppPoppins,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = Color(0xFF1B6A23)
+            Box(
+                modifier = Modifier
+                    .width(5.dp)
+                    .fillMaxHeight()
+                    .background(priorityColor(item.priority))
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Column(
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.Top) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.title,
+                            fontFamily = AppPoppins,
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 16.sp,
+                            color = TaskInk,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
 
-            Text(
-                text = item.description,
-                fontFamily = AppPoppins,
-                fontWeight = FontWeight.Normal,
-                fontSize = 13.sp,
-                color = Color(0xFF6A6A6A),
-                lineHeight = 17.sp
-            )
+                        Spacer(modifier = Modifier.height(5.dp))
+
+                        Text(
+                            text = item.description,
+                            fontFamily = AppPoppins,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp,
+                            color = TaskMuted,
+                            lineHeight = 17.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(Color(0xFFE8F3E8))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = "${item.houseLabel} | ${item.penLabel}",
+                            fontFamily = AppPoppins,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 11.sp,
+                            color = TaskGreen,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    TaskTimeLabel(
+                        item = item,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
         }
+    }
+}
 
-        Spacer(modifier = Modifier.width(10.dp))
 
-        Column(
-            horizontalAlignment = Alignment.End
-        ) {
-            Text(
-                text = "${item.houseLabel} | ${item.penLabel}",
-                fontFamily = AppPoppins,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = Color(0xFF7FA9A2)
-            )
+@Composable
+private fun LocationChip(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(Color(0xFFEAF6EC))
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = text,
+            fontFamily = AppPoppins,
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.sp,
+            color = TaskGreen,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
 
-            Spacer(modifier = Modifier.height(2.dp))
+@Composable
+private fun TaskTimeLabel(
+    item: TaskItem,
+    modifier: Modifier = Modifier
+) {
+    val label = when (item.status) {
+        TaskStatus.PENDING -> item.finishByLabel
+        TaskStatus.FOR_APPROVAL -> item.submittedLabel
+        TaskStatus.COMPLETED -> item.completedLabel
+    }
 
-            when (item.status) {
-                TaskStatus.PENDING -> {
-                    if (item.finishByLabel.isNotBlank()) {
-                        Text(
-                            text = item.finishByLabel,
-                            fontFamily = AppPoppins,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp,
-                            lineHeight = 13.sp,
-                            textAlign = TextAlign.End,
-                            color = Color(0xFFD17A17)
-                        )
-                    }
+    val color = when (item.status) {
+        TaskStatus.PENDING -> Color(0xFFD17A17)
+        TaskStatus.FOR_APPROVAL -> Color(0xFFC27A11)
+        TaskStatus.COMPLETED -> Color(0xFF4E8D39)
+    }
+
+    if (label.isBlank()) {
+        Spacer(modifier = modifier)
+        return
+    }
+
+    Text(
+        text = label.replace("\n", " "),
+        modifier = modifier,
+        fontFamily = AppPoppins,
+        fontWeight = FontWeight.Bold,
+        fontSize = 11.sp,
+        lineHeight = 13.sp,
+        textAlign = TextAlign.End,
+        color = color,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun TaskLoadingSkeleton() {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        SkeletonHeaderBlock()
+        SkeletonSection()
+        SkeletonSection()
+        SkeletonSection()
+    }
+}
+
+@Composable
+private fun SkeletonHeaderBlock() {
+    val alpha = skeletonAlpha()
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(154.dp)
+            .clip(RoundedCornerShape(30.dp))
+            .background(TaskDeepGreen.copy(alpha = 0.92f))
+            .padding(20.dp)
+    ) {
+        Column {
+            SkeletonLine(widthFraction = 0.42f, height = 26.dp, alpha = alpha, color = Color.White)
+            Spacer(modifier = Modifier.height(10.dp))
+            SkeletonLine(widthFraction = 0.72f, height = 14.dp, alpha = alpha, color = Color.White)
+            Spacer(modifier = Modifier.height(22.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                SkeletonBox(modifier = Modifier.weight(1f).height(48.dp), alpha = alpha, color = Color.White)
+                SkeletonBox(modifier = Modifier.weight(1f).height(48.dp), alpha = alpha, color = Color.White)
+                SkeletonBox(modifier = Modifier.weight(1f).height(48.dp), alpha = alpha, color = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonSection() {
+    val alpha = skeletonAlpha()
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = TaskSurface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SkeletonBox(
+                    modifier = Modifier.size(42.dp),
+                    alpha = alpha,
+                    shape = CircleShape
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    SkeletonLine(widthFraction = 0.42f, height = 18.dp, alpha = alpha)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    SkeletonLine(widthFraction = 0.72f, height = 11.dp, alpha = alpha)
                 }
 
-                TaskStatus.FOR_APPROVAL -> {
-                    if (item.submittedLabel.isNotBlank()) {
-                        Text(
-                            text = item.submittedLabel,
-                            fontFamily = AppPoppins,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp,
-                            lineHeight = 13.sp,
-                            textAlign = TextAlign.End,
-                            color = Color(0xFFC27A11)
-                        )
-                    }
-                }
+                SkeletonBox(
+                    modifier = Modifier.size(32.dp),
+                    alpha = alpha,
+                    shape = CircleShape
+                )
+            }
 
-                TaskStatus.COMPLETED -> {
-                    if (item.completedLabel.isNotBlank()) {
-                        Text(
-                            text = item.completedLabel,
-                            fontFamily = AppPoppins,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 12.sp,
-                            lineHeight = 13.sp,
-                            textAlign = TextAlign.End,
-                            color = Color(0xFF4E8D39)
-                        )
-                    }
+            Spacer(modifier = Modifier.height(14.dp))
+
+            repeat(2) {
+                SkeletonTaskCard(alpha = alpha)
+                if (it == 0) Spacer(modifier = Modifier.height(10.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonTaskCard(alpha: Float) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(116.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xFFFFFEFB))
+            .border(1.dp, Color(0xFFEDE8DE), RoundedCornerShape(24.dp))
+            .padding(15.dp)
+    ) {
+        Column {
+            Row(verticalAlignment = Alignment.Top) {
+                SkeletonBox(
+                    modifier = Modifier.size(10.dp),
+                    alpha = alpha,
+                    shape = CircleShape
+                )
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    SkeletonLine(widthFraction = 0.46f, height = 17.dp, alpha = alpha)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SkeletonLine(widthFraction = 0.95f, height = 12.dp, alpha = alpha)
+                    Spacer(modifier = Modifier.height(6.dp))
+                    SkeletonLine(widthFraction = 0.70f, height = 12.dp, alpha = alpha)
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Box(
-                modifier = Modifier
-                    .size(10.dp)
-                    .clip(CircleShape)
-                    .background(priorityColor(item.priority))
-            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                SkeletonLine(widthFraction = 0.36f, height = 22.dp, alpha = alpha)
+                Spacer(modifier = Modifier.weight(1f))
+                SkeletonLine(widthFraction = 0.30f, height = 12.dp, alpha = alpha)
+            }
         }
+    }
+}
+
+@Composable
+private fun skeletonAlpha(): Float {
+    val transition = rememberInfiniteTransition(label = "taskSkeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.34f,
+        targetValue = 0.82f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "taskSkeletonAlpha"
+    )
+    return alpha
+}
+
+@Composable
+private fun SkeletonLine(
+    widthFraction: Float,
+    height: androidx.compose.ui.unit.Dp,
+    alpha: Float,
+    color: Color = Color(0xFFDAD4C8)
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(widthFraction)
+            .height(height)
+            .clip(RoundedCornerShape(999.dp))
+            .background(color.copy(alpha = alpha))
+    )
+}
+
+@Composable
+private fun SkeletonBox(
+    modifier: Modifier,
+    alpha: Float,
+    color: Color = Color(0xFFDAD4C8),
+    shape: Shape = RoundedCornerShape(16.dp)
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(color.copy(alpha = alpha))
+    )
+}
+
+@Composable
+private fun ErrorCard(message: String) {
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF7F5)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(18.dp),
+            fontFamily = AppPoppins,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp,
+            color = Color(0xFFC51E1E)
+        )
     }
 }
 
@@ -541,7 +951,7 @@ private fun TasksBottomNavBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                brush = Brush.verticalGradient(
+                Brush.verticalGradient(
                     colors = listOf(Color(0xFF06331D), Color(0xFF022816))
                 )
             )
@@ -550,33 +960,10 @@ private fun TasksBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomNavItem(
-            icon = Icons.Outlined.Home,
-            label = "Dashboard",
-            selected = false,
-            onClick = onDashboardClick
-        )
-
-        BottomNavItem(
-            icon = Icons.AutoMirrored.Outlined.List,
-            label = "Tasks",
-            selected = true,
-            onClick = {}
-        )
-
-        BottomNavItem(
-            icon = Icons.Outlined.Edit,
-            label = "Farm Management",
-            selected = false,
-            onClick = onFarmManagementClick
-        )
-
-        BottomNavItem(
-            icon = Icons.Outlined.AccountCircle,
-            label = "Profile",
-            selected = false,
-            onClick = onProfileClick
-        )
+        BottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
+        BottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", true, {})
+        BottomNavItem(Icons.Outlined.Edit, "Farm Management", false, onFarmManagementClick)
+        BottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, onProfileClick)
     }
 }
 
@@ -588,7 +975,10 @@ private fun BottomNavItem(
     onClick: () -> Unit
 ) {
     Column(
-        modifier = Modifier.clickable { onClick() },
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
@@ -609,17 +999,4 @@ private fun BottomNavItem(
             lineHeight = 11.sp
         )
     }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun TasksScreenPreview() {
-    TasksScreen(
-        employeeId = 2,
-        onNavigateToDashboard = {},
-        onNavigateToFarmManagement = {},
-        onNavigateToProfile = {},
-        onPendingTaskClick = {},
-        onCompletedTaskClick = {}
-    )
 }

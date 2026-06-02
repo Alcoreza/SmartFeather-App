@@ -2,9 +2,14 @@ package com.example.smartfeather
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -39,7 +44,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -53,9 +57,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -67,6 +71,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 data class DashboardStat(
@@ -104,11 +109,27 @@ data class QuickAccessItem(
 )
 
 private val DashboardPoppins = FontFamily(
-    Font(R.font.poppins_regular, FontWeight.Normal),
-    Font(R.font.poppins_medium, FontWeight.Medium),
-    Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold)
+    Font(R.font.manrope_extralight, FontWeight.ExtraLight),
+    Font(R.font.manrope_light, FontWeight.Light),
+    Font(R.font.manrope_regular, FontWeight.Normal),
+    Font(R.font.manrope_medium, FontWeight.Medium),
+    Font(R.font.manrope_semibold, FontWeight.SemiBold),
+    Font(R.font.manrope_bold, FontWeight.Bold),
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold),
+    Font(R.font.manrope_variablefont_wght, FontWeight.Black)
 )
+
+private val FarmCream = Color(0xFFF6F3EC)
+private val FarmSurface = Color(0xFFFFFCF7)
+private val FarmSurfaceAlt = Color(0xFFF3EFE7)
+private val FarmInk = Color(0xFF121A14)
+private val FarmMuted = Color(0xFF677168)
+private val FarmLine = Color(0xFFD8D0C3)
+private val FarmGreen = Color(0xFF1F7A3A)
+private val FarmDeepGreen = Color(0xFF062717)
+private val FarmGreenTwo = Color(0xFF155C2D)
+private val FarmSoftGreen = Color(0xFFEAF3EC)
+private val FarmAmber = Color(0xFFE28622)
 
 fun placeholderDashboardState(): DashboardUiState {
     return DashboardUiState(
@@ -125,7 +146,7 @@ fun placeholderDashboardState(): DashboardUiState {
         ),
         resources = listOf(
             ResourceData("Feed", 90f, "%", 100f, Color(0xFFC88A3D)),
-            ResourceData("Water", 40f, "%", 100f, Color(0xFF6CDDE5))
+            ResourceData("Water", 40f, "%", 100f, Color(0xFF3EA7B3))
         ),
         environmentFilter = SensorFilterState(
             selectedHouseId = 1,
@@ -150,6 +171,33 @@ fun placeholderDashboardState(): DashboardUiState {
             houseLabel = "House 11",
             penLabel = "Pen 25"
         ),
+        quickAccess = listOf(
+            QuickAccessItem("Population", Icons.Outlined.CheckCircle, Color(0xFFD92C2C), "population"),
+            QuickAccessItem("Feeds Refill", Icons.AutoMirrored.Outlined.List, Color(0xFFCC8A2D), "feeds_refill"),
+            QuickAccessItem("Biosecurity", Icons.Outlined.Edit, Color(0xFF2F8F45), "biosecurity")
+        )
+    )
+}
+
+fun emptyDashboardState(): DashboardUiState {
+    return DashboardUiState(
+        welcomeText = "",
+        overviewDateLabel = "",
+        stats = emptyList(),
+        gauges = emptyList(),
+        resources = emptyList(),
+        environmentFilter = SensorFilterState(
+            selectedHouseId = null,
+            selectedPenId = null,
+            options = emptyList()
+        ),
+        resourceFilter = SensorFilterState(
+            selectedHouseId = null,
+            selectedPenId = null,
+            options = emptyList()
+        ),
+        pendingTaskCount = 0,
+        pendingTask = null,
         quickAccess = listOf(
             QuickAccessItem("Population", Icons.Outlined.CheckCircle, Color(0xFFD92C2C), "population"),
             QuickAccessItem("Feeds Refill", Icons.AutoMirrored.Outlined.List, Color(0xFFCC8A2D), "feeds_refill"),
@@ -183,17 +231,19 @@ fun DashboardScreen(
     onQuickAccessFeedsRefill: () -> Unit,
     onQuickAccessBiosecurity: () -> Unit,
     uiState: DashboardUiState,
+    isLoading: Boolean = false,
     onEnvironmentFilterChange: (SensorFilterOption) -> Unit = {},
     onResourceFilterChange: (SensorFilterOption) -> Unit = {}
 ) {
     var contentVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(uiState) {
+    LaunchedEffect(Unit) {
+        delay(120)
         contentVisible = true
     }
 
     Scaffold(
-        containerColor = Color(0xFFF6F3EF),
+        containerColor = FarmCream,
         bottomBar = {
             BottomNavBar(
                 onTasksClick = onNavigateToTasks,
@@ -207,101 +257,384 @@ fun DashboardScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF8F6F2), Color(0xFFF0ECE7))
+                        colors = listOf(Color(0xFFFBF8F1), FarmCream, Color(0xFFEDE7DA))
                     )
                 )
                 .padding(innerPadding)
         ) {
             val isTablet = maxWidth >= 700.dp
+            val pagePadding = if (isTablet) 30.dp else 18.dp
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = pagePadding, vertical = 18.dp)
+            ) {
+                if (isLoading || !contentVisible) {
+                    DashboardSkeleton(isTablet = isTablet)
+                    Spacer(modifier = Modifier.height(20.dp))
+                    return@Column
+                }
+
+                AnimatedVisibility(
+                    visible = contentVisible,
+                    enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
+                        animationSpec = tween(420, easing = FastOutSlowInEasing),
+                        initialOffsetY = { it / 18 }
+                    )
+                ) {
+                    Column {
+                        DashboardCommandCenter(
+                            welcomeText = uiState.welcomeText,
+                            overviewDateLabel = uiState.overviewDateLabel,
+                            pendingTaskCount = uiState.pendingTaskCount,
+                            isTablet = isTablet,
+                            onTasksClick = onNavigateToTasks
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        QuickAccessSection(
+                            items = uiState.quickAccess,
+                            isTablet = isTablet,
+                            onItemClick = { actionKey ->
+                                when (actionKey) {
+                                    "population" -> onQuickAccessPopulation()
+                                    "feeds_refill" -> onQuickAccessFeedsRefill()
+                                    "biosecurity" -> onQuickAccessBiosecurity()
+                                }
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        FarmOverviewCard(
+                            stats = uiState.stats,
+                            overviewDateLabel = uiState.overviewDateLabel,
+                            isTablet = isTablet
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        PendingTaskBanner(
+                            count = uiState.pendingTaskCount,
+                            task = uiState.pendingTask,
+                            isTablet = isTablet,
+                            onClick = onNavigateToTasks
+                        )
+
+                        Spacer(modifier = Modifier.height(22.dp))
+
+                        SectionTitle(
+                            title = "House Conditions",
+                            subtitle = "Review sensor readings by house and pen.",
+                            isTablet = isTablet
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        MonitoringSection(
+                            gauges = uiState.gauges,
+                            resources = uiState.resources,
+                            environmentFilter = uiState.environmentFilter,
+                            resourceFilter = uiState.resourceFilter,
+                            isTablet = isTablet,
+                            onEnvironmentFilterChange = onEnvironmentFilterChange,
+                            onResourceFilterChange = onResourceFilterChange
+                        )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardCommandCenter(
+    welcomeText: String,
+    overviewDateLabel: String,
+    pendingTaskCount: Int,
+    isTablet: Boolean,
+    onTasksClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(30.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(FarmDeepGreen, Color(0xFF0E4025), FarmGreenTwo)
+                )
+            )
+            .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = if (isTablet) 28.dp else 22.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = welcomeText,
+                    fontFamily = DashboardPoppins,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = if (isTablet) 32.sp else 27.sp,
+                    color = Color.White,
+                    lineHeight = if (isTablet) 36.sp else 31.sp
+                )
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = "Farm operations dashboard",
+                    fontFamily = DashboardPoppins,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = if (isTablet) 15.sp else 13.sp,
+                    color = Color.White.copy(alpha = 0.74f),
+                    lineHeight = 18.sp
+                )
+            }
 
             Box(
                 modifier = Modifier
-                    .size(if (isTablet) 360.dp else 240.dp)
-                    .align(Alignment.TopEnd)
-                    .background(
-                        brush = Brush.radialGradient(
-                            colors = listOf(Color(0x1636A24D), Color.Transparent)
-                        ),
-                        shape = CircleShape
-                    )
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.12f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "SF",
+                    fontFamily = DashboardPoppins,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 14.sp,
+                    color = Color.White
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommandPill(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.12f))
+            .border(1.dp, Color.White.copy(alpha = 0.15f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF7AF28B))
+        )
+
+        Spacer(modifier = Modifier.width(10.dp))
+
+        Column {
+            Text(
+                text = label,
+                fontFamily = DashboardPoppins,
+                fontWeight = FontWeight.Light,
+                fontSize = 11.sp,
+                color = Color.White.copy(alpha = 0.72f)
             )
 
-            AnimatedVisibility(
-                visible = contentVisible,
-                enter = fadeIn(animationSpec = tween(500)) + slideInVertically(
-                    animationSpec = tween(500, easing = FastOutSlowInEasing),
-                    initialOffsetY = { it / 8 }
+            Text(
+                text = value,
+                fontFamily = DashboardPoppins,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 14.sp,
+                color = Color.White
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionTitle(
+    title: String,
+    subtitle: String,
+    isTablet: Boolean
+) {
+    Column {
+        Text(
+            text = title,
+            fontFamily = DashboardPoppins,
+            fontSize = if (isTablet) 22.sp else 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = FarmInk
+        )
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        Text(
+            text = subtitle,
+            fontFamily = DashboardPoppins,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = FarmMuted
+        )
+    }
+}
+
+@Composable
+private fun FarmOverviewCard(
+    stats: List<DashboardStat>,
+    overviewDateLabel: String,
+    isTablet: Boolean
+) {
+    val hasStats = stats.isNotEmpty()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(FarmSurface)
+            .padding(16.dp)
+    ) {
+        Column {
+            Text(
+                text = "Daily Production",
+                fontFamily = DashboardPoppins,
+                fontSize = if (isTablet) 22.sp else 19.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = FarmInk
+            )
+
+            if (overviewDateLabel.isNotBlank()) {
+                Text(
+                    text = overviewDateLabel,
+                    fontFamily = DashboardPoppins,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = FarmMuted
                 )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (!hasStats) {
+            DashboardEmptyState(
+                title = "No production data yet",
+                subtitle = "Production totals will appear once today’s records are available."
+            )
+            return@Column
+        }
+
+        if (isTablet) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = 18.dp)
-                ) {
-                    Text(
-                        text = uiState.welcomeText,
-                        fontFamily = DashboardPoppins,
-                        fontSize = if (isTablet) 32.sp else 26.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF171717)
-                    )
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    FarmOverviewCard(
-                        stats = uiState.stats,
-                        overviewDateLabel = uiState.overviewDateLabel,
-                        isTablet = isTablet
-                    )
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    MonitoringSection(
-                        gauges = uiState.gauges,
-                        resources = uiState.resources,
-                        environmentFilter = uiState.environmentFilter,
-                        resourceFilter = uiState.resourceFilter,
-                        isTablet = isTablet,
-                        onEnvironmentFilterChange = onEnvironmentFilterChange,
-                        onResourceFilterChange = onResourceFilterChange
-                    )
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    PendingTaskBanner(
-                        count = uiState.pendingTaskCount,
-                        task = uiState.pendingTask,
-                        isTablet = isTablet
-                    )
-
-                    Spacer(modifier = Modifier.height(22.dp))
-
-                    Text(
-                        text = "Quick Access",
-                        fontFamily = DashboardPoppins,
-                        fontSize = if (isTablet) 22.sp else 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF181818)
-                    )
-
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    QuickAccessSection(
-                        items = uiState.quickAccess,
-                        isTablet = isTablet,
-                        onItemClick = { actionKey ->
-                            when (actionKey) {
-                                "population" -> onQuickAccessPopulation()
-                                "feeds_refill" -> onQuickAccessFeedsRefill()
-                                "biosecurity" -> onQuickAccessBiosecurity()
-                            }
-                        }
-                    )
-
-                    Spacer(modifier = Modifier.height(18.dp))
+                stats.forEach { stat ->
+                    StatTile(stat = stat, modifier = Modifier.weight(1f))
                 }
             }
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                stats.forEach { stat ->
+                    StatTile(stat = stat, modifier = Modifier.fillMaxWidth())
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardEmptyState(
+    title: String,
+    subtitle: String
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xFFF8F5EF))
+            .padding(horizontal = 16.dp, vertical = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = title,
+            fontFamily = DashboardPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 14.sp,
+            color = FarmInk,
+            textAlign = TextAlign.Center
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = subtitle,
+            fontFamily = DashboardPoppins,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            color = FarmMuted,
+            textAlign = TextAlign.Center,
+            lineHeight = 16.sp
+        )
+    }
+}
+
+@Composable
+private fun StatTile(
+    stat: DashboardStat,
+    modifier: Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xFFF8F5EF))
+            .padding(horizontal = 14.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(stat.iconBg.copy(alpha = 0.13f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = stat.icon,
+                contentDescription = stat.title,
+                tint = stat.iconBg,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column {
+            Text(
+                text = stat.value,
+                fontFamily = DashboardPoppins,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 23.sp,
+                color = FarmInk,
+                lineHeight = 26.sp
+            )
+
+            Spacer(modifier = Modifier.height(1.dp))
+
+            Text(
+                text = stat.title,
+                fontFamily = DashboardPoppins,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 12.sp,
+                color = FarmMuted,
+                lineHeight = 14.sp
+            )
         }
     }
 }
@@ -322,105 +655,141 @@ private fun MonitoringSection(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             MonitoringCard(
-                title = "Environmental Monitoring",
+                title = "Environment",
+                description = "Temperature and ammonia",
                 filterState = environmentFilter,
                 modifier = Modifier.weight(1f),
-                cardHeight = 300.dp,
+                cardHeight = 350.dp,
                 onFilterChange = onEnvironmentFilterChange
             ) {
-                GaugeBlock(gauges.getOrElse(0) { GaugeData("Temperature", 0f, "deg", 0f, 40f, Color(0xFF6ABF4B)) }, modifier = Modifier.weight(1f))
-                DividerLine()
-                GaugeBlock(gauges.getOrElse(1) { GaugeData("Ammonia", 0f, "ppm", 0f, 40f, Color(0xFFF4B43A)) }, modifier = Modifier.weight(1f))
+                SensorReadingRow(
+                    first = { gauges.getOrNull(0)?.let { GaugeBlock(it, Modifier.weight(1f)) } },
+                    second = { gauges.getOrNull(1)?.let { GaugeBlock(it, Modifier.weight(1f)) } }
+                )
             }
 
             MonitoringCard(
-                title = "Feed and Water Monitoring",
+                title = "Resources",
+                description = "Feed and water levels",
                 filterState = resourceFilter,
                 modifier = Modifier.weight(1f),
-                cardHeight = 300.dp,
+                cardHeight = 350.dp,
                 onFilterChange = onResourceFilterChange
             ) {
-                ResourceBlock(resources.getOrElse(0) { ResourceData("Feed", 0f, "%", 100f, Color(0xFFC88A3D)) }, modifier = Modifier.weight(1f))
-                DividerLine()
-                ResourceBlock(resources.getOrElse(1) { ResourceData("Water", 0f, "%", 100f, Color(0xFF6CDDE5)) }, modifier = Modifier.weight(1f))
+                SensorReadingRow(
+                    first = { resources.getOrNull(0)?.let { ResourceBlock(it, Modifier.weight(1f)) } },
+                    second = { resources.getOrNull(1)?.let { ResourceBlock(it, Modifier.weight(1f)) } }
+                )
             }
         }
     } else {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             MonitoringCard(
-                title = "Environmental Monitoring",
+                title = "Environment",
+                description = "Temperature and ammonia",
                 filterState = environmentFilter,
                 modifier = Modifier.fillMaxWidth(),
-                cardHeight = 290.dp,
+                cardHeight = 350.dp,
                 onFilterChange = onEnvironmentFilterChange
             ) {
-                GaugeBlock(gauges.getOrElse(0) { GaugeData("Temperature", 0f, "deg", 0f, 40f, Color(0xFF6ABF4B)) }, modifier = Modifier.weight(1f))
-                DividerLine()
-                GaugeBlock(gauges.getOrElse(1) { GaugeData("Ammonia", 0f, "ppm", 0f, 40f, Color(0xFFF4B43A)) }, modifier = Modifier.weight(1f))
+                SensorReadingRow(
+                    first = { gauges.getOrNull(0)?.let { GaugeBlock(it, Modifier.weight(1f)) } },
+                    second = { gauges.getOrNull(1)?.let { GaugeBlock(it, Modifier.weight(1f)) } }
+                )
             }
 
             MonitoringCard(
-                title = "Feed and Water Monitoring",
+                title = "Resources",
+                description = "Feed and water levels",
                 filterState = resourceFilter,
                 modifier = Modifier.fillMaxWidth(),
-                cardHeight = 290.dp,
+                cardHeight = 350.dp,
                 onFilterChange = onResourceFilterChange
             ) {
-                ResourceBlock(resources.getOrElse(0) { ResourceData("Feed", 0f, "%", 100f, Color(0xFFC88A3D)) }, modifier = Modifier.weight(1f))
-                DividerLine()
-                ResourceBlock(resources.getOrElse(1) { ResourceData("Water", 0f, "%", 100f, Color(0xFF6CDDE5)) }, modifier = Modifier.weight(1f))
+                SensorReadingRow(
+                    first = { resources.getOrNull(0)?.let { ResourceBlock(it, Modifier.weight(1f)) } },
+                    second = { resources.getOrNull(1)?.let { ResourceBlock(it, Modifier.weight(1f)) } }
+                )
             }
         }
     }
 }
 
 @Composable
+private fun RowScope.SensorReadingRow(
+    first: @Composable RowScope.() -> Unit,
+    second: @Composable RowScope.() -> Unit
+) {
+    first()
+    DividerLine()
+    second()
+}
+
+@Composable
 private fun MonitoringCard(
     title: String,
+    description: String,
     filterState: SensorFilterState,
     modifier: Modifier = Modifier,
     cardHeight: Dp,
     onFilterChange: (SensorFilterOption) -> Unit,
     content: @Composable RowScope.() -> Unit
 ) {
-    Card(
-        modifier = modifier.height(cardHeight),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+    Column(
+        modifier = modifier
+            .height(cardHeight)
+            .clip(RoundedCornerShape(26.dp))
+            .background(FarmSurface)
+            .padding(16.dp)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)) {
-            Text(
-                text = title,
-                fontFamily = DashboardPoppins,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF171717),
-                lineHeight = 18.sp
+        Row(verticalAlignment = Alignment.Top) {
+            Box(
+                modifier = Modifier
+                    .padding(top = 4.dp)
+                    .size(width = 4.dp, height = 38.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(if (title == "Environment") FarmGreen else FarmAmber)
             )
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-            SensorFilterDropdown(
-                filterState = filterState,
-                onSelected = onFilterChange
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontFamily = DashboardPoppins,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = FarmInk
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Row(
-                modifier = Modifier.fillMaxSize(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-                content = content
-            )
+                Text(
+                    text = description,
+                    fontFamily = DashboardPoppins,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = FarmMuted
+                )
+            }
         }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SensorFilterDropdown(
+            filterState = filterState,
+            onSelected = onFilterChange
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            content = content
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SensorFilterDropdown(
     filterState: SensorFilterState,
@@ -432,67 +801,98 @@ private fun SensorFilterDropdown(
         it.houseId == filterState.selectedHouseId && it.penId == filterState.selectedPenId
     }
 
-    Box(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFF8F7F4))
-            .border(1.dp, Color(0xFFD7DDD6), RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(18.dp))
+            .background(FarmSurfaceAlt)
+            .border(1.dp, FarmLine, RoundedCornerShape(18.dp))
             .clickable(enabled = filterState.options.isNotEmpty()) {
                 showPicker = true
             }
-            .padding(horizontal = 14.dp, vertical = 12.dp)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Column {
+        Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "House and Pen",
+                text = "Location",
                 fontFamily = DashboardPoppins,
                 fontSize = 10.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = Color(0xFF657064)
+                fontWeight = FontWeight.ExtraBold,
+                color = FarmMuted
             )
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(3.dp))
 
             Text(
                 text = selected?.displayLabel ?: "No sensor assignment",
                 fontFamily = DashboardPoppins,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = if (selected == null) Color(0xFF8A8A8A) else Color(0xFF1D241E)
+                fontWeight = FontWeight.ExtraBold,
+                color = if (selected == null) Color(0xFF8A8A8A) else FarmInk
             )
         }
+
+        Text(
+            text = "Change",
+            fontFamily = DashboardPoppins,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = FarmGreen
+        )
     }
 
     if (showPicker) {
         AlertDialog(
             onDismissRequest = { showPicker = false },
+            containerColor = FarmSurface,
+            shape = RoundedCornerShape(28.dp),
             title = {
                 Text(
-                    text = "Select Sensor Location",
+                    text = "Sensor Location",
                     fontFamily = DashboardPoppins,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.ExtraBold,
+                    color = FarmInk
                 )
             },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     filterState.options.forEach { option ->
-                        Box(
+                        val isSelected = option.houseId == filterState.selectedHouseId &&
+                                option.penId == filterState.selectedPenId
+
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(14.dp))
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(if (isSelected) FarmSoftGreen else Color(0xFFF8F5EF))
+                                .border(
+                                    1.dp,
+                                    if (isSelected) FarmGreen.copy(alpha = 0.35f) else FarmLine,
+                                    RoundedCornerShape(18.dp)
+                                )
                                 .clickable {
                                     showPicker = false
                                     onSelected(option)
                                 }
-                                .padding(horizontal = 10.dp, vertical = 12.dp)
+                                .padding(horizontal = 14.dp, vertical = 13.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(9.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isSelected) FarmGreen else FarmLine)
+                            )
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
                             Text(
                                 text = option.displayLabel,
                                 fontFamily = DashboardPoppins,
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = Color(0xFF1E2A20)
+                                fontWeight = FontWeight.ExtraBold,
+                                color = FarmInk
                             )
                         }
                     }
@@ -500,7 +900,12 @@ private fun SensorFilterDropdown(
             },
             confirmButton = {
                 TextButton(onClick = { showPicker = false }) {
-                    Text("Close", fontFamily = DashboardPoppins)
+                    Text(
+                        text = "Close",
+                        fontFamily = DashboardPoppins,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = FarmGreen
+                    )
                 }
             }
         )
@@ -514,7 +919,7 @@ private fun GaugeBlock(
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = gaugeProgress(data.value, data.min, data.max),
-        animationSpec = tween(800),
+        animationSpec = tween(850, easing = FastOutSlowInEasing),
         label = "gaugeProgress"
     )
 
@@ -526,19 +931,19 @@ private fun GaugeBlock(
         CircularGauge(
             progress = animatedProgress,
             color = data.color,
-            modifier = Modifier.size(88.dp),
+            modifier = Modifier.size(122.dp),
             centerText = formatValue(data.value, data.unit)
         )
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Text(
             text = data.label,
             fontFamily = DashboardPoppins,
             fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center,
-            color = Color(0xFF1B1B1B)
+            color = FarmInk
         )
 
         Spacer(modifier = Modifier.height(4.dp))
@@ -546,8 +951,9 @@ private fun GaugeBlock(
         Text(
             text = data.recordedAt ?: "No recent reading",
             fontFamily = DashboardPoppins,
+            fontWeight = FontWeight.Medium,
             fontSize = 10.sp,
-            color = Color(0xFF6B6B6B),
+            color = FarmMuted,
             textAlign = TextAlign.Center,
             lineHeight = 11.sp
         )
@@ -561,11 +967,9 @@ private fun ResourceBlock(
 ) {
     val animatedProgress by animateFloatAsState(
         targetValue = resourceProgress(data.value, data.max),
-        animationSpec = tween(800),
+        animationSpec = tween(850, easing = FastOutSlowInEasing),
         label = "resourceProgress"
     )
-
-    val containerHeight = 108.dp
 
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -574,143 +978,53 @@ private fun ResourceBlock(
     ) {
         Box(
             modifier = Modifier
-                .width(68.dp)
-                .height(containerHeight)
-                .clip(RoundedCornerShape(18.dp))
-                .background(Color(0xFFF0F4EE)),
+                .width(66.dp)
+                .height(106.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFFEFF3EC))
+                .border(1.dp, Color(0xFFDDE5D9), RoundedCornerShape(20.dp)),
             contentAlignment = Alignment.BottomCenter
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(0.72f)
+                    .fillMaxWidth(0.70f)
                     .fillMaxHeight(animatedProgress)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(15.dp))
                     .background(data.color)
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Text(
             text = data.label,
             fontFamily = DashboardPoppins,
             fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF1B1B1B)
+            fontWeight = FontWeight.ExtraBold,
+            color = FarmInk
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(3.dp))
 
         Text(
             text = formatValue(data.value, data.unit),
             fontFamily = DashboardPoppins,
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             fontWeight = FontWeight.ExtraBold,
             color = data.color
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(3.dp))
 
         Text(
             text = data.recordedAt ?: "No recent reading",
             fontFamily = DashboardPoppins,
+            fontWeight = FontWeight.Medium,
             fontSize = 10.sp,
-            color = Color(0xFF6B6B6B),
+            color = FarmMuted,
             textAlign = TextAlign.Center,
             lineHeight = 11.sp
         )
-    }
-}
-
-@Composable
-private fun FarmOverviewCard(
-    stats: List<DashboardStat>,
-    overviewDateLabel: String,
-    isTablet: Boolean
-) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF032C16)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(10.dp, RoundedCornerShape(24.dp))
-    ) {
-        Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp)) {
-            Text(
-                text = "Daily Farm Overview",
-                fontFamily = DashboardPoppins,
-                color = Color(0xFF72F07C),
-                fontSize = if (isTablet) 20.sp else 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                stats.forEach { stat ->
-                    Card(
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(20.dp),
-                        colors = CardDefaults.cardColors(containerColor = stat.bgColor),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(if (isTablet) 32.dp else 28.dp)
-                                    .clip(CircleShape)
-                                    .background(stat.iconBg),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = stat.icon,
-                                    contentDescription = stat.title,
-                                    tint = Color.White,
-                                    modifier = Modifier.size(if (isTablet) 16.dp else 14.dp)
-                                )
-                            }
-
-                            Spacer(modifier = Modifier.width(8.dp))
-
-                            Column {
-                                Text(
-                                    text = stat.value,
-                                    fontFamily = DashboardPoppins,
-                                    fontSize = if (isTablet) 13.sp else 12.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color(0xFF111111)
-                                )
-                                Text(
-                                    text = stat.title,
-                                    fontFamily = DashboardPoppins,
-                                    fontSize = if (isTablet) 10.sp else 9.sp,
-                                    color = Color(0xFF444444),
-                                    lineHeight = if (isTablet) 12.sp else 11.sp
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = overviewDateLabel,
-                modifier = Modifier.fillMaxWidth(),
-                textAlign = TextAlign.End,
-                fontFamily = DashboardPoppins,
-                fontSize = 10.sp,
-                color = Color.White.copy(alpha = 0.78f)
-            )
-        }
     }
 }
 
@@ -726,7 +1040,7 @@ private fun CircularGauge(
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val strokeWidth = 12.dp.toPx()
+            val strokeWidth = 13.dp.toPx()
 
             drawArc(
                 color = Color(0xFFE5ECE3),
@@ -747,9 +1061,10 @@ private fun CircularGauge(
 
         Box(
             modifier = Modifier
-                .size(46.dp)
+                .size(68.dp)
                 .clip(CircleShape)
-                .background(Color.White),
+                .background(Color.White)
+                .border(1.dp, Color(0xFFE8EDE6), CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -757,8 +1072,9 @@ private fun CircularGauge(
                 fontFamily = DashboardPoppins,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color(0xFF1A1A1A),
+                color = FarmInk,
                 textAlign = TextAlign.Center,
+                maxLines = 1,
                 lineHeight = 11.sp
             )
         }
@@ -770,8 +1086,8 @@ private fun DividerLine() {
     Box(
         modifier = Modifier
             .width(1.dp)
-            .height(116.dp)
-            .background(Color(0xFFDCDCDC))
+            .height(138.dp)
+            .background(FarmLine)
     )
 }
 
@@ -779,105 +1095,62 @@ private fun DividerLine() {
 private fun PendingTaskBanner(
     count: Int,
     task: PendingTaskSummary?,
-    isTablet: Boolean
+    isTablet: Boolean,
+    onClick: () -> Unit
 ) {
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(26.dp))
             .background(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF2E8B46), Color(0xFF215F31))
+                Brush.horizontalGradient(
+                    colors = listOf(Color(0xFF0B3A20), Color(0xFF1F7A3A))
                 )
             )
-            .padding(horizontal = 20.dp, vertical = 20.dp)
+            .clickable { onClick() }
+            .padding(20.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .size(if (isTablet) 120.dp else 92.dp)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(Color(0x16FFFFFF), Color.Transparent)
-                    ),
-                    shape = CircleShape
-                )
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = count.toString(),
+                fontFamily = DashboardPoppins,
+                fontSize = if (isTablet) 58.sp else 50.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White
+            )
 
-        if (count <= 0 || task == null) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "0",
+                    text = if (count <= 0 || task == null) "No Pending Task" else if (count == 1) "Pending Task" else "Pending Tasks",
                     fontFamily = DashboardPoppins,
-                    fontSize = if (isTablet) 56.sp else 48.sp,
+                    fontSize = if (isTablet) 24.sp else 21.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White
                 )
 
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
-                Column {
-                    Text(
-                        text = "No Pending Task",
-                        fontFamily = DashboardPoppins,
-                        fontSize = if (isTablet) 24.sp else 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
+                if (count <= 0 || task == null) {
                     Text(
                         text = "You're clear for now.",
                         fontFamily = DashboardPoppins,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.82f)
+                        color = Color.White.copy(alpha = 0.78f)
                     )
-                }
-            }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Top
-            ) {
-                Text(
-                    text = count.toString(),
-                    fontFamily = DashboardPoppins,
-                    fontSize = if (isTablet) 56.sp else 48.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
-                )
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
+                } else {
                     Text(
-                        text = if (count == 1) "Pending Task" else "Pending Tasks",
+                        text = task.title.ifBlank { "Task" },
                         fontFamily = DashboardPoppins,
-                        fontSize = if (isTablet) 24.sp else 20.sp,
-                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.ExtraBold,
                         color = Color.White
                     )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(Color.White.copy(alpha = 0.14f))
-                            .padding(horizontal = 10.dp, vertical = 5.dp)
-                    ) {
-                        Text(
-                            text = task.title.ifBlank { "Task" },
-                            fontFamily = DashboardPoppins,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.White
-                        )
-                    }
 
                     val meta = listOfNotNull(
                         task.finishBy.takeIf { it.isNotBlank() }?.let { "Due $it" },
@@ -885,15 +1158,17 @@ private fun PendingTaskBanner(
                             .filter { it.isNotBlank() }
                             .joinToString(" | ")
                             .takeIf { it.isNotBlank() }
-                    ).joinToString("  •  ")
+                    ).joinToString("  -  ")
 
                     if (meta.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
+
                         Text(
                             text = meta,
                             fontFamily = DashboardPoppins,
+                            fontWeight = FontWeight.Medium,
                             fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.80f),
+                            color = Color.White.copy(alpha = 0.78f),
                             lineHeight = 13.sp
                         )
                     }
@@ -912,35 +1187,32 @@ private fun QuickAccessSection(
     if (isTablet) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally)
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            items.forEach { item ->
+            items.forEachIndexed { index, item ->
                 QuickAccessCard(
                     item = item,
+                    index = index,
                     modifier = Modifier.weight(1f),
                     cardWidth = null,
-                    cardHeight = 118.dp,
+                    cardHeight = 112.dp,
                     onClick = { onItemClick(item.actionKey) }
                 )
             }
         }
     } else {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                items.forEach { item ->
-                    QuickAccessCard(
-                        item = item,
-                        cardWidth = 110.dp,
-                        cardHeight = 104.dp,
-                        onClick = { onItemClick(item.actionKey) }
-                    )
-                }
+            items.forEachIndexed { index, item ->
+                QuickAccessCard(
+                    item = item,
+                    index = index,
+                    cardWidth = 132.dp,
+                    cardHeight = 108.dp,
+                    onClick = { onItemClick(item.actionKey) }
+                )
             }
         }
     }
@@ -949,39 +1221,55 @@ private fun QuickAccessSection(
 @Composable
 private fun QuickAccessCard(
     item: QuickAccessItem,
+    index: Int,
     modifier: Modifier = Modifier,
-    cardWidth: Dp? = 110.dp,
-    cardHeight: Dp = 104.dp,
+    cardWidth: Dp? = 132.dp,
+    cardHeight: Dp = 108.dp,
     onClick: () -> Unit
 ) {
-    Card(
-        modifier = if (cardWidth != null) {
-            modifier.width(cardWidth).height(cardHeight).clickable { onClick() }
-        } else {
-            modifier.height(cardHeight).clickable { onClick() }
-        },
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 7.dp)
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(item.title) {
+        delay(index * 55L)
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(360)) +
+                slideInVertically(
+                    animationSpec = tween(420, easing = FastOutSlowInEasing),
+                    initialOffsetY = { it / 5 }
+                ) +
+                scaleIn(animationSpec = tween(360, easing = FastOutSlowInEasing), initialScale = 0.96f)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(13.dp),
+            modifier = if (cardWidth != null) {
+                modifier
+                    .width(cardWidth)
+                    .height(cardHeight)
+            } else {
+                modifier.height(cardHeight)
+            }
+                .clip(RoundedCornerShape(24.dp))
+                .background(FarmSurface)
+                .border(1.dp, FarmLine.copy(alpha = 0.82f), RoundedCornerShape(24.dp))
+                .clickable { onClick() }
+                .padding(14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Box(
                 modifier = Modifier
-                    .size(34.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(item.tint.copy(alpha = 0.12f)),
+                    .background(item.tint.copy(alpha = 0.13f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = item.icon,
                     contentDescription = item.title,
                     tint = item.tint,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
@@ -989,12 +1277,94 @@ private fun QuickAccessCard(
                 text = item.title,
                 fontFamily = DashboardPoppins,
                 fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF171717),
+                fontWeight = FontWeight.ExtraBold,
+                color = FarmInk,
                 lineHeight = 15.sp
             )
         }
     }
+}
+
+@Composable
+private fun DashboardSkeleton(isTablet: Boolean) {
+    val alpha = dashboardSkeletonAlpha()
+
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(184.dp),
+            alpha = alpha,
+            color = FarmDeepGreen,
+            shape = RoundedCornerShape(30.dp)
+        )
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            repeat(3) {
+                DashboardSkeletonBox(
+                    modifier = Modifier
+                        .width(if (isTablet) 180.dp else 132.dp)
+                        .height(108.dp),
+                    alpha = alpha,
+                    shape = RoundedCornerShape(24.dp)
+                )
+            }
+        }
+
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (isTablet) 150.dp else 270.dp),
+            alpha = alpha,
+            shape = RoundedCornerShape(26.dp)
+        )
+
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(118.dp),
+            alpha = alpha,
+            color = FarmGreen,
+            shape = RoundedCornerShape(26.dp)
+        )
+
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(318.dp),
+            alpha = alpha,
+            shape = RoundedCornerShape(26.dp)
+        )
+    }
+}
+
+@Composable
+private fun dashboardSkeletonAlpha(): Float {
+    val transition = rememberInfiniteTransition(label = "dashboardSkeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.28f,
+        targetValue = 0.62f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "dashboardSkeletonAlpha"
+    )
+    return alpha
+}
+
+@Composable
+private fun DashboardSkeletonBox(
+    modifier: Modifier,
+    alpha: Float,
+    color: Color = Color(0xFFD9D2C6),
+    shape: Shape = RoundedCornerShape(16.dp)
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(color.copy(alpha = alpha))
+    )
 }
 
 @Composable
@@ -1007,42 +1377,19 @@ fun BottomNavBar(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF06331D), Color(0xFF022816))
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFF07381F), Color(0xFF022716))
                 )
             )
             .navigationBarsPadding()
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomNavItem(
-            icon = Icons.Outlined.Home,
-            label = "Dashboard",
-            selected = true,
-            onClick = {}
-        )
-
-        BottomNavItem(
-            icon = Icons.AutoMirrored.Outlined.List,
-            label = "Tasks",
-            selected = false,
-            onClick = onTasksClick
-        )
-
-        BottomNavItem(
-            icon = Icons.Outlined.Edit,
-            label = "Farm Management",
-            selected = false,
-            onClick = onFarmManagementClick
-        )
-
-        BottomNavItem(
-            icon = Icons.Outlined.AccountCircle,
-            label = "Profile",
-            selected = false,
-            onClick = onProfileClick
-        )
+        BottomNavItem(Icons.Outlined.Home, "Dashboard", true, {})
+        BottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
+        BottomNavItem(Icons.Outlined.Edit, "Farm Management", false, onFarmManagementClick)
+        BottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, onProfileClick)
     }
 }
 
@@ -1054,13 +1401,16 @@ private fun BottomNavItem(
     onClick: () -> Unit
 ) {
     Column(
-        modifier = Modifier.clickable { onClick() },
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (selected) Color.White else Color(0xFFD7ECD9),
+            tint = if (selected) Color.White else Color(0xFFCFE8D2),
             modifier = Modifier.size(22.dp)
         )
 
@@ -1069,10 +1419,11 @@ private fun BottomNavItem(
         Text(
             text = label,
             fontFamily = DashboardPoppins,
-            fontSize = 10.sp,
-            color = if (selected) Color.White else Color(0xFFD7ECD9),
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
+            fontSize = 9.sp,
+            color = if (selected) Color.White else Color(0xFFCFE8D2),
             textAlign = TextAlign.Center,
-            lineHeight = 11.sp
+            lineHeight = 10.sp
         )
     }
 }

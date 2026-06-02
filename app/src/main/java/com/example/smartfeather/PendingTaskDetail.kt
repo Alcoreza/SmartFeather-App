@@ -4,7 +4,17 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -33,8 +43,6 @@ import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -42,6 +50,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,19 +61,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.ColumnScope
 
 data class PendingTaskDetailUiState(
     val id: Int,
@@ -77,17 +89,29 @@ data class PendingTaskDetailUiState(
 )
 
 private val DetailPoppins = FontFamily(
-    Font(R.font.poppins_regular, FontWeight.Normal),
-    Font(R.font.poppins_medium, FontWeight.Medium),
-    Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold)
+    Font(R.font.manrope_regular, FontWeight.Normal),
+    Font(R.font.manrope_medium, FontWeight.Medium),
+    Font(R.font.manrope_semibold, FontWeight.SemiBold),
+    Font(R.font.manrope_bold, FontWeight.Bold),
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold)
 )
+
+private val DetailBackground = Color(0xFFF6F3EC)
+private val DetailSurface = Color(0xFFFFFCF7)
+private val DetailSurfaceMuted = Color(0xFFEDE7DA)
+private val DetailInk = Color(0xFF121A14)
+private val DetailMuted = Color(0xFF677168)
+private val DetailLine = Color(0xFFD8D0C3)
+private val DetailGreen = Color(0xFF1F7A3A)
+private val DetailDeepGreen = Color(0xFF062717)
+private val DetailGreenTwo = Color(0xFF155C2D)
+private val PendingAccent = Color(0xFFE79A43)
 
 private fun priorityChipColor(priority: TaskPriority): Color {
     return when (priority) {
-        TaskPriority.LOW -> Color(0xFFFA7A1F)
-        TaskPriority.MID -> Color(0xFFC4420B)
-        TaskPriority.HIGH -> Color(0xFFC92222)
+        TaskPriority.LOW -> Color(0xFF2F7D46)
+        TaskPriority.MID -> Color(0xFFE28622)
+        TaskPriority.HIGH -> Color(0xFFC62B2B)
     }
 }
 
@@ -106,9 +130,16 @@ fun PendingTaskDetailScreen(
     var isSubmitting by remember { mutableStateOf(false) }
     var showBiosecurityDialog by remember { mutableStateOf(false) }
     var biosecurityMessage by remember { mutableStateOf("") }
+    var contentVisible by remember { mutableStateOf(false) }
 
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(task.id) {
+        contentVisible = false
+        delay(120)
+        contentVisible = true
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -119,22 +150,27 @@ fun PendingTaskDetailScreen(
     if (showBiosecurityDialog) {
         AlertDialog(
             onDismissRequest = { showBiosecurityDialog = false },
+            containerColor = DetailSurface,
             title = {
                 Text(
                     text = "Biosecurity Required",
                     fontFamily = DetailPoppins,
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.ExtraBold,
+                    color = DetailInk
                 )
             },
             text = {
                 Text(
                     text = biosecurityMessage,
-                    fontFamily = DetailPoppins
+                    fontFamily = DetailPoppins,
+                    fontWeight = FontWeight.Medium,
+                    color = DetailMuted,
+                    lineHeight = 21.sp
                 )
             },
             dismissButton = {
                 TextButton(onClick = { showBiosecurityDialog = false }) {
-                    Text("Back", fontFamily = DetailPoppins)
+                    Text("Back", fontFamily = DetailPoppins, color = DetailMuted)
                 }
             },
             confirmButton = {
@@ -144,14 +180,19 @@ fun PendingTaskDetailScreen(
                         onGoToBiosecurity()
                     }
                 ) {
-                    Text("Go to Personnel Logs", fontFamily = DetailPoppins)
+                    Text(
+                        text = "Go to Personnel Logs",
+                        fontFamily = DetailPoppins,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = DetailGreen
+                    )
                 }
             }
         )
     }
 
     Scaffold(
-        containerColor = Color(0xFFF5F2EE),
+        containerColor = DetailBackground,
         bottomBar = {
             TaskDetailBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
@@ -164,7 +205,7 @@ fun PendingTaskDetailScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFFF8F6F2), Color(0xFFF1EEEA))
+                        colors = listOf(Color(0xFFFBF8F1), DetailBackground, Color(0xFFEDE7DA))
                     )
                 )
                 .pointerInput(Unit) {
@@ -181,338 +222,665 @@ fun PendingTaskDetailScreen(
                     .imePadding()
                     .padding(horizontal = 18.dp, vertical = 18.dp)
             ) {
-                Box(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .clip(CircleShape)
-                            .clickable { onBackClick() }
-                            .padding(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
-                            tint = Color(0xFF171717),
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
+                DetailTopBar(onBackClick = onBackClick)
 
-                    Text(
-                        text = "Tasks",
-                        modifier = Modifier.fillMaxWidth(),
-                        textAlign = TextAlign.Center,
-                        fontFamily = DetailPoppins,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 22.sp,
-                        color = Color(0xFF171717)
+                Spacer(modifier = Modifier.height(18.dp))
+
+                if (!contentVisible) {
+                    PendingDetailSkeleton()
+                    Spacer(modifier = Modifier.height(20.dp))
+                    return@Column
+                }
+
+                AnimatedVisibility(
+                    visible = contentVisible,
+                    enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
+                        animationSpec = tween(420, easing = FastOutSlowInEasing),
+                        initialOffsetY = { it / 18 }
                     )
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
-                    Column(
-                        modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            DetailSectionChip(
-                                text = "Pending",
-                                containerColor = Color(0xFFF4A46E)
-                            )
+                    Column {
+                        WorkOrderHeader(task = task)
 
-                            DetailSectionChip(
-                                text = task.priorityLabel,
-                                containerColor = priorityChipColor(task.priority)
-                            )
-                        }
+                        Spacer(modifier = Modifier.height(22.dp))
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        WorkBriefSection(task = task)
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(18.dp)
-                        ) {
-                            DetailPlainInfo(
-                                title = "Time Assigned",
-                                value = task.timeAssigned,
-                                modifier = Modifier.weight(1f)
-                            )
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                            DetailPlainInfo(
-                                title = "Finish By",
-                                value = task.finishBy,
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(28.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
-                        Text(
-                            text = task.title,
-                            fontFamily = DetailPoppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            color = Color(0xFF1B6A23)
-                        )
-
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Text(
-                            text = task.description,
-                            fontFamily = DetailPoppins,
-                            fontWeight = FontWeight.Normal,
-                            fontSize = 14.sp,
-                            lineHeight = 21.sp,
-                            color = Color(0xFF3F3F3F)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
-                        Text(
-                            text = "Add Photo:",
-                            fontFamily = DetailPoppins,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp,
-                            color = Color(0xFF6B6B6B)
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(18.dp))
-                                .background(Color(0xFFF7F7F7))
-                                .clickable {
-                                    photoPickerLauncher.launch(
-                                        PickVisualMediaRequest(
-                                            ActivityResultContracts.PickVisualMedia.ImageOnly
-                                        )
+                        SubmissionWorkspace(
+                            selectedPhotoUri = selectedPhotoUri,
+                            notes = notes,
+                            onNotesChange = { notes = it },
+                            onPhotoClick = {
+                                photoPickerLauncher.launch(
+                                    PickVisualMediaRequest(
+                                        ActivityResultContracts.PickVisualMedia.ImageOnly
                                     )
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (selectedPhotoUri != null) {
-                                AsyncImage(
-                                    model = selectedPhotoUri,
-                                    contentDescription = "Selected proof photo",
-                                    modifier = Modifier.fillMaxSize()
                                 )
-                            } else {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Edit,
-                                        contentDescription = "Upload proof photo",
-                                        tint = Color(0xFF7A7A7A),
-                                        modifier = Modifier.size(34.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.height(8.dp))
-
-                                    Text(
-                                        text = "Tap to upload proof of work",
-                                        fontFamily = DetailPoppins,
-                                        fontWeight = FontWeight.Medium,
-                                        fontSize = 13.sp,
-                                        color = Color(0xFF8A8A8A)
-                                    )
-                                }
                             }
+                        )
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        submitError?.let {
+                            ErrorBanner(message = it)
+                            Spacer(modifier = Modifier.height(12.dp))
                         }
-                    }
-                }
 
-                Spacer(modifier = Modifier.height(18.dp))
+                        Button(
+                            onClick = {
+                                focusManager.clearFocus()
+                                submitError = null
 
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp)) {
-                        Text(
-                            text = "Notes:",
-                            fontFamily = DetailPoppins,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp,
-                            color = Color(0xFF6B6B6B)
-                        )
+                                coroutineScope.launch {
+                                    isSubmitting = true
+                                    onSubmit(notes, selectedPhotoUri)
+                                        .onFailure {
+                                            val message = it.message ?: "Failed to submit task."
 
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        OutlinedTextField(
-                            value = notes,
-                            onValueChange = { notes = it },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(130.dp),
-                            shape = RoundedCornerShape(18.dp),
-                            placeholder = {
-                                Text(
-                                    text = "Add notes here",
-                                    fontFamily = DetailPoppins,
-                                    color = Color(0xFF9A9A9A)
-                                )
-                            },
-                            keyboardOptions = KeyboardOptions(
-                                capitalization = KeyboardCapitalization.Sentences
-                            ),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color(0xFFFDFDFD),
-                                unfocusedContainerColor = Color(0xFFFDFDFD),
-                                focusedBorderColor = Color.Transparent,
-                                unfocusedBorderColor = Color.Transparent
-                            )
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(20.dp))
-
-                submitError?.let {
-                    Text(
-                        text = it,
-                        fontFamily = DetailPoppins,
-                        fontSize = 13.sp,
-                        color = Color(0xFFC92222)
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    Button(
-                        onClick = {
-                            focusManager.clearFocus()
-                            submitError = null
-
-                            coroutineScope.launch {
-                                isSubmitting = true
-                                onSubmit(notes, selectedPhotoUri)
-                                    .onFailure {
-                                        val message = it.message ?: "Failed to submit task."
-
-                                        if (
-                                            message.contains("personnel biosecurity", ignoreCase = true) ||
-                                            message.contains("scan IN", ignoreCase = true) ||
-                                            message.contains("different house", ignoreCase = true) ||
-                                            message.contains("correct house", ignoreCase = true)
-                                        ) {
-                                            biosecurityMessage = message
-                                            showBiosecurityDialog = true
-                                        } else {
-                                            submitError = message
+                                            if (
+                                                message.contains("personnel biosecurity", ignoreCase = true) ||
+                                                message.contains("scan IN", ignoreCase = true) ||
+                                                message.contains("different house", ignoreCase = true) ||
+                                                message.contains("correct house", ignoreCase = true)
+                                            ) {
+                                                biosecurityMessage = message
+                                                showBiosecurityDialog = true
+                                            } else {
+                                                submitError = message
+                                            }
                                         }
-                                    }
-                                isSubmitting = false
-                            }
-                        },
-                        shape = RoundedCornerShape(999.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1F7A2E)
-                        ),
-                        enabled = !isSubmitting
-                    ) {
-                        Text(
-                            text = if (isSubmitting) "Submitting..." else "Submit",
-                            fontFamily = DetailPoppins,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 18.sp,
-                            color = Color.White
-                        )
+                                    isSubmitting = false
+                                }
+                            },
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = DetailGreen,
+                                disabledContainerColor = Color(0xFF94A99A)
+                            ),
+                            enabled = !isSubmitting,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                        ) {
+                            Text(
+                                text = if (isSubmitting) "Submitting..." else "Submit Task",
+                                fontFamily = DetailPoppins,
+                                fontWeight = FontWeight.ExtraBold,
+                                fontSize = 16.sp,
+                                color = Color.White
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
                     }
                 }
-
-                Spacer(modifier = Modifier.height(20.dp))
             }
         }
     }
 }
 
 @Composable
-private fun DetailSectionChip(
-    text: String,
-    containerColor: Color
+private fun DetailTopBar(
+    onBackClick: () -> Unit
 ) {
-    Box(
+    Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(containerColor)
-            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .fillMaxWidth()
+            .height(48.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.82f))
+                .border(1.dp, DetailLine, CircleShape)
+                .clickable { onBackClick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Back",
+                tint = DetailInk,
+                modifier = Modifier.size(21.dp)
+            )
+        }
+
+        Text(
+            text = "Work Order",
+            modifier = Modifier.weight(1f),
+            textAlign = TextAlign.Center,
+            fontFamily = DetailPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 20.sp,
+            color = DetailInk
+        )
+
+        Spacer(modifier = Modifier.size(44.dp))
+    }
+}
+
+@Composable
+private fun WorkOrderHeader(task: PendingTaskDetailUiState) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(30.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(DetailDeepGreen, Color(0xFF0E4025), DetailGreenTwo)
+                )
+            )
+            .padding(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            StatusLabel(
+                text = "Pending task",
+                color = PendingAccent,
+                modifier = Modifier.weight(1f)
+            )
+
+            PriorityBadge(
+                label = task.priorityLabel,
+                color = priorityChipColor(task.priority)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(22.dp))
+
+        Text(
+            text = task.title,
+            fontFamily = DetailPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 28.sp,
+            color = Color.White,
+            lineHeight = 32.sp
+        )
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TimeBlock(
+                label = "Assigned",
+                value = task.timeAssigned,
+                modifier = Modifier.weight(1f)
+            )
+
+            TimeBlock(
+                label = "Finish by",
+                value = task.finishBy,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusLabel(
+    text: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+
+        Spacer(modifier = Modifier.size(8.dp))
+
         Text(
             text = text,
             fontFamily = DetailPoppins,
-            fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 13.sp,
             color = Color.White
         )
     }
 }
 
 @Composable
-private fun DetailPlainInfo(
-    title: String,
+private fun PriorityBadge(
+    label: String,
+    color: Color
+) {
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = "Priority",
+            fontFamily = DetailPoppins,
+            fontWeight = FontWeight.Bold,
+            fontSize = 10.sp,
+            color = Color.White.copy(alpha = 0.58f)
+        )
+
+        Text(
+            text = label,
+            fontFamily = DetailPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 14.sp,
+            color = color
+        )
+    }
+}
+
+@Composable
+private fun TimeBlock(
+    label: String,
     value: String,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.10f))
+            .border(1.dp, Color.White.copy(alpha = 0.13f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 13.dp, vertical = 12.dp)
+    ) {
+        Text(
+            text = label,
+            fontFamily = DetailPoppins,
+            fontWeight = FontWeight.Bold,
+            fontSize = 11.sp,
+            color = Color.White.copy(alpha = 0.64f)
+        )
+
+        Spacer(modifier = Modifier.height(5.dp))
+
+        Text(
+            text = value.ifBlank { "-" },
+            fontFamily = DetailPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 15.sp,
+            color = Color.White,
+            lineHeight = 19.sp
+        )
+    }
+}
+
+@Composable
+private fun WorkBriefSection(task: PendingTaskDetailUiState) {
+    SectionPanel {
+        SectionHeaderRow(
+            title = "Work brief",
+            subtitle = "Task instructions",
+            accentColor = DetailGreen
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Text(
+            text = task.description,
+            fontFamily = DetailPoppins,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            lineHeight = 23.sp,
+            color = Color(0xFF2E382F)
+        )
+    }
+}
+
+@Composable
+private fun SubmissionWorkspace(
+    selectedPhotoUri: Uri?,
+    notes: String,
+    onNotesChange: (String) -> Unit,
+    onPhotoClick: () -> Unit
+) {
+    SectionPanel {
+        SectionHeaderRow(
+            title = "Submission",
+            subtitle = "Attach proof and add notes before sending",
+            accentColor = PendingAccent
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        DetailDivider()
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        PhotoUploadArea(
+            selectedPhotoUri = selectedPhotoUri,
+            onClick = onPhotoClick
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        NotesInput(
+            notes = notes,
+            onNotesChange = onNotesChange
+        )
+    }
+}
+
+@Composable
+private fun SectionPanel(
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(
+                brush = Brush.verticalGradient(
+                    colors = listOf(
+                        Color.White.copy(alpha = 0.94f),
+                        DetailSurface.copy(alpha = 0.98f)
+                    )
+                )
+            )
+            .border(
+                width = 1.dp,
+                color = DetailLine.copy(alpha = 0.82f),
+                shape = RoundedCornerShape(26.dp)
+            )
+            .padding(horizontal = 18.dp, vertical = 18.dp),
+        content = content
+    )
+}
+
+@Composable
+private fun SectionHeaderRow(
+    title: String,
+    subtitle: String,
+    accentColor: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .padding(top = 4.dp)
+                .size(width = 4.dp, height = 38.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(accentColor)
+        )
+
+        Spacer(modifier = Modifier.size(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                fontFamily = DetailPoppins,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 18.sp,
+                color = DetailInk
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = subtitle,
+                fontFamily = DetailPoppins,
+                fontWeight = FontWeight.Medium,
+                fontSize = 12.sp,
+                color = DetailMuted,
+                lineHeight = 16.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailDivider() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(1.dp)
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(
+                        Color.Transparent,
+                        DetailLine.copy(alpha = 0.92f),
+                        Color.Transparent
+                    )
+                )
+            )
+    )
+}
+
+@Composable
+private fun SectionLabel(
+    title: String,
+    subtitle: String
+) {
+    Column {
         Text(
             text = title,
             fontFamily = DetailPoppins,
-            fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
-            color = Color(0xFF7A7A7A)
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = DetailInk
         )
 
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
 
         Text(
-            text = value,
+            text = subtitle,
             fontFamily = DetailPoppins,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 15.sp,
-            color = Color(0xFF252525),
-            lineHeight = 20.sp
+            fontWeight = FontWeight.Medium,
+            fontSize = 12.sp,
+            color = DetailMuted
         )
     }
+}
+
+@Composable
+private fun PhotoUploadArea(
+    selectedPhotoUri: Uri?,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(184.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(DetailSurface)
+            .border(1.dp, DetailLine, RoundedCornerShape(24.dp))
+            .clickable { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (selectedPhotoUri != null) {
+            AsyncImage(
+                model = selectedPhotoUri,
+                contentDescription = "Selected proof photo",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFEAF3EC)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Edit,
+                        contentDescription = "Upload proof photo",
+                        tint = DetailGreen,
+                        modifier = Modifier.size(23.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(11.dp))
+
+                Text(
+                    text = "Upload proof of work",
+                    fontFamily = DetailPoppins,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 14.sp,
+                    color = DetailInk
+                )
+
+                Spacer(modifier = Modifier.height(3.dp))
+
+                Text(
+                    text = "Tap to choose a photo",
+                    fontFamily = DetailPoppins,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 12.sp,
+                    color = DetailMuted
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotesInput(
+    notes: String,
+    onNotesChange: (String) -> Unit
+) {
+    OutlinedTextField(
+        value = notes,
+        onValueChange = onNotesChange,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(136.dp),
+        shape = RoundedCornerShape(22.dp),
+        placeholder = {
+            Text(
+                text = "Add notes here",
+                fontFamily = DetailPoppins,
+                color = DetailMuted
+            )
+        },
+        keyboardOptions = KeyboardOptions(
+            capitalization = KeyboardCapitalization.Sentences
+        ),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = DetailSurface,
+            unfocusedContainerColor = DetailSurface,
+            focusedBorderColor = DetailGreen,
+            unfocusedBorderColor = DetailLine,
+            focusedTextColor = DetailInk,
+            unfocusedTextColor = DetailInk,
+            cursorColor = DetailGreen
+        )
+    )
+}
+
+@Composable
+private fun ErrorBanner(message: String) {
+    Text(
+        text = message,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(Color(0xFFFFECEA))
+            .border(1.dp, Color(0xFFF2B8B5), RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        fontFamily = DetailPoppins,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        color = Color(0xFFB3261E)
+    )
+}
+
+@Composable
+private fun PendingDetailSkeleton() {
+    val alpha = skeletonAlpha()
+
+    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
+        SkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(238.dp),
+            alpha = alpha,
+            color = DetailDeepGreen,
+            shape = RoundedCornerShape(30.dp)
+        )
+
+        Column {
+            SkeletonLine(widthFraction = 0.34f, height = 18.dp, alpha = alpha)
+            Spacer(modifier = Modifier.height(12.dp))
+            SkeletonLine(widthFraction = 0.96f, height = 13.dp, alpha = alpha)
+            Spacer(modifier = Modifier.height(8.dp))
+            SkeletonLine(widthFraction = 0.88f, height = 13.dp, alpha = alpha)
+            Spacer(modifier = Modifier.height(8.dp))
+            SkeletonLine(widthFraction = 0.62f, height = 13.dp, alpha = alpha)
+        }
+
+        SkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(184.dp),
+            alpha = alpha,
+            color = Color(0xFFD9D2C6),
+            shape = RoundedCornerShape(24.dp)
+        )
+
+        SkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(136.dp),
+            alpha = alpha,
+            color = Color(0xFFD9D2C6),
+            shape = RoundedCornerShape(22.dp)
+        )
+    }
+}
+
+@Composable
+private fun skeletonAlpha(): Float {
+    val transition = rememberInfiniteTransition(label = "pendingDetailSkeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.28f,
+        targetValue = 0.62f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "pendingDetailSkeletonAlpha"
+    )
+    return alpha
+}
+
+@Composable
+private fun SkeletonLine(
+    widthFraction: Float,
+    height: androidx.compose.ui.unit.Dp,
+    alpha: Float,
+    color: Color = Color(0xFFCFC5B5)
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(widthFraction)
+            .height(height)
+            .clip(RoundedCornerShape(999.dp))
+            .background(color.copy(alpha = alpha))
+    )
+}
+
+@Composable
+private fun SkeletonBox(
+    modifier: Modifier,
+    alpha: Float,
+    color: Color = Color(0xFFCFC5B5),
+    shape: Shape = RoundedCornerShape(16.dp)
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(color.copy(alpha = alpha))
+    )
 }
 
 @Composable
@@ -525,11 +893,11 @@ private fun TaskDetailBottomNavBar(
             .fillMaxWidth()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF06331D), Color(0xFF022816))
+                    colors = listOf(Color(0xFF07381F), Color(0xFF022716))
                 )
             )
             .navigationBarsPadding()
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -548,13 +916,16 @@ private fun DetailNavItem(
     onClick: () -> Unit
 ) {
     Column(
-        modifier = Modifier.clickable { onClick() },
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (selected) Color.White else Color(0xFFD7ECD9),
+            tint = if (selected) Color.White else Color(0xFFCFE8D2),
             modifier = Modifier.size(22.dp)
         )
 
@@ -563,26 +934,11 @@ private fun DetailNavItem(
         Text(
             text = label,
             fontFamily = DetailPoppins,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
             fontSize = 10.sp,
-            color = if (selected) Color.White else Color(0xFFD7ECD9),
+            color = if (selected) Color.White else Color(0xFFCFE8D2),
             textAlign = TextAlign.Center,
             lineHeight = 11.sp
         )
     }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun PendingTaskDetailScreenPreview() {
-    PendingTaskDetailScreen(
-        task = PendingTaskDetailUiState(
-            id = 1,
-            title = "Cleaning",
-            description = "Clean the assigned pen thoroughly, focusing especially on the area near the opening where dirt, moisture, and waste are more likely to accumulate. Remove visible manure, spilled feed, feathers, and other debris from the floor and surrounding surfaces.\n\nEnsure that the feeding and watering areas inside the pen are clean and unobstructed. After cleaning, visually check the pen to confirm that it is clean, dry, and safe for the birds.",
-            timeAssigned = "11:58 AM",
-            finishBy = "1:30 PM",
-            priorityLabel = "High",
-            priority = TaskPriority.HIGH
-        )
-    )
 }

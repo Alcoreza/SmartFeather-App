@@ -56,7 +56,9 @@ fun SmartFeatherApp() {
         mutableStateOf<CompletedTaskDetailUiState?>(null)
     }
 
-    var dashboardUiState by remember { mutableStateOf(placeholderDashboardState()) }
+    var dashboardUiState by remember { mutableStateOf(emptyDashboardState()) }
+    var isDashboardLoading by remember { mutableStateOf(false) }
+    var hasLoadedDashboard by remember { mutableStateOf(false) }
 
     var selectedEnvironmentHouseId by remember { mutableStateOf<Int?>(null) }
     var selectedEnvironmentPenId by remember { mutableStateOf<Int?>(null) }
@@ -74,6 +76,10 @@ fun SmartFeatherApp() {
         val employeeId = loggedInEmployeeId
 
         if (currentScreen == AppScreen.DASHBOARD && employeeId != null) {
+            if (!hasLoadedDashboard) {
+                isDashboardLoading = true
+            }
+
             dashboardService.getDashboard(
                 employeeId = employeeId,
                 environmentHouseId = selectedEnvironmentHouseId,
@@ -87,7 +93,11 @@ fun SmartFeatherApp() {
                 selectedEnvironmentPenId = state.environmentFilter.selectedPenId
                 selectedResourceHouseId = state.resourceFilter.selectedHouseId
                 selectedResourcePenId = state.resourceFilter.selectedPenId
+
+                hasLoadedDashboard = true
             }
+
+            isDashboardLoading = false
         }
     }
 
@@ -122,6 +132,7 @@ fun SmartFeatherApp() {
                 currentScreen = AppScreen.BIOSECURITY
             },
             uiState = dashboardUiState,
+            isLoading = isDashboardLoading,
             onEnvironmentFilterChange = { option: SensorFilterOption ->
                 selectedEnvironmentHouseId = option.houseId
                 selectedEnvironmentPenId = option.penId
@@ -433,7 +444,9 @@ fun SmartFeatherApp() {
                 loggedInEmployeeId = null
                 selectedPendingTask = null
                 selectedCompletedTask = null
-                dashboardUiState = placeholderDashboardState()
+                dashboardUiState = emptyDashboardState()
+                isDashboardLoading = false
+                hasLoadedDashboard = false
                 selectedEnvironmentHouseId = null
                 selectedEnvironmentPenId = null
                 selectedResourceHouseId = null
