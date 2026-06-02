@@ -1,8 +1,16 @@
 package com.example.smartfeather
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,11 +35,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -52,6 +59,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,11 +67,26 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 
 private val LoginPoppins = FontFamily(
-    Font(R.font.poppins_regular, FontWeight.Normal),
-    Font(R.font.poppins_medium, FontWeight.Medium),
-    Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold)
+    Font(R.font.manrope_extralight, FontWeight.ExtraLight),
+    Font(R.font.manrope_light, FontWeight.Light),
+    Font(R.font.manrope_regular, FontWeight.Normal),
+    Font(R.font.manrope_medium, FontWeight.Medium),
+    Font(R.font.manrope_semibold, FontWeight.SemiBold),
+    Font(R.font.manrope_bold, FontWeight.Bold),
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold),
+    Font(R.font.manrope_variablefont_wght, FontWeight.Black)
 )
+
+private val LoginBackground = Color(0xFFF6F3EC)
+private val LoginSurface = Color(0xFFFFFCF7)
+private val LoginField = Color(0xFFF3EFE7)
+private val LoginInk = Color(0xFF121A14)
+private val LoginMuted = Color(0xFF677168)
+private val LoginLine = Color(0xFFD8D0C3)
+private val LoginGreen = Color(0xFF1F7A3A)
+private val LoginDeepGreen = Color(0xFF062717)
+private val LoginGreenTwo = Color(0xFF155C2D)
+private val LoginDanger = Color(0xFFC62828)
 
 private suspend fun ScrollState.smoothLoginScrollTo(value: Int) {
     animateScrollTo(
@@ -82,81 +105,61 @@ fun LoginScreen(
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
+    var introVisible by remember { mutableStateOf(false) }
 
     val coroutineScope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
     val scrollState = rememberScrollState()
     val isKeyboardVisible = WindowInsets.ime.asPaddingValues().calculateBottomPadding() > 0.dp
 
+    LaunchedEffect(Unit) {
+        introVisible = true
+    }
+
     LaunchedEffect(isKeyboardVisible) {
         if (isKeyboardVisible) {
-            scrollState.smoothLoginScrollTo(320)
+            scrollState.smoothLoginScrollTo(210)
         } else {
             scrollState.smoothLoginScrollTo(0)
         }
     }
 
-    val topSpacer by animateDpAsState(
-        targetValue = if (isKeyboardVisible) 0.dp else 18.dp,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-        label = "loginTopSpacer"
+    val topSpace by animateDpAsState(
+        targetValue = if (isKeyboardVisible) 16.dp else 76.dp,
+        animationSpec = tween(durationMillis = 340, easing = FastOutSlowInEasing),
+        label = "loginTopSpace"
     )
 
-    val logoSize by animateDpAsState(
-        targetValue = if (isKeyboardVisible) 0.dp else 74.dp,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-        label = "loginLogoSize"
+    val brandGap by animateDpAsState(
+        targetValue = if (isKeyboardVisible) 10.dp else 20.dp,
+        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+        label = "loginBrandGap"
     )
 
-    val logoBottomSpacer by animateDpAsState(
-        targetValue = if (isKeyboardVisible) 0.dp else 18.dp,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-        label = "loginLogoBottomSpacer"
+    val formPadding by animateDpAsState(
+        targetValue = if (isKeyboardVisible) 18.dp else 24.dp,
+        animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+        label = "loginFormPadding"
     )
-
-    val titleBottomSpacer by animateDpAsState(
-        targetValue = if (isKeyboardVisible) 4.dp else 34.dp,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-        label = "loginTitleBottomSpacer"
-    )
-
-    val cardVerticalPadding by animateDpAsState(
-        targetValue = if (isKeyboardVisible) 16.dp else 26.dp,
-        animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
-        label = "loginCardPadding"
-    )
-
-    val forest = Color(0xFF06351F)
-    val deepForest = Color(0xFF021D12)
-    val leaf = Color(0xFF2F8F45)
-    val brightLeaf = Color(0xFF48B85F)
-    val surface = Color(0xFFFFFCF7)
-    val fieldFill = Color(0xFFF7F4EE)
-    val ink = Color(0xFF17231B)
-    val muted = Color(0xFF747B72)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(surface)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFFFBF8F1), LoginBackground, Color(0xFFEDE7DA))
+                )
+            )
             .pointerInput(Unit) {
                 detectTapGestures {
                     focusManager.clearFocus()
                 }
             }
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(if (isKeyboardVisible) 210.dp else 280.dp)
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(deepForest, forest)
-                    )
-                )
-        )
+        LoginAmbientBackground()
 
         Column(
             modifier = Modifier
@@ -167,184 +170,96 @@ fun LoginScreen(
                 .padding(horizontal = 22.dp, vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (!isKeyboardVisible) {
-                Spacer(modifier = Modifier.height(topSpacer))
+            Spacer(modifier = Modifier.height(topSpace))
 
-                Box(
-                    modifier = Modifier
-                        .size(logoSize)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.12f))
-                        .border(
-                            width = 1.dp,
-                            color = Color.White.copy(alpha = 0.28f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "SF",
-                        fontFamily = LoginPoppins,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = Color.White
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(logoBottomSpacer))
-
-                Text(
-                    text = "SmartFeather",
-                    fontFamily = LoginPoppins,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 30.sp,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
+            AnimatedVisibility(
+                visible = introVisible,
+                enter = fadeIn(animationSpec = tween(460)) + slideInVertically(
+                    animationSpec = tween(520, easing = FastOutSlowInEasing),
+                    initialOffsetY = { -it / 5 }
                 )
-
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = "Poultry Management System",
-                    fontFamily = LoginPoppins,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp,
-                    color = Color(0xFFDDEEE0),
-                    textAlign = TextAlign.Center
-                )
+            ) {
+                LoginBrandBlock(compact = isKeyboardVisible)
             }
 
-            Spacer(modifier = Modifier.height(titleBottomSpacer))
+            Spacer(modifier = Modifier.height(brandGap))
 
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(28.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+            AnimatedVisibility(
+                visible = introVisible,
+                enter = fadeIn(animationSpec = tween(520)) +
+                        slideInVertically(
+                            animationSpec = tween(560, easing = FastOutSlowInEasing),
+                            initialOffsetY = { it / 5 }
+                        ) +
+                        scaleIn(
+                            animationSpec = tween(480, easing = FastOutSlowInEasing),
+                            initialScale = 0.98f
+                        )
             ) {
                 Column(
-                    modifier = Modifier.padding(
-                        horizontal = 22.dp,
-                        vertical = cardVerticalPadding
-                    )
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(LoginSurface.copy(alpha = 0.96f))
+                        .border(1.dp, LoginLine.copy(alpha = 0.82f), RoundedCornerShape(30.dp))
+                        .padding(horizontal = 22.dp, vertical = formPadding)
                 ) {
-                    Text(
-                        text = "Welcome back",
-                        fontFamily = LoginPoppins,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp,
-                        color = ink
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Text(
-                        text = "Sign in to continue your farm duties.",
-                        fontFamily = LoginPoppins,
-                        fontWeight = FontWeight.Normal,
-                        fontSize = 13.sp,
-                        color = muted
-                    )
-
-                    Spacer(modifier = Modifier.height(if (isKeyboardVisible) 18.dp else 24.dp))
-
-                    Text(
-                        text = "Username",
-                        fontFamily = LoginPoppins,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        color = ink
-                    )
+                    LoginLabel("Username")
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    OutlinedTextField(
+                    LoginTextField(
                         value = username,
                         onValueChange = {
                             username = it
                             errorMessage = null
                         },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions.Default.copy(
-                            keyboardType = KeyboardType.Text
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onFocusChanged {
-                                if (it.isFocused) {
-                                    coroutineScope.launch {
-                                        scrollState.smoothLoginScrollTo(360)
-                                    }
-                                }
-                            },
-                        shape = RoundedCornerShape(18.dp),
-                        placeholder = {
-                            Text(
-                                text = "Enter your username",
-                                fontFamily = LoginPoppins,
-                                color = Color(0xFF9A9A9A),
-                                fontSize = 14.sp
-                            )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = fieldFill,
-                            unfocusedContainerColor = fieldFill,
-                            focusedBorderColor = brightLeaf,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedTextColor = ink,
-                            unfocusedTextColor = ink,
-                            cursorColor = leaf
-                        )
+                        placeholder = "Enter username",
+                        keyboardType = KeyboardType.Text,
+                        onFocused = {
+                            coroutineScope.launch {
+                                scrollState.smoothLoginScrollTo(240)
+                            }
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    Text(
-                        text = "Password",
-                        fontFamily = LoginPoppins,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        color = ink
-                    )
+                    LoginLabel("Password")
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    OutlinedTextField(
+                    LoginTextField(
                         value = password,
                         onValueChange = {
                             password = it
                             errorMessage = null
                         },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .onFocusChanged {
-                                if (it.isFocused) {
-                                    coroutineScope.launch {
-                                        scrollState.smoothLoginScrollTo(480)
-                                    }
-                                }
-                            },
-                        shape = RoundedCornerShape(18.dp),
-                        placeholder = {
-                            Text(
-                                text = "Enter your password",
-                                fontFamily = LoginPoppins,
-                                color = Color(0xFF9A9A9A),
-                                fontSize = 14.sp
-                            )
+                        placeholder = "Enter password",
+                        keyboardType = KeyboardType.Password,
+                        visualTransformation = if (passwordVisible) {
+                            VisualTransformation.None
+                        } else {
+                            PasswordVisualTransformation()
                         },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = fieldFill,
-                            unfocusedContainerColor = fieldFill,
-                            focusedBorderColor = brightLeaf,
-                            unfocusedBorderColor = Color.Transparent,
-                            focusedTextColor = ink,
-                            unfocusedTextColor = ink,
-                            cursorColor = leaf
-                        )
+                        trailingContent = {
+                            TextButton(
+                                onClick = { passwordVisible = !passwordVisible }
+                            ) {
+                                Text(
+                                    text = if (passwordVisible) "Hide" else "Show",
+                                    fontFamily = LoginPoppins,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 12.sp,
+                                    color = LoginGreen
+                                )
+                            }
+                        },
+                        onFocused = {
+                            coroutineScope.launch {
+                                scrollState.smoothLoginScrollTo(360)
+                            }
+                        }
                     )
 
                     errorMessage?.let {
@@ -352,14 +267,21 @@ fun LoginScreen(
 
                         Text(
                             text = it,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFFFECEA))
+                                .border(1.dp, LoginDanger.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
+                                .padding(horizontal = 14.dp, vertical = 11.dp),
                             fontFamily = LoginPoppins,
-                            fontWeight = FontWeight.Medium,
+                            fontWeight = FontWeight.SemiBold,
                             fontSize = 13.sp,
-                            color = Color(0xFFC92222)
+                            lineHeight = 18.sp,
+                            color = LoginDanger
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(if (isKeyboardVisible) 20.dp else 26.dp))
+                    Spacer(modifier = Modifier.height(if (isKeyboardVisible) 20.dp else 24.dp))
 
                     Button(
                         onClick = {
@@ -387,39 +309,291 @@ fun LoginScreen(
                         },
                         shape = RoundedCornerShape(18.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = forest,
-                            disabledContainerColor = Color(0xFF8EA394)
+                            containerColor = LoginGreen,
+                            disabledContainerColor = Color(0xFF94A99A)
                         ),
                         enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(54.dp)
+                            .height(56.dp)
                     ) {
                         Text(
                             text = if (isLoading) "Signing in..." else "Sign In",
                             fontFamily = LoginPoppins,
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.ExtraBold,
                             fontSize = 16.sp,
                             color = Color.White
                         )
                     }
                 }
             }
-
-            if (!isKeyboardVisible) {
-                Spacer(modifier = Modifier.height(22.dp))
-
-                Text(
-                    text = "Secure access for authorized farm personnel",
-                    fontFamily = LoginPoppins,
-                    fontWeight = FontWeight.Medium,
-                    fontSize = 12.sp,
-                    color = Color(0xFF68736A),
-                    textAlign = TextAlign.Center
-                )
-            }
         }
     }
+}
+
+@Composable
+private fun LoginAmbientBackground() {
+    val transition = rememberInfiniteTransition(label = "loginAmbient")
+
+    val pulse by transition.animateFloat(
+        initialValue = 0.18f,
+        targetValue = 0.38f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "loginAmbientPulse"
+    )
+
+    val drift by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 24f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "loginAmbientDrift"
+    )
+
+    val counterDrift by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2300, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "loginAmbientCounterDrift"
+    )
+
+    val slowDrift by transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 30f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(3400, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "loginAmbientSlowDrift"
+    )
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(330.dp)
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(LoginDeepGreen, Color(0xFF0E4025), LoginGreenTwo)
+                    )
+                )
+        )
+
+        Box(
+            modifier = Modifier
+                .padding(top = 62.dp, start = (34 + drift).dp)
+                .size(176.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = pulse * 0.14f))
+        )
+
+        Box(
+            modifier = Modifier
+                .padding(top = 118.dp, start = (238 - counterDrift).dp)
+                .size(118.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF7AF28B).copy(alpha = pulse * 0.12f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = (28 + counterDrift).dp, bottom = (34 + drift).dp)
+                .size(190.dp)
+                .clip(CircleShape)
+                .background(LoginGreen.copy(alpha = pulse * 0.10f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = (22 + drift).dp, bottom = (86 - counterDrift).dp)
+                .size(128.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFCFE8D2).copy(alpha = pulse * 0.16f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = (118 + slowDrift).dp, bottom = (112 - counterDrift).dp)
+                .size(76.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = pulse * 0.12f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = (132 - slowDrift).dp, bottom = (28 + drift).dp)
+                .size(54.dp)
+                .clip(CircleShape)
+                .background(LoginGreenTwo.copy(alpha = pulse * 0.13f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(start = (44 + counterDrift).dp, bottom = 156.dp)
+                .size(92.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFEAF3EC).copy(alpha = pulse * 0.13f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(end = (82 + drift).dp, bottom = 62.dp)
+                .size(66.dp)
+                .clip(CircleShape)
+                .background(LoginGreen.copy(alpha = pulse * 0.11f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = (210 - counterDrift).dp, bottom = 18.dp)
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = pulse * 0.13f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 6.dp, bottom = (218 + counterDrift).dp)
+                .size(132.dp)
+                .clip(CircleShape)
+                .background(LoginGreen.copy(alpha = pulse * 0.16f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = (18 + counterDrift).dp, top = 170.dp)
+                .size(108.dp)
+                .clip(CircleShape)
+                .background(Color(0xFFCFE8D2).copy(alpha = pulse * 0.18f))
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(210.dp)
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            LoginGreen.copy(alpha = pulse * 0.05f),
+                            LoginDeepGreen.copy(alpha = pulse * 0.04f)
+                        )
+                    )
+                )
+        )
+    }
+}
+
+@Composable
+private fun LoginBrandBlock(compact: Boolean) {
+    val logoSize = if (compact) 52.dp else 74.dp
+    val titleSize = if (compact) 24.sp else 31.sp
+
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(
+            modifier = Modifier
+                .size(logoSize)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.12f))
+                .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "SF",
+                fontFamily = LoginPoppins,
+                fontWeight = FontWeight.Black,
+                fontSize = if (compact) 18.sp else 23.sp,
+                color = Color.White
+            )
+        }
+
+        Spacer(modifier = Modifier.height(if (compact) 10.dp else 16.dp))
+
+        Text(
+            text = "SmartFeather",
+            fontFamily = LoginPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = titleSize,
+            color = Color.White,
+            textAlign = TextAlign.Center,
+            lineHeight = if (compact) 28.sp else 35.sp
+        )
+    }
+}
+
+@Composable
+private fun LoginLabel(text: String) {
+    Text(
+        text = text,
+        fontFamily = LoginPoppins,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 13.sp,
+        color = LoginInk
+    )
+}
+
+@Composable
+private fun LoginTextField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String,
+    keyboardType: KeyboardType,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailingContent: @Composable (() -> Unit)? = null,
+    onFocused: () -> Unit
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        visualTransformation = visualTransformation,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        trailingIcon = trailingContent,
+        modifier = Modifier
+            .fillMaxWidth()
+            .onFocusChanged {
+                if (it.isFocused) {
+                    onFocused()
+                }
+            },
+        shape = RoundedCornerShape(18.dp),
+        placeholder = {
+            Text(
+                text = placeholder,
+                fontFamily = LoginPoppins,
+                fontWeight = FontWeight.Medium,
+                color = LoginMuted.copy(alpha = 0.72f),
+                fontSize = 14.sp
+            )
+        },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = LoginField,
+            unfocusedContainerColor = LoginField,
+            focusedBorderColor = LoginGreen,
+            unfocusedBorderColor = Color.Transparent,
+            focusedTextColor = LoginInk,
+            unfocusedTextColor = LoginInk,
+            cursorColor = LoginGreen
+        )
+    )
 }
 
 @Preview(showBackground = true, showSystemUi = true)

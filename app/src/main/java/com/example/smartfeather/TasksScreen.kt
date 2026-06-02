@@ -20,13 +20,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -55,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -63,8 +65,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.foundation.layout.fillMaxHeight
 
 enum class TaskStatus {
     PENDING,
@@ -95,7 +95,7 @@ data class TaskItem(
     val photoUrl: String? = null
 )
 
-private val AppPoppins = FontFamily(
+private val TaskManrope = FontFamily(
     Font(R.font.manrope_regular, FontWeight.Normal),
     Font(R.font.manrope_medium, FontWeight.Medium),
     Font(R.font.manrope_semibold, FontWeight.SemiBold),
@@ -103,18 +103,18 @@ private val AppPoppins = FontFamily(
     Font(R.font.manrope_extrabold, FontWeight.ExtraBold)
 )
 
-private val TaskCream = Color(0xFFF1ECE2)
-private val TaskSurface = Color(0xFFFFFCF6)
-private val TaskSurfaceAlt = Color(0xFFE9E1D4)
-private val TaskInk = Color(0xFF101A13)
-private val TaskMuted = Color(0xFF6A7068)
-private val TaskLine = Color(0xFFD7CFC1)
+private val TaskCream = Color(0xFFF6F3EC)
+private val TaskSurface = Color(0xFFFFFCF7)
+private val TaskSectionSurface = Color(0xFFF4EFE6)
+private val TaskInk = Color(0xFF121A14)
+private val TaskMuted = Color(0xFF677168)
+private val TaskLine = Color(0xFFD8D0C3)
 private val TaskGreen = Color(0xFF1F7A3A)
-private val TaskDeepGreen = Color(0xFF032416)
-private val TaskPanelDark = Color(0xFF10271A)
-private val PendingColor = Color(0xFFE79A43)
-private val ApprovalColor = Color(0xFFC98213)
-private val CompletedColor = Color(0xFF3C9A52)
+private val TaskDeepGreen = Color(0xFF062717)
+
+private val PendingColor = Color(0xFFD78A2B)
+private val ApprovalColor = Color(0xFFC47A16)
+private val CompletedColor = Color(0xFF3F8E4E)
 
 @Composable
 fun TasksScreen(
@@ -174,7 +174,7 @@ fun TasksScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFFFCF7), TaskCream, Color(0xFFF2EEE5))
+                        colors = listOf(Color(0xFFFBF8F1), TaskCream, Color(0xFFEDE7DA))
                     )
                 )
                 .padding(innerPadding)
@@ -270,58 +270,44 @@ private fun TaskHeader(
     completedCount: Int
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(30.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(TaskDeepGreen, Color(0xFF0E4025), Color(0xFF155C2D))
+                )
+            )
+            .padding(horizontal = 20.dp, vertical = 22.dp)
     ) {
         Text(
             text = "Tasks",
-            fontFamily = AppPoppins,
+            fontFamily = TaskManrope,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 30.sp,
-            color = TaskInk
+            fontSize = 29.sp,
+            color = Color.White
         )
 
         Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = "Assigned work, submissions, and completed tasks.",
-            fontFamily = AppPoppins,
-            fontWeight = FontWeight.Medium,
+            fontFamily = TaskManrope,
+            fontWeight = FontWeight.SemiBold,
             fontSize = 13.sp,
-            color = TaskMuted,
+            color = Color.White.copy(alpha = 0.72f),
             lineHeight = 18.sp
         )
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(22.dp))
-                .background(Color(0xFFF4F0E8))
-                .border(1.dp, TaskLine, RoundedCornerShape(22.dp))
-                .padding(horizontal = 10.dp, vertical = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(9.dp)
         ) {
-            QuietMetric(
-                label = "Pending",
-                value = pendingCount.toString(),
-                color = PendingColor,
-                modifier = Modifier.weight(1f)
-            )
-
-            QuietMetric(
-                label = "Approval",
-                value = approvalCount.toString(),
-                color = ApprovalColor,
-                modifier = Modifier.weight(1f)
-            )
-
-            QuietMetric(
-                label = "Done",
-                value = completedCount.toString(),
-                color = CompletedColor,
-                modifier = Modifier.weight(1f)
-            )
+            QuietMetric("Pending", pendingCount.toString(), PendingColor, Modifier.weight(1f))
+            QuietMetric("Approval", approvalCount.toString(), ApprovalColor, Modifier.weight(1f))
+            QuietMetric("Done", completedCount.toString(), CompletedColor, Modifier.weight(1f))
         }
     }
 }
@@ -335,14 +321,14 @@ private fun QuietMetric(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color.White.copy(alpha = 0.62f))
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.12f))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
             text = value,
-            fontFamily = AppPoppins,
+            fontFamily = TaskManrope,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 18.sp,
             color = color
@@ -352,57 +338,12 @@ private fun QuietMetric(
 
         Text(
             text = label,
-            fontFamily = AppPoppins,
+            fontFamily = TaskManrope,
             fontWeight = FontWeight.SemiBold,
             fontSize = 10.sp,
-            color = TaskMuted,
+            color = Color.White.copy(alpha = 0.76f),
             textAlign = TextAlign.Center
         )
-    }
-}
-
-@Composable
-private fun HeaderMetric(
-    label: String,
-    value: String,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.13f))
-            .border(1.dp, Color.White.copy(alpha = 0.16f), RoundedCornerShape(18.dp))
-            .padding(horizontal = 10.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(color)
-        )
-
-        Spacer(modifier = Modifier.width(7.dp))
-
-        Column {
-            Text(
-                text = value,
-                fontFamily = AppPoppins,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 16.sp,
-                color = Color.White
-            )
-
-            Text(
-                text = label,
-                fontFamily = AppPoppins,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 10.sp,
-                color = Color.White.copy(alpha = 0.76f),
-                lineHeight = 11.sp
-            )
-        }
     }
 }
 
@@ -419,31 +360,31 @@ private fun TaskStatusSection(
     emptyText: String,
     onTaskClick: (TaskItem) -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = TaskPanelDark),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(TaskSectionSurface)
+            .border(1.dp, TaskLine.copy(alpha = 0.58f), RoundedCornerShape(28.dp))
+            .padding(14.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            SectionHeader(
-                text = title,
-                subtitle = subtitle,
-                count = count,
-                containerColor = color,
-                isExpanded = isExpanded,
-                onToggleClick = onToggleClick
-            )
+        SectionHeader(
+            text = title,
+            subtitle = subtitle,
+            count = count,
+            containerColor = color,
+            isExpanded = isExpanded,
+            onToggleClick = onToggleClick
+        )
 
-            Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
-            AnimatedTaskListSection(
-                visible = visible,
-                items = items,
-                emptyText = emptyText,
-                onTaskClick = onTaskClick
-            )
-        }
+        AnimatedTaskListSection(
+            visible = visible,
+            items = items,
+            emptyText = emptyText,
+            onTaskClick = onTaskClick
+        )
     }
 }
 
@@ -464,13 +405,12 @@ private fun SectionHeader(
             modifier = Modifier
                 .size(42.dp)
                 .clip(CircleShape)
-                .background(containerColor.copy(alpha = 0.18f))
-                .border(1.dp, containerColor.copy(alpha = 0.45f), CircleShape),
+                .background(containerColor.copy(alpha = 0.13f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = count.toString(),
-                fontFamily = AppPoppins,
+                fontFamily = TaskManrope,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 15.sp,
                 color = containerColor
@@ -482,48 +422,39 @@ private fun SectionHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = text,
-                fontFamily = AppPoppins,
+                fontFamily = TaskManrope,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
-                color = Color.White
+                color = TaskInk
             )
 
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
                 text = subtitle,
-                fontFamily = AppPoppins,
-                fontWeight = FontWeight.Medium,
+                fontFamily = TaskManrope,
+                fontWeight = FontWeight.SemiBold,
                 fontSize = 11.sp,
-                color = Color.White.copy(alpha = 0.68f),
+                color = TaskMuted,
                 lineHeight = 13.sp
             )
         }
 
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(34.dp)
                 .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.10f))
-                .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape)
+                .background(Color(0xFFEDE7DA))
                 .clickable { onToggleClick() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 imageVector = if (isExpanded) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                 contentDescription = if (isExpanded) "Hide $text tasks" else "Show $text tasks",
-                tint = Color.White.copy(alpha = 0.82f),
-                modifier = Modifier.size(15.dp)
+                tint = TaskInk.copy(alpha = 0.68f),
+                modifier = Modifier.size(16.dp)
             )
         }
-    }
-}
-
-private fun statusShortLabel(text: String): String {
-    return when (text) {
-        "For Approval" -> "Review"
-        "Completed" -> "Done"
-        else -> text
     }
 }
 
@@ -564,9 +495,7 @@ private fun TaskListSection(
         return
     }
 
-    Column(
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         items.forEachIndexed { index, item ->
             AnimatedVisibility(
                 visible = true,
@@ -577,6 +506,7 @@ private fun TaskListSection(
             ) {
                 TaskRow(
                     item = item,
+                    index = index,
                     onTaskClick = onTaskClick
                 )
             }
@@ -590,16 +520,15 @@ private fun EmptyTaskCard(emptyText: String) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(22.dp))
-            .background(Color.White.copy(alpha = 0.08f))
-            .border(1.dp, Color.White.copy(alpha = 0.12f), RoundedCornerShape(22.dp))
+            .background(Color(0xFFF1EAE0))
             .padding(horizontal = 16.dp, vertical = 18.dp)
     ) {
         Text(
             text = emptyText,
-            fontFamily = AppPoppins,
-            fontWeight = FontWeight.Medium,
+            fontFamily = TaskManrope,
+            fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
-            color = Color.White.copy(alpha = 0.72f)
+            color = TaskMuted
         )
     }
 }
@@ -607,110 +536,119 @@ private fun EmptyTaskCard(emptyText: String) {
 @Composable
 private fun TaskRow(
     item: TaskItem,
+    index: Int,
     onTaskClick: (TaskItem) -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onTaskClick(item) },
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFCF6)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            .height(132.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(taskRowColor(item.status, index))
+            .clickable { onTaskClick(item) }
+            .padding(horizontal = 15.dp, vertical = 15.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
         ) {
-            Box(
-                modifier = Modifier
-                    .width(5.dp)
-                    .fillMaxHeight()
-                    .background(priorityColor(item.priority))
-            )
-
-            Column(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp)
-            ) {
-                Row(verticalAlignment = Alignment.Top) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.title,
-                            fontFamily = AppPoppins,
-                            fontWeight = FontWeight.ExtraBold,
-                            fontSize = 16.sp,
-                            color = TaskInk,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-
-                        Spacer(modifier = Modifier.height(5.dp))
-
-                        Text(
-                            text = item.description,
-                            fontFamily = AppPoppins,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 13.sp,
-                            color = TaskMuted,
-                            lineHeight = 17.sp,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(999.dp))
-                            .background(Color(0xFFE8F3E8))
-                            .padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = "${item.houseLabel} | ${item.penLabel}",
-                            fontFamily = AppPoppins,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            color = TaskGreen,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    PriorityDot(priority = item.priority)
 
                     Spacer(modifier = Modifier.width(8.dp))
 
-                    TaskTimeLabel(
-                        item = item,
-                        modifier = Modifier.weight(1f)
+                    Text(
+                        text = item.title,
+                        fontFamily = TaskManrope,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 18.sp,
+                        color = TaskInk,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Text(
+                    text = item.description,
+                    fontFamily = TaskManrope,
+                    fontWeight = FontWeight.Medium,
+                    fontSize = 11.sp,
+                    color = TaskMuted,
+                    lineHeight = 15.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            PriorityPill(priority = item.priority)
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            QuietLocationLabel("${item.houseLabel} | ${item.penLabel}")
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            TaskTimeLabel(
+                item = item,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }
 
-
 @Composable
-private fun LocationChip(text: String) {
+private fun PriorityDot(priority: TaskPriority) {
     Box(
         modifier = Modifier
+            .size(8.dp)
+            .clip(CircleShape)
+            .background(priorityColor(priority).copy(alpha = 0.86f))
+    )
+}
+
+@Composable
+private fun PriorityPill(priority: TaskPriority) {
+    val color = priorityColor(priority)
+
+    Row(
+        modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
-            .background(Color(0xFFEAF6EC))
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .background(color.copy(alpha = 0.08f))
+            .padding(horizontal = 9.dp, vertical = 5.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = text,
-            fontFamily = AppPoppins,
-            fontWeight = FontWeight.Bold,
-            fontSize = 11.sp,
-            color = TaskGreen,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            text = priorityLabel(priority),
+            fontFamily = TaskManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 10.sp,
+            color = color.copy(alpha = 0.92f),
+            maxLines = 1
         )
     }
+}
+
+@Composable
+private fun QuietLocationLabel(text: String) {
+    Text(
+        text = text,
+        fontFamily = TaskManrope,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 11.sp,
+        color = TaskGreen,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 @Composable
@@ -725,9 +663,9 @@ private fun TaskTimeLabel(
     }
 
     val color = when (item.status) {
-        TaskStatus.PENDING -> Color(0xFFD17A17)
-        TaskStatus.FOR_APPROVAL -> Color(0xFFC27A11)
-        TaskStatus.COMPLETED -> Color(0xFF4E8D39)
+        TaskStatus.PENDING -> Color(0xFFB96E18)
+        TaskStatus.FOR_APPROVAL -> Color(0xFFA96613)
+        TaskStatus.COMPLETED -> Color(0xFF467C36)
     }
 
     if (label.isBlank()) {
@@ -738,50 +676,55 @@ private fun TaskTimeLabel(
     Text(
         text = label.replace("\n", " "),
         modifier = modifier,
-        fontFamily = AppPoppins,
-        fontWeight = FontWeight.Bold,
+        fontFamily = TaskManrope,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 11.sp,
         lineHeight = 13.sp,
         textAlign = TextAlign.End,
-        color = color,
+        color = color.copy(alpha = 0.88f),
         maxLines = 2,
         overflow = TextOverflow.Ellipsis
     )
 }
 
-@Composable
-private fun TaskLoadingSkeleton() {
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        SkeletonHeaderBlock()
-        SkeletonSection()
-        SkeletonSection()
-        SkeletonSection()
+private fun taskRowColor(status: TaskStatus, index: Int): Color {
+    val base = when (status) {
+        TaskStatus.PENDING -> Color(0xFFF1E1CA)
+        TaskStatus.FOR_APPROVAL -> Color(0xFFF4E6D1)
+        TaskStatus.COMPLETED -> Color(0xFFEAF3E6)
+    }
+
+    val alternate = when (status) {
+        TaskStatus.PENDING -> Color(0xFFEBD8BC)
+        TaskStatus.FOR_APPROVAL -> Color(0xFFEEDBC0)
+        TaskStatus.COMPLETED -> Color(0xFFE1ECDE)
+    }
+
+    return if (index % 2 == 0) base else alternate
+}
+
+private fun priorityLabel(priority: TaskPriority): String {
+    return when (priority) {
+        TaskPriority.LOW -> "Low"
+        TaskPriority.MID -> "Medium"
+        TaskPriority.HIGH -> "High"
+    }
+}
+
+private fun priorityColor(priority: TaskPriority): Color {
+    return when (priority) {
+        TaskPriority.LOW -> Color(0xFF6E8233)
+        TaskPriority.MID -> Color(0xFFC27A16)
+        TaskPriority.HIGH -> Color(0xFFC04432)
     }
 }
 
 @Composable
-private fun SkeletonHeaderBlock() {
-    val alpha = skeletonAlpha()
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(154.dp)
-            .clip(RoundedCornerShape(30.dp))
-            .background(TaskDeepGreen.copy(alpha = 0.92f))
-            .padding(20.dp)
-    ) {
-        Column {
-            SkeletonLine(widthFraction = 0.42f, height = 26.dp, alpha = alpha, color = Color.White)
-            Spacer(modifier = Modifier.height(10.dp))
-            SkeletonLine(widthFraction = 0.72f, height = 14.dp, alpha = alpha, color = Color.White)
-            Spacer(modifier = Modifier.height(22.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                SkeletonBox(modifier = Modifier.weight(1f).height(48.dp), alpha = alpha, color = Color.White)
-                SkeletonBox(modifier = Modifier.weight(1f).height(48.dp), alpha = alpha, color = Color.White)
-                SkeletonBox(modifier = Modifier.weight(1f).height(48.dp), alpha = alpha, color = Color.White)
-            }
-        }
+private fun TaskLoadingSkeleton() {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        SkeletonSection()
+        SkeletonSection()
+        SkeletonSection()
     }
 }
 
@@ -789,81 +732,92 @@ private fun SkeletonHeaderBlock() {
 private fun SkeletonSection() {
     val alpha = skeletonAlpha()
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = TaskSurface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(TaskSectionSurface)
+            .border(1.dp, TaskLine.copy(alpha = 0.58f), RoundedCornerShape(28.dp))
+            .padding(14.dp)
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SkeletonBox(
-                    modifier = Modifier.size(42.dp),
-                    alpha = alpha,
-                    shape = CircleShape
-                )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SkeletonBox(
+                modifier = Modifier.size(42.dp),
+                alpha = alpha,
+                color = Color(0xFFDAD4C8),
+                shape = CircleShape
+            )
 
-                Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    SkeletonLine(widthFraction = 0.42f, height = 18.dp, alpha = alpha)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    SkeletonLine(widthFraction = 0.72f, height = 11.dp, alpha = alpha)
-                }
-
-                SkeletonBox(
-                    modifier = Modifier.size(32.dp),
-                    alpha = alpha,
-                    shape = CircleShape
-                )
+            Column(modifier = Modifier.weight(1f)) {
+                SkeletonLine(widthFraction = 0.42f, height = 18.dp, alpha = alpha)
+                Spacer(modifier = Modifier.height(7.dp))
+                SkeletonLine(widthFraction = 0.78f, height = 11.dp, alpha = alpha)
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            SkeletonBox(
+                modifier = Modifier.size(34.dp),
+                alpha = alpha,
+                color = Color(0xFFDAD4C8),
+                shape = CircleShape
+            )
+        }
 
-            repeat(2) {
-                SkeletonTaskCard(alpha = alpha)
-                if (it == 0) Spacer(modifier = Modifier.height(10.dp))
-            }
+        Spacer(modifier = Modifier.height(14.dp))
+
+        repeat(2) {
+            SkeletonTaskCard(alpha = alpha, index = it)
+            if (it == 0) Spacer(modifier = Modifier.height(10.dp))
         }
     }
 }
 
 @Composable
-private fun SkeletonTaskCard(alpha: Float) {
+private fun SkeletonTaskCard(
+    alpha: Float,
+    index: Int
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(116.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xFFFFFEFB))
-            .border(1.dp, Color(0xFFEDE8DE), RoundedCornerShape(24.dp))
-            .padding(15.dp)
+            .height(132.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(if (index % 2 == 0) Color(0xFFFFF6EA) else Color(0xFFF7ECDA))
+            .padding(horizontal = 15.dp, vertical = 15.dp)
     ) {
         Column {
-            Row(verticalAlignment = Alignment.Top) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 SkeletonBox(
-                    modifier = Modifier.size(10.dp),
+                    modifier = Modifier.size(8.dp),
                     alpha = alpha,
+                    color = Color(0xFFC27A16),
                     shape = CircleShape
                 )
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    SkeletonLine(widthFraction = 0.46f, height = 17.dp, alpha = alpha)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SkeletonLine(widthFraction = 0.95f, height = 12.dp, alpha = alpha)
-                    Spacer(modifier = Modifier.height(6.dp))
-                    SkeletonLine(widthFraction = 0.70f, height = 12.dp, alpha = alpha)
-                }
+                SkeletonLine(widthFraction = 0.42f, height = 20.dp, alpha = alpha)
+
+                Spacer(modifier = Modifier.weight(1f))
+
+                SkeletonLine(widthFraction = 0.18f, height = 20.dp, alpha = alpha)
             }
 
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
-            Row(verticalAlignment = Alignment.Bottom) {
-                SkeletonLine(widthFraction = 0.36f, height = 22.dp, alpha = alpha)
+            SkeletonLine(widthFraction = 0.92f, height = 10.dp, alpha = alpha)
+
+            Spacer(modifier = Modifier.height(7.dp))
+
+            SkeletonLine(widthFraction = 0.68f, height = 10.dp, alpha = alpha)
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                SkeletonLine(widthFraction = 0.34f, height = 13.dp, alpha = alpha)
                 Spacer(modifier = Modifier.weight(1f))
-                SkeletonLine(widthFraction = 0.30f, height = 12.dp, alpha = alpha)
+                SkeletonLine(widthFraction = 0.28f, height = 13.dp, alpha = alpha)
             }
         }
     }
@@ -925,19 +879,11 @@ private fun ErrorCard(message: String) {
         Text(
             text = message,
             modifier = Modifier.padding(18.dp),
-            fontFamily = AppPoppins,
+            fontFamily = TaskManrope,
             fontWeight = FontWeight.SemiBold,
             fontSize = 14.sp,
             color = Color(0xFFC51E1E)
         )
-    }
-}
-
-private fun priorityColor(priority: TaskPriority): Color {
-    return when (priority) {
-        TaskPriority.LOW -> Color(0xFFFA7A1F)
-        TaskPriority.MID -> Color(0xFFC4420B)
-        TaskPriority.HIGH -> Color(0xFFC51E1E)
     }
 }
 
@@ -992,8 +938,9 @@ private fun BottomNavItem(
 
         Text(
             text = label,
-            fontFamily = AppPoppins,
+            fontFamily = TaskManrope,
             fontSize = 10.sp,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
             color = if (selected) Color.White else Color(0xFFD7ECD9),
             textAlign = TextAlign.Center,
             lineHeight = 11.sp
