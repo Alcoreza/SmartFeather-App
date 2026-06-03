@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -117,12 +118,14 @@ fun ProfileScreen(
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var isEditing by remember { mutableStateOf(false) }
+    var isLoggingOut by remember { mutableStateOf(false) }
     var contentVisible by remember { mutableStateOf(false) }
 
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     var showSaveConfirmDialog by remember { mutableStateOf(false) }
     var showSaveSuccessDialog by remember { mutableStateOf(false) }
+    var showLogoutConfirmDialog by remember { mutableStateOf(false) }
     var confirmDialogMessage by remember { mutableStateOf("") }
     var successDialogMessage by remember { mutableStateOf("") }
 
@@ -150,9 +153,10 @@ fun ProfileScreen(
         AlertDialog(
             onDismissRequest = { showSaveConfirmDialog = false },
             containerColor = ProfileSurface,
+            shape = RoundedCornerShape(28.dp),
             title = {
                 Text(
-                    text = "Confirm Changes",
+                    text = "Save Changes",
                     fontFamily = ProfilePoppins,
                     fontWeight = FontWeight.ExtraBold,
                     color = ProfileInk
@@ -169,7 +173,12 @@ fun ProfileScreen(
             },
             dismissButton = {
                 TextButton(onClick = { showSaveConfirmDialog = false }) {
-                    Text("Cancel", fontFamily = ProfilePoppins, color = ProfileMuted)
+                    Text(
+                        text = "Cancel",
+                        fontFamily = ProfilePoppins,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = ProfileMuted
+                    )
                 }
             },
             confirmButton = {
@@ -213,6 +222,7 @@ fun ProfileScreen(
         AlertDialog(
             onDismissRequest = { showSaveSuccessDialog = false },
             containerColor = ProfileSurface,
+            shape = RoundedCornerShape(28.dp),
             title = {
                 Text(
                     text = "Profile Updated",
@@ -226,7 +236,8 @@ fun ProfileScreen(
                     text = successDialogMessage,
                     fontFamily = ProfilePoppins,
                     fontWeight = FontWeight.Medium,
-                    color = ProfileMuted
+                    color = ProfileMuted,
+                    lineHeight = 21.sp
                 )
             },
             confirmButton = {
@@ -236,6 +247,96 @@ fun ProfileScreen(
                         fontFamily = ProfilePoppins,
                         fontWeight = FontWeight.ExtraBold,
                         color = ProfileGreen
+                    )
+                }
+            }
+        )
+    }
+
+    if (errorMessage != null) {
+        AlertDialog(
+            onDismissRequest = { errorMessage = null },
+            containerColor = ProfileSurface,
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Something Went Wrong",
+                    fontFamily = ProfilePoppins,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = ProfileInk
+                )
+            },
+            text = {
+                Text(
+                    text = errorMessage.orEmpty(),
+                    fontFamily = ProfilePoppins,
+                    fontWeight = FontWeight.Medium,
+                    color = ProfileMuted,
+                    lineHeight = 21.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { errorMessage = null }) {
+                    Text(
+                        text = "Got it",
+                        fontFamily = ProfilePoppins,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = ProfileGreen
+                    )
+                }
+            }
+        )
+    }
+
+    if (showLogoutConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirmDialog = false },
+            containerColor = ProfileSurface,
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Sign Out",
+                    fontFamily = ProfilePoppins,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = ProfileInk
+                )
+            },
+            text = {
+                Text(
+                    text = "Are you sure you want to sign out of this account?",
+                    fontFamily = ProfilePoppins,
+                    fontWeight = FontWeight.Medium,
+                    color = ProfileMuted,
+                    lineHeight = 21.sp
+                )
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirmDialog = false }) {
+                    Text(
+                        text = "Cancel",
+                        fontFamily = ProfilePoppins,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = ProfileMuted
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showLogoutConfirmDialog = false
+                        isLoggingOut = true
+
+                        coroutineScope.launch {
+                            delay(650)
+                            onLogout()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = "Sign Out",
+                        fontFamily = ProfilePoppins,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = ProfileDanger
                     )
                 }
             }
@@ -252,7 +353,7 @@ fun ProfileScreen(
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
@@ -266,201 +367,216 @@ fun ProfileScreen(
                     }
                 }
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .padding(horizontal = 18.dp, vertical = 18.dp)
         ) {
-            ProfileHero(isEditing = isEditing)
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            if (isLoading) {
-                ProfileSkeleton()
-                Spacer(modifier = Modifier.height(20.dp))
-                return@Column
-            }
-
-            errorMessage?.let {
-                ProfileMessageBanner(it, Color(0xFFFFECEA), ProfileDanger)
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            AnimatedVisibility(
-                visible = contentVisible,
-                enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
-                    animationSpec = tween(420, easing = FastOutSlowInEasing),
-                    initialOffsetY = { it / 18 }
-                )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
             ) {
-                Column {
-                    profile?.let { user ->
-                        ProfileSectionPanel {
-                            ProfileSectionHeader(
-                                title = "Personal Information",
-                                subtitle = if (isEditing) "Identity details are locked while editing contact info." else "Registered flockman details",
-                                accentColor = ProfileGreen
-                            )
+                ProfileHero(isEditing = isEditing)
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
-                            ProfileFieldRow(
-                                leftLabel = "First Name",
-                                leftValue = user.firstName,
-                                rightLabel = "Middle Name",
-                                rightValue = user.middleName,
-                                grayOut = isEditing
-                            )
+                if (isLoading) {
+                    ProfileSkeleton()
+                    Spacer(modifier = Modifier.height(20.dp))
+                    return@Column
+                }
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                AnimatedVisibility(
+                    visible = contentVisible,
+                    enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
+                        animationSpec = tween(420, easing = FastOutSlowInEasing),
+                        initialOffsetY = { it / 18 }
+                    )
+                ) {
+                    Column {
+                        profile?.let { user ->
+                            ProfileSectionPanel {
+                                ProfileSectionHeader(
+                                    title = "Personal Information",
+                                    subtitle = if (isEditing) {
+                                        "Identity details are locked while editing contact info."
+                                    } else {
+                                        "Registered flockman details"
+                                    },
+                                    accentColor = ProfileGreen
+                                )
 
-                            ProfileFieldRow(
-                                leftLabel = "Last Name",
-                                leftValue = user.lastName,
-                                rightLabel = "Suffix",
-                                rightValue = user.suffix,
-                                grayOut = isEditing
-                            )
+                                Spacer(modifier = Modifier.height(16.dp))
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                                ProfileFieldRow(
+                                    leftLabel = "First Name",
+                                    leftValue = user.firstName,
+                                    rightLabel = "Middle Name",
+                                    rightValue = user.middleName,
+                                    grayOut = isEditing
+                                )
 
-                            ProfileFieldRow(
-                                leftLabel = "Username",
-                                leftValue = user.username,
-                                rightLabel = "Role",
-                                rightValue = user.role,
-                                grayOut = isEditing
-                            )
+                                Spacer(modifier = Modifier.height(14.dp))
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                                ProfileFieldRow(
+                                    leftLabel = "Last Name",
+                                    leftValue = user.lastName,
+                                    rightLabel = "Suffix",
+                                    rightValue = user.suffix,
+                                    grayOut = isEditing
+                                )
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(14.dp)
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    ProfileLabel("Birthday")
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                ProfileFieldRow(
+                                    leftLabel = "Username",
+                                    leftValue = user.username,
+                                    rightLabel = "Role",
+                                    rightValue = user.role,
+                                    grayOut = isEditing
+                                )
+
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        ProfileLabel("Birthday")
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        ProfileValueBox(
+                                            value = user.birthday,
+                                            grayOut = isEditing
+                                        )
+                                    }
+
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        ProfileLabel("Gender")
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        ProfileValueBox(
+                                            value = user.gender,
+                                            grayOut = isEditing
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            ProfileSectionPanel {
+                                ProfileSectionHeader(
+                                    title = "Contact Details",
+                                    subtitle = if (isEditing) {
+                                        "Update verified contact information."
+                                    } else {
+                                        "Phone and address used for farm records"
+                                    },
+                                    accentColor = if (isEditing) Color(0xFFD78A2B) else ProfileGreen
+                                )
+
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    ProfileLabel("Phone Number")
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    ProfileValueBox(
-                                        value = user.birthday,
-                                        grayOut = isEditing
-                                    )
+                                    if (isEditing) {
+                                        ProfileEditableValueBox(
+                                            value = editablePhoneNumber,
+                                            onValueChange = { editablePhoneNumber = it },
+                                            keyboardType = KeyboardType.Phone
+                                        )
+                                    } else {
+                                        ProfileValueBox(
+                                            value = user.phoneNumber,
+                                            grayOut = false
+                                        )
+                                    }
                                 }
 
-                                Column(modifier = Modifier.weight(1f)) {
-                                    ProfileLabel("Gender")
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                Column(modifier = Modifier.fillMaxWidth()) {
+                                    ProfileLabel("Address")
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    ProfileValueBox(
-                                        value = user.gender,
-                                        grayOut = isEditing
-                                    )
+                                    if (isEditing) {
+                                        ProfileEditableValueBox(
+                                            value = editableAddress,
+                                            onValueChange = { editableAddress = it },
+                                            keyboardType = KeyboardType.Text,
+                                            singleLine = false
+                                        )
+                                    } else {
+                                        ProfileValueBox(
+                                            value = user.address,
+                                            grayOut = false
+                                        )
+                                    }
                                 }
                             }
-                        }
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
 
-                        ProfileSectionPanel {
-                            ProfileSectionHeader(
-                                title = "Contact Details",
-                                subtitle = if (isEditing) "Update only verified contact information." else "Phone and address used for farm records",
-                                accentColor = if (isEditing) Color(0xFFE28622) else ProfileGreen
+                            ProfileActionRow(
+                                isEditing = isEditing,
+                                isSaving = isSaving,
+                                isLoggingOut = isLoggingOut,
+                                onEdit = {
+                                    errorMessage = null
+                                    editablePhoneNumber = user.phoneNumber
+                                    editableAddress = user.address
+                                    isEditing = true
+                                },
+                                onCancel = {
+                                    editablePhoneNumber = user.phoneNumber
+                                    editableAddress = user.address
+                                    errorMessage = null
+                                    isEditing = false
+                                },
+                                onSave = {
+                                    val phone = editablePhoneNumber.trim()
+                                    val address = editableAddress.trim()
+                                    val changedFields = buildList {
+                                        if (phone != user.phoneNumber.trim()) add("Phone Number")
+                                        if (address != user.address.trim()) add("Address")
+                                    }
+
+                                    when {
+                                        changedFields.isEmpty() -> {
+                                            errorMessage = "No changes were made."
+                                        }
+                                        phone.isBlank() -> {
+                                            errorMessage = "Phone number is required."
+                                        }
+                                        !Regex("^(\\+639\\d{9}|09\\d{9})$").matches(phone) -> {
+                                            errorMessage = "Phone number must be in 09XXXXXXXXX or +639XXXXXXXXX format."
+                                        }
+                                        address.length > 200 -> {
+                                            errorMessage = "Address must not exceed 200 characters."
+                                        }
+                                        else -> {
+                                            errorMessage = null
+                                            confirmDialogMessage = if (changedFields.size == 1) {
+                                                "Save changes to ${changedFields.first()}?"
+                                            } else {
+                                                "Save changes to ${changedFields.joinToString(" and ")}?"
+                                            }
+                                            showSaveConfirmDialog = true
+                                        }
+                                    }
+                                },
+                                onLogout = {
+                                    showLogoutConfirmDialog = true
+                                }
                             )
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                ProfileLabel("Phone Number")
-                                Spacer(modifier = Modifier.height(8.dp))
-                                if (isEditing) {
-                                    ProfileEditableValueBox(
-                                        value = editablePhoneNumber,
-                                        onValueChange = { editablePhoneNumber = it },
-                                        keyboardType = KeyboardType.Phone
-                                    )
-                                } else {
-                                    ProfileValueBox(
-                                        value = user.phoneNumber,
-                                        grayOut = false
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(14.dp))
-
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                ProfileLabel("Address")
-                                Spacer(modifier = Modifier.height(8.dp))
-                                if (isEditing) {
-                                    ProfileEditableValueBox(
-                                        value = editableAddress,
-                                        onValueChange = { editableAddress = it },
-                                        keyboardType = KeyboardType.Text,
-                                        singleLine = false
-                                    )
-                                } else {
-                                    ProfileValueBox(
-                                        value = user.address,
-                                        grayOut = false
-                                    )
-                                }
-                            }
                         }
 
                         Spacer(modifier = Modifier.height(20.dp))
-
-                        ProfileActionRow(
-                            isEditing = isEditing,
-                            isSaving = isSaving,
-                            onEdit = {
-                                errorMessage = null
-                                editablePhoneNumber = user.phoneNumber
-                                editableAddress = user.address
-                                isEditing = true
-                            },
-                            onCancel = {
-                                editablePhoneNumber = user.phoneNumber
-                                editableAddress = user.address
-                                errorMessage = null
-                                isEditing = false
-                            },
-                            onSave = {
-                                val phone = editablePhoneNumber.trim()
-                                val address = editableAddress.trim()
-                                val changedFields = buildList {
-                                    if (phone != user.phoneNumber.trim()) add("Phone Number")
-                                    if (address != user.address.trim()) add("Address")
-                                }
-
-                                when {
-                                    changedFields.isEmpty() -> {
-                                        errorMessage = "No changes were made."
-                                    }
-                                    phone.isBlank() -> {
-                                        errorMessage = "Phone number is required."
-                                    }
-                                    !Regex("^(\\+639\\d{9}|09\\d{9})$").matches(phone) -> {
-                                        errorMessage = "Phone number must be in 09XXXXXXXXX or +639XXXXXXXXX format."
-                                    }
-                                    address.length > 200 -> {
-                                        errorMessage = "Address must not exceed 200 characters."
-                                    }
-                                    else -> {
-                                        errorMessage = null
-                                        confirmDialogMessage = if (changedFields.size == 1) {
-                                            "Save changes to ${changedFields.first()}?"
-                                        } else {
-                                            "Save changes to ${changedFields.joinToString(" and ")}?"
-                                        }
-                                        showSaveConfirmDialog = true
-                                    }
-                                }
-                            },
-                            onLogout = onLogout
-                        )
                     }
-
-                    Spacer(modifier = Modifier.height(20.dp))
                 }
+            }
+
+            if (isLoggingOut) {
+                ProfileLogoutOverlay()
             }
         }
     }
@@ -596,100 +712,153 @@ private fun ProfileSectionHeader(
 private fun ProfileActionRow(
     isEditing: Boolean,
     isSaving: Boolean,
+    isLoggingOut: Boolean,
     onEdit: () -> Unit,
     onCancel: () -> Unit,
     onSave: () -> Unit,
     onLogout: () -> Unit
 ) {
-    Column(
+    Row(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         if (!isEditing) {
-            Button(
-                onClick = onEdit,
-                enabled = !isSaving,
-                colors = ButtonDefaults.buttonColors(containerColor = ProfileGreen),
-                shape = RoundedCornerShape(18.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Edit,
-                    contentDescription = "Edit",
-                    modifier = Modifier.size(17.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Edit Profile",
-                    fontFamily = ProfilePoppins,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
-                )
-            }
+            ProfileCompactButton(
+                text = "Edit Profile",
+                icon = Icons.Outlined.Edit,
+                backgroundColor = Color(0xFF236B3A),
+                contentColor = Color.White,
+                borderColor = Color.Transparent,
+                enabled = !isSaving && !isLoggingOut,
+                onClick = onEdit
+            )
+
+            Spacer(modifier = Modifier.width(10.dp))
+
+            ProfileCompactButton(
+                text = "Sign Out",
+                icon = null,
+                backgroundColor = Color(0xFFFFF3F0),
+                contentColor = ProfileDanger.copy(alpha = 0.94f),
+                borderColor = ProfileDanger.copy(alpha = 0.48f),
+                enabled = !isSaving && !isLoggingOut,
+                onClick = onLogout
+            )
         }
 
         if (isEditing) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Button(
-                    onClick = onCancel,
-                    enabled = !isSaving,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF7A8078)),
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp)
-                ) {
-                    Text(
-                        text = "Cancel",
-                        fontFamily = ProfilePoppins,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-                }
+            ProfileCompactButton(
+                text = "Cancel",
+                icon = null,
+                backgroundColor = Color(0xFFE8E3DA),
+                contentColor = ProfileInk,
+                borderColor = ProfileLine.copy(alpha = 0.85f),
+                enabled = !isSaving && !isLoggingOut,
+                onClick = onCancel
+            )
 
-                Button(
-                    onClick = onSave,
-                    enabled = !isSaving,
-                    colors = ButtonDefaults.buttonColors(containerColor = ProfileGreen),
-                    shape = RoundedCornerShape(18.dp),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(52.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Save,
-                        contentDescription = "Save",
-                        modifier = Modifier.size(17.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isSaving) "Saving..." else "Save",
-                        fontFamily = ProfilePoppins,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.width(10.dp))
+
+            ProfileCompactButton(
+                text = if (isSaving) "Saving..." else "Save",
+                icon = Icons.Outlined.Save,
+                backgroundColor = Color(0xFF236B3A),
+                contentColor = Color.White,
+                borderColor = Color.Transparent,
+                enabled = !isSaving && !isLoggingOut,
+                onClick = onSave
+            )
+        }
+    }
+}
+
+@Composable
+private fun ProfileCompactButton(
+    text: String,
+    icon: ImageVector?,
+    backgroundColor: Color,
+    contentColor: Color,
+    borderColor: Color,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(999.dp))
+            .background(if (enabled) backgroundColor else Color(0xFFE0DCD4))
+            .border(
+                width = 1.dp,
+                color = if (enabled) borderColor else Color.Transparent,
+                shape = RoundedCornerShape(999.dp)
+            )
+            .clickable(enabled = enabled) { onClick() }
+            .padding(horizontal = if (icon == null) 18.dp else 15.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = text,
+                modifier = Modifier.size(15.dp),
+                tint = contentColor
+            )
+
+            Spacer(modifier = Modifier.width(7.dp))
         }
 
-        Button(
-            onClick = onLogout,
-            colors = ButtonDefaults.buttonColors(containerColor = ProfileDanger),
-            shape = RoundedCornerShape(18.dp),
+        Text(
+            text = text,
+            fontFamily = ProfilePoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 13.sp,
+            color = contentColor
+        )
+    }
+}
+
+@Composable
+private fun ProfileLogoutOverlay() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(ProfileInk.copy(alpha = 0.34f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
+                .clip(RoundedCornerShape(26.dp))
+                .background(ProfileSurface)
+                .border(1.dp, ProfileLine.copy(alpha = 0.80f), RoundedCornerShape(26.dp))
+                .padding(horizontal = 28.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            CircularProgressIndicator(
+                color = ProfileGreen,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(34.dp)
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
             Text(
-                text = "Logout",
+                text = "Signing out",
                 fontFamily = ProfilePoppins,
                 fontWeight = FontWeight.ExtraBold,
-                color = Color.White
+                fontSize = 15.sp,
+                color = ProfileInk
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Text(
+                text = "Please wait a moment.",
+                fontFamily = ProfilePoppins,
+                fontWeight = FontWeight.Medium,
+                fontSize = 12.sp,
+                color = ProfileMuted
             )
         }
     }
@@ -860,7 +1029,7 @@ private fun ProfileSkeleton() {
         ProfileSkeletonBox(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(114.dp),
+                .height(102.dp),
             alpha = alpha,
             shape = RoundedCornerShape(18.dp)
         )

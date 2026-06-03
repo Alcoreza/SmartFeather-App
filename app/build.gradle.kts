@@ -58,6 +58,7 @@ dependencies {
     implementation("io.github.jan-tennert.supabase:gotrue-kt:2.0.4")
     implementation("io.ktor:ktor-client-android:2.3.12")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("com.composables:icons-lucide:1.1.0")
 
 
 
