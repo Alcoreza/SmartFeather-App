@@ -1,5 +1,14 @@
 package com.example.smartfeather
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -8,23 +17,27 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.List
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Home
@@ -48,9 +61,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
@@ -67,12 +82,30 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private val FarmPoppins = FontFamily(
-    Font(R.font.poppins_regular, FontWeight.Normal),
-    Font(R.font.poppins_medium, FontWeight.Medium),
-    Font(R.font.poppins_semibold, FontWeight.SemiBold),
-    Font(R.font.poppins_bold, FontWeight.Bold)
+private val PopulationManrope = FontFamily(
+    Font(R.font.manrope_extralight, FontWeight.ExtraLight),
+    Font(R.font.manrope_light, FontWeight.Light),
+    Font(R.font.manrope_regular, FontWeight.Normal),
+    Font(R.font.manrope_medium, FontWeight.Medium),
+    Font(R.font.manrope_semibold, FontWeight.SemiBold),
+    Font(R.font.manrope_bold, FontWeight.Bold),
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold),
+    Font(R.font.manrope_variablefont_wght, FontWeight.Black)
 )
+
+private val PopulationBackground = Color(0xFFF6F3EC)
+private val PopulationSurface = Color(0xFFFFFCF7)
+private val PopulationSurfaceAlt = Color(0xFFF3EFE7)
+private val PopulationAutoField = Color(0xFFE8E3DA)
+private val PopulationInk = Color(0xFF121A14)
+private val PopulationMuted = Color(0xFF677168)
+private val PopulationLine = Color(0xFFD8D0C3)
+private val PopulationGreen = Color(0xFF1F7A3A)
+private val PopulationDeepGreen = Color(0xFF062717)
+private val PopulationAccent = Color(0xFFB54A3C)
+private val PopulationAccentDeep = Color(0xFF5A1F19)
+private val PopulationAmber = Color(0xFFD78A2B)
+private val PopulationDanger = Color(0xFFC62828)
 
 @Composable
 fun PopulationScreen(
@@ -107,7 +140,9 @@ fun PopulationScreen(
 
     var penExpanded by remember { mutableStateOf(false) }
 
+    var isContextLoading by remember { mutableStateOf(true) }
     var isLoading by remember { mutableStateOf(false) }
+    var contentVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var successMessage by remember { mutableStateOf<String?>(null) }
 
@@ -115,6 +150,11 @@ fun PopulationScreen(
     var blockedMessage by remember { mutableStateOf("") }
 
     LaunchedEffect(employeeId) {
+        isContextLoading = true
+        contentVisible = false
+        errorMessage = null
+        successMessage = null
+
         populationService.getPopulationContext(employeeId)
             .onSuccess { context ->
                 if (!context.accessAllowed) {
@@ -133,38 +173,59 @@ fun PopulationScreen(
             .onFailure {
                 errorMessage = it.message ?: "Failed to load access context."
             }
+
+        isContextLoading = false
+        delay(120)
+        contentVisible = true
     }
 
     if (showBlockedDialog) {
         AlertDialog(
             onDismissRequest = {},
+            containerColor = PopulationSurface,
+            shape = RoundedCornerShape(28.dp),
             title = {
                 Text(
                     text = "Biosecurity Required",
-                    fontFamily = FarmPoppins,
-                    fontWeight = FontWeight.SemiBold
+                    fontFamily = PopulationManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = PopulationInk
                 )
             },
             text = {
                 Text(
                     text = blockedMessage,
-                    fontFamily = FarmPoppins
+                    fontFamily = PopulationManrope,
+                    fontWeight = FontWeight.Medium,
+                    color = PopulationMuted,
+                    lineHeight = 21.sp
                 )
             },
             dismissButton = {
                 TextButton(onClick = onBackToFarm) {
-                    Text("Back", fontFamily = FarmPoppins)
+                    Text(
+                        text = "Back",
+                        fontFamily = PopulationManrope,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = PopulationMuted
+                    )
                 }
             },
             confirmButton = {
                 TextButton(onClick = onGoToBiosecurity) {
-                    Text("Go to Biosecurity", fontFamily = FarmPoppins)
+                    Text(
+                        text = "Go to Biosecurity",
+                        fontFamily = PopulationManrope,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = PopulationGreen
+                    )
                 }
             }
         )
     }
 
     Scaffold(
+        containerColor = PopulationBackground,
         bottomBar = {
             PopulationBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
@@ -173,203 +234,219 @@ fun PopulationScreen(
             )
         }
     ) { padding ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color(0xFFF2F2F2))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFFFBF8F1), PopulationBackground, Color(0xFFEDE7DA))
+                    )
+                )
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
                 .pointerInput(Unit) {
                     detectTapGestures {
                         focusManager.clearFocus()
                     }
                 }
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF8B0000))
-                    .padding(vertical = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = "Back",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = 12.dp)
-                        .clickable { onBackToFarm() }
-                )
-                Text(
-                    text = "Population Data",
-                    fontFamily = FarmPoppins,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 20.sp,
-                    color = Color.White,
-                    textAlign = TextAlign.Center
-                )
-            }
-
             Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .imePadding()
+                    .padding(horizontal = 18.dp, vertical = 18.dp)
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        PopulationLabel("Date")
-                        PopulationReadOnlyField(openedDate)
-                    }
+                PopulationHero(
+                    openedDate = openedDate,
+                    openedTime = openedTime,
+                    onBackToFarm = onBackToFarm
+                )
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        PopulationLabel("Time")
-                        PopulationReadOnlyField(openedTime)
-                    }
+                Spacer(modifier = Modifier.height(18.dp))
+
+                if (isContextLoading) {
+                    PopulationSkeleton()
+                    Spacer(modifier = Modifier.height(20.dp))
+                    return@Column
                 }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        PopulationLabel("House")
-                        PopulationReadOnlyField(house)
-                    }
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        PopulationLabel("Pen")
-                        PopulationDropdownField(
-                            value = pen,
-                            options = penOptions,
-                            expanded = penExpanded,
-                            onExpandedChange = {
-                                if (selectedHouse != null) {
-                                    penExpanded = it
-                                }
-                            },
-                            onValueSelected = { selectedValue: String ->
-                                pen = selectedValue
-                                penExpanded = false
-                                errorMessage = null
-                                successMessage = null
-                            }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                PopulationLabel("Eggs Hatched")
-                PopulationInputField(
-                    value = eggs,
-                    keyboardType = KeyboardType.Number
-                ) { newValue ->
-                    eggs = newValue.filter { ch -> ch.isDigit() }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                PopulationLabel("Mortalities")
-                PopulationInputField(
-                    value = mortality,
-                    keyboardType = KeyboardType.Number
-                ) { newValue ->
-                    mortality = newValue.filter { ch -> ch.isDigit() }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
 
                 errorMessage?.let {
-                    Text(
+                    PopulationMessageBanner(
                         text = it,
-                        color = Color(0xFFB00020),
-                        fontFamily = FarmPoppins,
-                        fontSize = 13.sp
+                        backgroundColor = Color(0xFFFFECEA),
+                        contentColor = PopulationDanger
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                 }
 
                 successMessage?.let {
-                    Text(
+                    PopulationMessageBanner(
                         text = it,
-                        color = Color(0xFF1E5D36),
-                        fontFamily = FarmPoppins,
-                        fontSize = 13.sp
+                        backgroundColor = Color(0xFFEAF3EC),
+                        contentColor = PopulationGreen
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(14.dp))
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                AnimatedVisibility(
+                    visible = contentVisible,
+                    enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
+                        animationSpec = tween(420, easing = FastOutSlowInEasing),
+                        initialOffsetY = { it / 12 }
+                    )
                 ) {
-                    Button(
-                        onClick = {
-                            focusManager.clearFocus()
+                    Column {
+                        PopulationSectionPanel {
+                            PopulationSectionHeader(
+                                title = "Location",
+                                accentColor = PopulationAccent
+                            )
 
-                            errorMessage = null
-                            successMessage = null
+                            Spacer(modifier = Modifier.height(16.dp))
 
-                            val currentHouse = selectedHouse
-                            if (currentHouse == null) {
-                                errorMessage = "No house is assigned from your biosecurity entry."
-                                return@Button
-                            }
-                            if (pen.isBlank()) {
-                                errorMessage = "Please select a pen."
-                                return@Button
-                            }
-                            if (eggs.isBlank()) {
-                                errorMessage = "Please enter eggs hatched."
-                                return@Button
-                            }
-                            if (mortality.isBlank()) {
-                                errorMessage = "Please enter mortalities."
-                                return@Button
-                            }
-
-                            val eggsValue = eggs.toIntOrNull()
-                            val mortalityValue = mortality.toIntOrNull()
-
-                            if (eggsValue == null || mortalityValue == null) {
-                                errorMessage = "Eggs hatched and mortalities must be valid numbers."
-                                return@Button
-                            }
-
-                            coroutineScope.launch {
-                                isLoading = true
-                                populationService.submitPopulation(
-                                    employeeId = employeeId,
-                                    houseId = currentHouse.id,
-                                    penNumber = pen,
-                                    eggsHatched = eggsValue,
-                                    mortality = mortalityValue,
-                                    recordedAt = recordedAtValue
-                                ).onSuccess { success ->
-                                    if (success) {
-                                        successMessage = "Population data submitted successfully."
-                                        pen = ""
-                                        eggs = ""
-                                        mortality = ""
-                                    } else {
-                                        errorMessage = "No matching pen record was updated."
-                                    }
-                                }.onFailure {
-                                    errorMessage = it.message ?: "Failed to submit population data."
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    PopulationLabel("House")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    PopulationReadOnlyField(house.ifBlank { "-" })
                                 }
-                                isLoading = false
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    PopulationLabel("Pen")
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    PopulationDropdownField(
+                                        value = pen,
+                                        options = penOptions,
+                                        expanded = penExpanded,
+                                        onExpandedChange = {
+                                            if (selectedHouse != null) {
+                                                penExpanded = it
+                                            }
+                                        },
+                                        onValueSelected = { selectedValue: String ->
+                                            pen = selectedValue
+                                            penExpanded = false
+                                            errorMessage = null
+                                            successMessage = null
+                                        }
+                                    )
+                                }
                             }
-                        },
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E5D36)),
-                        modifier = Modifier.height(40.dp),
-                        enabled = !isLoading && !showBlockedDialog
-                    ) {
-                        Text(
-                            text = if (isLoading) "Submitting..." else "Submit",
-                            color = Color.White,
-                            fontFamily = FarmPoppins
-                        )
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        PopulationSectionPanel {
+                            PopulationSectionHeader(
+                                title = "Entry",
+                                accentColor = PopulationAmber
+                            )
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            PopulationLabel("Eggs Hatched")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            PopulationInputField(
+                                value = eggs,
+                                keyboardType = KeyboardType.Number
+                            ) { newValue ->
+                                eggs = newValue.filter { ch -> ch.isDigit() }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            PopulationLabel("Mortalities")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            PopulationInputField(
+                                value = mortality,
+                                keyboardType = KeyboardType.Number
+                            ) { newValue ->
+                                mortality = newValue.filter { ch -> ch.isDigit() }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Button(
+                                onClick = {
+                                    focusManager.clearFocus()
+
+                                    errorMessage = null
+                                    successMessage = null
+
+                                    val currentHouse = selectedHouse
+                                    if (currentHouse == null) {
+                                        errorMessage = "No house is assigned from your biosecurity entry."
+                                        return@Button
+                                    }
+                                    if (pen.isBlank()) {
+                                        errorMessage = "Please select a pen."
+                                        return@Button
+                                    }
+                                    if (eggs.isBlank()) {
+                                        errorMessage = "Please enter eggs hatched."
+                                        return@Button
+                                    }
+                                    if (mortality.isBlank()) {
+                                        errorMessage = "Please enter mortalities."
+                                        return@Button
+                                    }
+
+                                    val eggsValue = eggs.toIntOrNull()
+                                    val mortalityValue = mortality.toIntOrNull()
+
+                                    if (eggsValue == null || mortalityValue == null) {
+                                        errorMessage = "Eggs hatched and mortalities must be valid numbers."
+                                        return@Button
+                                    }
+
+                                    coroutineScope.launch {
+                                        isLoading = true
+                                        populationService.submitPopulation(
+                                            employeeId = employeeId,
+                                            houseId = currentHouse.id,
+                                            penNumber = pen,
+                                            eggsHatched = eggsValue,
+                                            mortality = mortalityValue,
+                                            recordedAt = recordedAtValue
+                                        ).onSuccess { success ->
+                                            if (success) {
+                                                successMessage = "Population data submitted successfully."
+                                                pen = ""
+                                                eggs = ""
+                                                mortality = ""
+                                            } else {
+                                                errorMessage = "No matching pen record was updated."
+                                            }
+                                        }.onFailure {
+                                            errorMessage = it.message ?: "Failed to submit population data."
+                                        }
+                                        isLoading = false
+                                    }
+                                },
+                                shape = RoundedCornerShape(16.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PopulationGreen,
+                                    disabledContainerColor = Color(0xFF94A99A)
+                                ),
+                                modifier = Modifier.height(48.dp),
+                                enabled = !isLoading && !showBlockedDialog
+                            ) {
+                                Text(
+                                    text = if (isLoading) "Submitting..." else "Submit",
+                                    color = Color.White,
+                                    fontFamily = PopulationManrope,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 14.sp
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(20.dp))
                     }
                 }
             }
@@ -378,13 +455,164 @@ fun PopulationScreen(
 }
 
 @Composable
+private fun PopulationHero(
+    openedDate: String,
+    openedTime: String,
+    onBackToFarm: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(30.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(PopulationAccentDeep, PopulationAccent, Color(0xFFC76655))
+                )
+            )
+            .padding(18.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(118.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.10f))
+        )
+
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(CircleShape)
+                        .background(Color.White.copy(alpha = 0.14f))
+                        .border(1.dp, Color.White.copy(alpha = 0.14f), CircleShape)
+                        .clickable { onBackToFarm() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = "Back",
+                        tint = Color.White,
+                        modifier = Modifier.size(21.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.size(12.dp))
+
+                Text(
+                    text = "Population Data",
+                    fontFamily = PopulationManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 25.sp,
+                    color = Color.White,
+                    lineHeight = 29.sp,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                PopulationHeroMetric(
+                    label = "Date",
+                    value = openedDate,
+                    modifier = Modifier.weight(1f)
+                )
+
+                PopulationHeroMetric(
+                    label = "Time",
+                    value = openedTime,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PopulationHeroMetric(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = 0.14f))
+            .padding(horizontal = 13.dp, vertical = 11.dp)
+    ) {
+        Text(
+            text = label,
+            fontFamily = PopulationManrope,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 10.sp,
+            color = Color.White.copy(alpha = 0.68f)
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = value,
+            fontFamily = PopulationManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 14.sp,
+            color = Color.White
+        )
+    }
+}
+
+@Composable
+private fun PopulationSectionPanel(
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(26.dp))
+            .background(PopulationSurface)
+            .border(1.dp, PopulationLine.copy(alpha = 0.70f), RoundedCornerShape(26.dp))
+            .padding(horizontal = 18.dp, vertical = 18.dp),
+        content = content
+    )
+}
+
+@Composable
+private fun PopulationSectionHeader(
+    title: String,
+    accentColor: Color
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 4.dp, height = 28.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(accentColor)
+        )
+
+        Spacer(modifier = Modifier.size(12.dp))
+
+        Text(
+            text = title,
+            fontFamily = PopulationManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = PopulationInk
+        )
+    }
+}
+
+@Composable
 private fun PopulationLabel(text: String) {
     Text(
         text = text,
-        fontSize = 12.sp,
-        fontFamily = FarmPoppins,
-        fontWeight = FontWeight.Medium,
-        modifier = Modifier.padding(bottom = 4.dp)
+        fontSize = 13.sp,
+        fontFamily = PopulationManrope,
+        fontWeight = FontWeight.ExtraBold,
+        color = PopulationInk
     )
 }
 
@@ -413,14 +641,8 @@ private fun PopulationInputField(
             },
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-        shape = RoundedCornerShape(20.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color(0xFFEDEDED),
-            unfocusedContainerColor = Color(0xFFEDEDED),
-            focusedBorderColor = Color(0xFFBDBDBD),
-            unfocusedBorderColor = Color(0xFFBDBDBD),
-            cursorColor = Color.Black
-        )
+        shape = RoundedCornerShape(18.dp),
+        colors = populationFieldColors()
     )
 }
 
@@ -433,11 +655,11 @@ private fun PopulationReadOnlyField(value: String) {
         enabled = false,
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            disabledContainerColor = Color(0xFFE3E3E3),
-            disabledBorderColor = Color(0xFFBDBDBD),
-            disabledTextColor = Color(0xFF6E6E6E)
+            disabledContainerColor = PopulationAutoField,
+            disabledBorderColor = Color.Transparent,
+            disabledTextColor = PopulationMuted
         )
     )
 }
@@ -455,10 +677,10 @@ private fun PopulationDropdownField(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
-                .background(Color(0xFFEDEDED), RoundedCornerShape(20.dp))
-                .border(1.dp, Color(0xFFBDBDBD), RoundedCornerShape(20.dp))
+                .clip(RoundedCornerShape(18.dp))
+                .background(PopulationSurfaceAlt)
                 .clickable { onExpandedChange(true) }
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 14.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
@@ -467,28 +689,35 @@ private fun PopulationDropdownField(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = if (value.isEmpty()) "Select" else value,
-                    fontFamily = FarmPoppins,
-                    fontSize = 14.sp
+                    text = if (value.isEmpty()) "Select pen" else value,
+                    fontFamily = PopulationManrope,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = if (value.isEmpty()) PopulationMuted else PopulationInk
                 )
-                Text(
-                    text = "⌄",
-                    fontSize = 18.sp,
-                    fontFamily = FarmPoppins
+
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "Select pen",
+                    tint = PopulationGreen,
+                    modifier = Modifier.size(22.dp)
                 )
             }
         }
 
         DropdownMenu(
             expanded = expanded,
-            onDismissRequest = { onExpandedChange(false) }
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier.background(PopulationSurface)
         ) {
             options.forEach { option ->
                 DropdownMenuItem(
                     text = {
                         Text(
                             text = option,
-                            fontFamily = FarmPoppins
+                            fontFamily = PopulationManrope,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PopulationInk
                         )
                     },
                     onClick = {
@@ -498,6 +727,125 @@ private fun PopulationDropdownField(
             }
         }
     }
+}
+
+@Composable
+private fun populationFieldColors() = OutlinedTextFieldDefaults.colors(
+    focusedContainerColor = PopulationSurfaceAlt,
+    unfocusedContainerColor = PopulationSurfaceAlt,
+    focusedBorderColor = PopulationGreen,
+    unfocusedBorderColor = Color.Transparent,
+    focusedTextColor = PopulationInk,
+    unfocusedTextColor = PopulationInk,
+    cursorColor = PopulationGreen
+)
+
+@Composable
+private fun PopulationMessageBanner(
+    text: String,
+    backgroundColor: Color,
+    contentColor: Color
+) {
+    Text(
+        text = text,
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(backgroundColor)
+            .border(1.dp, contentColor.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        fontFamily = PopulationManrope,
+        fontWeight = FontWeight.SemiBold,
+        fontSize = 13.sp,
+        lineHeight = 18.sp,
+        color = contentColor
+    )
+}
+
+@Composable
+private fun PopulationSkeleton() {
+    val alpha = populationSkeletonAlpha()
+
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        PopulationSkeletonPanel(alpha = alpha, height = 132.dp)
+        PopulationSkeletonPanel(alpha = alpha, height = 226.dp)
+    }
+}
+
+@Composable
+private fun PopulationSkeletonPanel(
+    alpha: Float,
+    height: androidx.compose.ui.unit.Dp
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(26.dp))
+            .background(PopulationSurface)
+            .border(1.dp, PopulationLine.copy(alpha = 0.70f), RoundedCornerShape(26.dp))
+            .padding(18.dp)
+    ) {
+        PopulationSkeletonLine(0.28f, 18.dp, alpha)
+        Spacer(modifier = Modifier.height(18.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PopulationSkeletonBox(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                alpha = alpha
+            )
+            PopulationSkeletonBox(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(56.dp),
+                alpha = alpha
+            )
+        }
+    }
+}
+
+@Composable
+private fun populationSkeletonAlpha(): Float {
+    val transition = rememberInfiniteTransition(label = "populationSkeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.32f,
+        targetValue = 0.72f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(900, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "populationSkeletonAlpha"
+    )
+    return alpha
+}
+
+@Composable
+private fun PopulationSkeletonLine(
+    widthFraction: Float,
+    height: androidx.compose.ui.unit.Dp,
+    alpha: Float
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(widthFraction)
+            .height(height)
+            .clip(RoundedCornerShape(999.dp))
+            .background(Color(0xFFDAD4C8).copy(alpha = alpha))
+    )
+}
+
+@Composable
+private fun PopulationSkeletonBox(
+    modifier: Modifier,
+    alpha: Float,
+    shape: Shape = RoundedCornerShape(18.dp)
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(Color(0xFFDAD4C8).copy(alpha = alpha))
+    )
 }
 
 @Composable
@@ -511,11 +859,11 @@ fun PopulationBottomNavBar(
             .fillMaxWidth()
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFF06331D), Color(0xFF022816))
+                    colors = listOf(Color(0xFF07381F), Color(0xFF022716))
                 )
             )
             .navigationBarsPadding()
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -538,26 +886,32 @@ fun PopulationBottomNavItem(
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
-        modifier = Modifier.clickable(
-            interactionSource = interactionSource,
-            indication = null
-        ) { onClick() }
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick() }
+            .padding(horizontal = 8.dp, vertical = 5.dp)
     ) {
         Icon(
             imageVector = icon,
             contentDescription = label,
-            tint = if (selected) Color.White else Color(0xFFD7ECD9),
+            tint = if (selected) Color.White else Color(0xFFCFE8D2),
             modifier = Modifier.size(22.dp)
         )
+
         Spacer(modifier = Modifier.height(4.dp))
+
         Text(
             text = label,
-            fontFamily = FarmPoppins,
-            fontWeight = FontWeight.Normal,
-            fontSize = 10.sp,
-            color = if (selected) Color.White else Color(0xFFD7ECD9),
+            fontFamily = PopulationManrope,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
+            fontSize = 9.sp,
+            color = if (selected) Color.White else Color(0xFFCFE8D2),
             textAlign = TextAlign.Center,
-            maxLines = 1
+            maxLines = 1,
+            lineHeight = 10.sp
         )
     }
 }

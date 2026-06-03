@@ -73,6 +73,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.layout.ContentScale
 
 data class DashboardStat(
     val title: String,
@@ -399,17 +402,19 @@ private fun DashboardCommandCenter(
 
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(58.dp)
                     .clip(CircleShape)
-                    .background(Color.White.copy(alpha = 0.12f)),
+                    .background(Color.White.copy(alpha = 0.16f))
+                    .border(1.dp, Color.White.copy(alpha = 0.20f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "SF",
-                    fontFamily = DashboardPoppins,
-                    fontWeight = FontWeight.ExtraBold,
-                    fontSize = 14.sp,
-                    color = Color.White
+                Image(
+                    painter = painterResource(id = R.drawable.smartfeather_logo),
+                    contentDescription = "SmartFeather logo",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(46.dp)
+                        .clip(CircleShape)
                 )
             }
         }

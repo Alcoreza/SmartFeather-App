@@ -65,6 +65,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.blur
+import androidx.compose.foundation.layout.offset
 
 private val LoginPoppins = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -128,13 +133,13 @@ fun LoginScreen(
     }
 
     val topSpace by animateDpAsState(
-        targetValue = if (isKeyboardVisible) 16.dp else 76.dp,
+        targetValue = if (isKeyboardVisible) 12.dp else 42.dp,
         animationSpec = tween(durationMillis = 340, easing = FastOutSlowInEasing),
         label = "loginTopSpace"
     )
 
     val brandGap by animateDpAsState(
-        targetValue = if (isKeyboardVisible) 10.dp else 20.dp,
+        targetValue = if (isKeyboardVisible) 8.dp else 6.dp,
         animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
         label = "loginBrandGap"
     )
@@ -504,28 +509,51 @@ private fun LoginAmbientBackground() {
 
 @Composable
 private fun LoginBrandBlock(compact: Boolean) {
-    val logoSize = if (compact) 52.dp else 74.dp
+    val transition = rememberInfiniteTransition(label = "loginLogoMotion")
+
+    val glowAlpha by transition.animateFloat(
+        initialValue = 0.24f,
+        targetValue = 0.44f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2800, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "loginLogoGlow"
+    )
+
+    val logoSize = if (compact) 58.dp else 76.dp
+    val glowSize = if (compact) 92.dp else 118.dp
     val titleSize = if (compact) 24.sp else 31.sp
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
-            modifier = Modifier
-                .size(logoSize)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.12f))
-                .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape),
+            modifier = Modifier.size(glowSize),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = "SF",
-                fontFamily = LoginPoppins,
-                fontWeight = FontWeight.Black,
-                fontSize = if (compact) 18.sp else 23.sp,
-                color = Color.White
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = glowAlpha),
+                                Color(0xFF7AF28B).copy(alpha = glowAlpha * 0.36f),
+                                Color.Transparent,
+                                Color.Transparent
+                            )
+                        )
+                    )
+            )
+
+            Image(
+                painter = painterResource(id = R.drawable.smartfeather_login_logo),
+                contentDescription = "SmartFeather logo",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.size(logoSize)
             )
         }
 
-        Spacer(modifier = Modifier.height(if (compact) 10.dp else 16.dp))
+        Spacer(modifier = Modifier.height(if (compact) 4.dp else 8.dp))
 
         Text(
             text = "SmartFeather",

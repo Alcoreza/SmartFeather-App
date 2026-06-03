@@ -10,5 +10,5 @@ object ApiConfig {
     // Ngrok:
     // const val BASE_URL = "https://your-ngrok-url.ngrok-free.app"
 
-    const val BASE_URL = "https://smartfeather-main-mys9bn.laravel.cloud"
+    const val BASE_URL = "https://empower-armadillo-brink.ngrok-free.dev"
 }
