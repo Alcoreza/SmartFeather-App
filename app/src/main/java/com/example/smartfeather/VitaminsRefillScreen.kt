@@ -369,12 +369,19 @@ fun VitaminsRefillScreen(
                             VitaminsDropdownField(
                                 value = typeOfVitamins,
                                 placeholder = "Select vitamins",
-                                options = vitaminOptions.map { it.itemName },
+                                options = vitaminOptions.map { it.selectionKey },
                                 expanded = vitaminExpanded,
                                 onExpandedChange = { vitaminExpanded = it },
+                                optionLabel = { option ->
+                                    option.substringAfter("|")
+                                },
                                 onValueSelected = { selectedValue ->
-                                    typeOfVitamins = selectedValue
-                                    selectedVitamin = vitaminOptions.firstOrNull { it.itemName == selectedValue }
+                                    val selectedOption = vitaminOptions.firstOrNull {
+                                        it.selectionKey == selectedValue
+                                    }
+
+                                    typeOfVitamins = selectedOption?.itemName.orEmpty()
+                                    selectedVitamin = selectedOption
                                     vitaminExpanded = false
                                     errorMessage = null
                                 }
@@ -765,6 +772,7 @@ private fun VitaminsDropdownField(
     options: List<String>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
+    optionLabel: (String) -> String = { it },
     onValueSelected: (String) -> Unit
 ) {
     Box {
@@ -810,7 +818,7 @@ private fun VitaminsDropdownField(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = option,
+                            text = optionLabel(option),
                             fontFamily = VitaminsManrope,
                             fontWeight = FontWeight.SemiBold,
                             color = VitaminsInk

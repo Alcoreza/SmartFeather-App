@@ -390,12 +390,19 @@ fun FeedsRefillScreen(
                             FeedsDropdownField(
                                 value = feedType,
                                 placeholder = "Select feed",
-                                options = feedOptions.map { it.itemName },
+                                options = feedOptions.map { it.selectionKey },
                                 expanded = feedExpanded,
                                 onExpandedChange = { feedExpanded = it },
+                                optionLabel = { option ->
+                                    option.substringAfter("|")
+                                },
                                 onValueSelected = { selectedValue ->
-                                    feedType = selectedValue
-                                    selectedFeed = feedOptions.firstOrNull { it.itemName == selectedValue }
+                                    val selectedOption = feedOptions.firstOrNull {
+                                        it.selectionKey == selectedValue
+                                    }
+
+                                    feedType = selectedOption?.itemName.orEmpty()
+                                    selectedFeed = selectedOption
                                     feedExpanded = false
                                     errorMessage = null
                                 }
@@ -802,6 +809,7 @@ private fun FeedsDropdownField(
     options: List<String>,
     expanded: Boolean,
     onExpandedChange: (Boolean) -> Unit,
+    optionLabel: (String) -> String = { it },
     onValueSelected: (String) -> Unit
 ) {
     Box {
@@ -847,7 +855,7 @@ private fun FeedsDropdownField(
                 DropdownMenuItem(
                     text = {
                         Text(
-                            text = option,
+                            text = optionLabel(option),
                             fontFamily = FeedsManrope,
                             fontWeight = FontWeight.SemiBold,
                             color = FeedsInk

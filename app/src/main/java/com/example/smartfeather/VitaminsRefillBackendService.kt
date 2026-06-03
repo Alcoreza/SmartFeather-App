@@ -94,7 +94,10 @@ data class VitaminInventoryOption(
     val itemName: String,
     val remainingStock: Int,
     val unit: String
-)
+) {
+    val selectionKey: String
+        get() = "$id|$itemName"
+}
 
 data class VitaminAccessContext(
     val accessAllowed: Boolean,

@@ -96,7 +96,10 @@ data class FeedInventoryOption(
     val itemName: String,
     val remainingStock: Int,
     val unit: String
-)
+) {
+    val selectionKey: String
+        get() = "$id|$itemName"
+}
 
 data class FeedAccessContext(
     val accessAllowed: Boolean,
