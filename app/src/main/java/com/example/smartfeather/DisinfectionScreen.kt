@@ -85,6 +85,11 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val DisinfectionManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -1003,10 +1008,10 @@ private fun DisinfectionBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        DisinfectionBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        DisinfectionBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        DisinfectionBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        DisinfectionBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        DisinfectionBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        DisinfectionBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        DisinfectionBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        DisinfectionBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

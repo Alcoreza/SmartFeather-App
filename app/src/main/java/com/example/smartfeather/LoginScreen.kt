@@ -70,6 +70,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.vector.ImageVector
+import com.composables.icons.lucide.Eye
+import com.composables.icons.lucide.EyeOff
+import com.composables.icons.lucide.Lock
+import com.composables.icons.lucide.LogIn
+import com.composables.icons.lucide.User
+import com.composables.icons.lucide.Lucide
 
 private val LoginPoppins = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -221,6 +230,7 @@ fun LoginScreen(
                         },
                         placeholder = "Enter username",
                         keyboardType = KeyboardType.Text,
+                        leadingIcon = Lucide.User,
                         onFocused = {
                             coroutineScope.launch {
                                 scrollState.smoothLoginScrollTo(240)
@@ -242,6 +252,7 @@ fun LoginScreen(
                         },
                         placeholder = "Enter password",
                         keyboardType = KeyboardType.Password,
+                        leadingIcon = Lucide.Lock,
                         visualTransformation = if (passwordVisible) {
                             VisualTransformation.None
                         } else {
@@ -251,12 +262,11 @@ fun LoginScreen(
                             TextButton(
                                 onClick = { passwordVisible = !passwordVisible }
                             ) {
-                                Text(
-                                    text = if (passwordVisible) "Hide" else "Show",
-                                    fontFamily = LoginPoppins,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 12.sp,
-                                    color = LoginGreen
+                                Icon(
+                                    imageVector = if (passwordVisible) Lucide.EyeOff else Lucide.Eye,
+                                    contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                                    tint = LoginGreen,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         },
@@ -322,6 +332,15 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .height(56.dp)
                     ) {
+                        Icon(
+                            imageVector = Lucide.LogIn,
+                            contentDescription = "Sign in",
+                            tint = Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
                         Text(
                             text = if (isLoading) "Signing in..." else "Sign In",
                             fontFamily = LoginPoppins,
@@ -584,6 +603,7 @@ private fun LoginTextField(
     onValueChange: (String) -> Unit,
     placeholder: String,
     keyboardType: KeyboardType,
+    leadingIcon: ImageVector? = null,
     visualTransformation: VisualTransformation = VisualTransformation.None,
     trailingContent: @Composable (() -> Unit)? = null,
     onFocused: () -> Unit
@@ -594,6 +614,16 @@ private fun LoginTextField(
         singleLine = true,
         visualTransformation = visualTransformation,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        leadingIcon = leadingIcon?.let { icon ->
+            {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = LoginMuted.copy(alpha = 0.78f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        },
         trailingIcon = trailingContent,
         modifier = Modifier
             .fillMaxWidth()

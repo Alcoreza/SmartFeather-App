@@ -78,6 +78,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val ProfilePoppins = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -1085,28 +1090,28 @@ private fun ProfileBottomNavBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         ProfileBottomNavItem(
-            icon = Icons.Outlined.Home,
+            icon = Lucide.LayoutDashboard,
             label = "Dashboard",
             selected = false,
             onClick = onDashboardClick
         )
 
         ProfileBottomNavItem(
-            icon = Icons.AutoMirrored.Outlined.List,
+            icon = Lucide.ClipboardList,
             label = "Tasks",
             selected = false,
             onClick = onTasksClick
         )
 
         ProfileBottomNavItem(
-            icon = Icons.Outlined.Edit,
+            icon = Lucide.House,
             label = "Farm Management",
             selected = false,
             onClick = onFarmManagementClick
         )
 
         ProfileBottomNavItem(
-            icon = Icons.Outlined.AccountCircle,
+            icon = Lucide.UserRound,
             label = "Profile",
             selected = true,
             onClick = {}

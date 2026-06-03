@@ -77,6 +77,11 @@ import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.ColumnScope
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 data class PendingTaskDetailUiState(
     val id: Int,
@@ -901,10 +906,10 @@ private fun TaskDetailBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        DetailNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        DetailNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", true, onTasksClick)
-        DetailNavItem(Icons.Outlined.Edit, "Farm Management", false, {})
-        DetailNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        DetailNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        DetailNavItem(Lucide.ClipboardList, "Tasks", true, onTasksClick)
+        DetailNavItem(Lucide.House, "Farm Management", false, {})
+        DetailNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

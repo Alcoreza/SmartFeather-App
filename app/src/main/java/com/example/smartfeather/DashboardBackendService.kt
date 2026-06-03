@@ -1,13 +1,15 @@
 package com.example.smartfeather
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import com.composables.icons.lucide.Bird
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.Egg
+import com.composables.icons.lucide.Gauge
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.ShieldCheck
+import com.composables.icons.lucide.Skull
+import com.composables.icons.lucide.Wheat
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
@@ -218,7 +220,7 @@ class DashboardBackendService(
                 quickAccess = response.quickAccess.map {
                     QuickAccessItem(
                         title = it.title,
-                        icon = quickAccessIcon(it.iconKey),
+                        icon = quickAccessIcon(it.iconKey, it.actionKey),
                         tint = parseColor(it.tint),
                         actionKey = it.actionKey
                     )
@@ -251,20 +253,27 @@ class DashboardBackendService(
     }
 
     private fun dashboardStatIcon(key: String): ImageVector {
-        return when (key) {
-            "birds" -> Icons.Outlined.Home
-            "eggs" -> Icons.Outlined.CheckCircle
-            "mortalities" -> Icons.Outlined.AccountCircle
-            else -> Icons.Outlined.CheckCircle
+        return when (key.trim().lowercase()) {
+            "birds", "bird", "total_birds", "population" -> Lucide.Bird
+            "eggs", "egg", "total_eggs" -> Lucide.Egg
+            "mortalities", "mortality", "dead", "deaths" -> Lucide.Skull
+            else -> Lucide.Gauge
         }
     }
 
-    private fun quickAccessIcon(key: String): ImageVector {
-        return when (key) {
-            "population" -> Icons.Outlined.CheckCircle
-            "feeds" -> Icons.AutoMirrored.Outlined.List
-            "biosecurity" -> Icons.Outlined.Edit
-            else -> Icons.Outlined.Edit
+    private fun quickAccessIcon(
+        iconKey: String,
+        actionKey: String
+    ): ImageVector {
+        val key = iconKey.trim().lowercase()
+        val action = actionKey.trim().lowercase()
+
+        return when {
+            key in listOf("population", "birds", "bird") || action == "population" -> Lucide.Bird
+            key in listOf("feeds", "feed", "feeds_refill") || action == "feeds_refill" -> Lucide.Wheat
+            key in listOf("biosecurity", "shield") || action == "biosecurity" -> Lucide.ShieldCheck
+            key in listOf("tasks", "task", "list") || action == "tasks" -> Lucide.ClipboardList
+            else -> Lucide.Gauge
         }
     }
 }

@@ -91,6 +91,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import java.util.Calendar
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val VisitorManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -1230,10 +1235,10 @@ private fun VisitorBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        VisitorBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        VisitorBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        VisitorBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        VisitorBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        VisitorBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        VisitorBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        VisitorBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        VisitorBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

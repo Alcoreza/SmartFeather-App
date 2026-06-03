@@ -72,6 +72,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val PersonnelManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -847,10 +852,10 @@ private fun PersonnelBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        PersonnelBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        PersonnelBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        PersonnelBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        PersonnelBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        PersonnelBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        PersonnelBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        PersonnelBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        PersonnelBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

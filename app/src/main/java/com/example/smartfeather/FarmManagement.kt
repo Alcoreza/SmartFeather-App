@@ -59,6 +59,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val FarmPoppins = FontFamily(
     Font(R.font.manrope_regular, FontWeight.Normal),
@@ -388,7 +393,6 @@ private fun FarmManagementCard(
         }
     }
 }
-
 @Composable
 private fun FarmManagementBottomNavBar(
     onDashboardClick: () -> Unit,
@@ -409,28 +413,28 @@ private fun FarmManagementBottomNavBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         FarmManagementBottomNavItem(
-            icon = Icons.Outlined.Home,
+            icon = Lucide.LayoutDashboard,
             label = "Dashboard",
             selected = false,
             onClick = onDashboardClick
         )
 
         FarmManagementBottomNavItem(
-            icon = Icons.AutoMirrored.Outlined.List,
+            icon = Lucide.ClipboardList,
             label = "Tasks",
             selected = false,
             onClick = onTasksClick
         )
 
         FarmManagementBottomNavItem(
-            icon = Icons.Outlined.Edit,
+            icon = Lucide.House,
             label = "Farm Management",
             selected = true,
             onClick = {}
         )
 
         FarmManagementBottomNavItem(
-            icon = Icons.Outlined.AccountCircle,
+            icon = Lucide.UserRound,
             label = "Profile",
             selected = false,
             onClick = onProfileClick

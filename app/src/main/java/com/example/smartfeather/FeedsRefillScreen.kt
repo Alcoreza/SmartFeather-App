@@ -84,6 +84,11 @@ import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.offset
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val FeedsManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -1059,10 +1064,10 @@ private fun FeedsBottomNavigationBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        FeedsBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        FeedsBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        FeedsBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        FeedsBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        FeedsBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        FeedsBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        FeedsBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        FeedsBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

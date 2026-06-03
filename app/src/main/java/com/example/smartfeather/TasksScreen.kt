@@ -65,6 +65,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 enum class TaskStatus {
     PENDING,
@@ -886,7 +891,6 @@ private fun ErrorCard(message: String) {
         )
     }
 }
-
 @Composable
 private fun TasksBottomNavBar(
     onDashboardClick: () -> Unit,
@@ -898,18 +902,18 @@ private fun TasksBottomNavBar(
             .fillMaxWidth()
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color(0xFF06331D), Color(0xFF022816))
+                    colors = listOf(Color(0xFF07381F), Color(0xFF022716))
                 )
             )
             .navigationBarsPadding()
-            .padding(horizontal = 10.dp, vertical = 10.dp),
+            .padding(horizontal = 8.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        BottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", true, {})
-        BottomNavItem(Icons.Outlined.Edit, "Farm Management", false, onFarmManagementClick)
-        BottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, onProfileClick)
+        BottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        BottomNavItem(Lucide.ClipboardList, "Tasks", true, {})
+        BottomNavItem(Lucide.House, "Farm Management", false, onFarmManagementClick)
+        BottomNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
 }
 

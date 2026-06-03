@@ -76,6 +76,24 @@ import kotlin.math.roundToInt
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.layout.ContentScale
+import com.composables.icons.lucide.Bird
+import com.composables.icons.lucide.ChevronDown
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.Droplets
+import com.composables.icons.lucide.Egg
+import com.composables.icons.lucide.Gauge
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.MapPin
+import com.composables.icons.lucide.Pencil
+import com.composables.icons.lucide.ShieldCheck
+import com.composables.icons.lucide.Skull
+import com.composables.icons.lucide.Thermometer
+import com.composables.icons.lucide.UserRound
+import com.composables.icons.lucide.Wheat
+import androidx.compose.ui.graphics.graphicsLayer
+import com.composables.icons.lucide.Zap
 
 data class DashboardStat(
     val title: String,
@@ -139,9 +157,9 @@ fun placeholderDashboardState(): DashboardUiState {
         welcomeText = "Welcome!",
         overviewDateLabel = "for 5/11/26",
         stats = listOf(
-            DashboardStat("Total Birds", "5462", Icons.Outlined.Home, Color(0xFFFDFDFD), Color(0xFFD92C2C)),
-            DashboardStat("Total Eggs", "367", Icons.Outlined.CheckCircle, Color(0xFFFDFDFD), Color(0xFFFFA96E)),
-            DashboardStat("Mortalities", "25", Icons.Outlined.AccountCircle, Color(0xFFFDFDFD), Color(0xFF808080))
+            DashboardStat("Total Birds", "5462", Lucide.Bird, Color(0xFFFDFDFD), Color(0xFFD92C2C)),
+            DashboardStat("Total Eggs", "367", Lucide.Egg, Color(0xFFFDFDFD), Color(0xFFFFA96E)),
+            DashboardStat("Mortalities", "25", Lucide.Skull, Color(0xFFFDFDFD), Color(0xFF808080))
         ),
         gauges = listOf(
             GaugeData("Temperature", 11f, "deg", 0f, 40f, Color(0xFF6ABF4B)),
@@ -175,9 +193,9 @@ fun placeholderDashboardState(): DashboardUiState {
             penLabel = "Pen 25"
         ),
         quickAccess = listOf(
-            QuickAccessItem("Population", Icons.Outlined.CheckCircle, Color(0xFFD92C2C), "population"),
-            QuickAccessItem("Feeds Refill", Icons.AutoMirrored.Outlined.List, Color(0xFFCC8A2D), "feeds_refill"),
-            QuickAccessItem("Biosecurity", Icons.Outlined.Edit, Color(0xFF2F8F45), "biosecurity")
+            QuickAccessItem("Population", Lucide.Bird, Color(0xFFD92C2C), "population"),
+            QuickAccessItem("Feeds Refill", Lucide.Wheat, Color(0xFFCC8A2D), "feeds_refill"),
+            QuickAccessItem("Biosecurity", Lucide.ShieldCheck, Color(0xFF2F8F45), "biosecurity")
         )
     )
 }
@@ -202,13 +220,12 @@ fun emptyDashboardState(): DashboardUiState {
         pendingTaskCount = 0,
         pendingTask = null,
         quickAccess = listOf(
-            QuickAccessItem("Population", Icons.Outlined.CheckCircle, Color(0xFFD92C2C), "population"),
-            QuickAccessItem("Feeds Refill", Icons.AutoMirrored.Outlined.List, Color(0xFFCC8A2D), "feeds_refill"),
-            QuickAccessItem("Biosecurity", Icons.Outlined.Edit, Color(0xFF2F8F45), "biosecurity")
+            QuickAccessItem("Population", Lucide.Bird, Color(0xFFD92C2C), "population"),
+            QuickAccessItem("Feeds Refill", Lucide.Wheat, Color(0xFFCC8A2D), "feeds_refill"),
+            QuickAccessItem("Biosecurity", Lucide.ShieldCheck, Color(0xFF2F8F45), "biosecurity")
         )
     )
 }
-
 private fun gaugeProgress(value: Float, min: Float, max: Float): Float {
     val range = max - min
     if (range <= 0f) return 0f
@@ -298,20 +315,6 @@ fun DashboardScreen(
 
                         Spacer(modifier = Modifier.height(18.dp))
 
-                        QuickAccessSection(
-                            items = uiState.quickAccess,
-                            isTablet = isTablet,
-                            onItemClick = { actionKey ->
-                                when (actionKey) {
-                                    "population" -> onQuickAccessPopulation()
-                                    "feeds_refill" -> onQuickAccessFeedsRefill()
-                                    "biosecurity" -> onQuickAccessBiosecurity()
-                                }
-                            }
-                        )
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
                         FarmOverviewCard(
                             stats = uiState.stats,
                             overviewDateLabel = uiState.overviewDateLabel,
@@ -331,7 +334,7 @@ fun DashboardScreen(
 
                         SectionTitle(
                             title = "House Conditions",
-                            subtitle = "Review sensor readings by house and pen.",
+                            icon = Lucide.Gauge,
                             isTablet = isTablet
                         )
 
@@ -345,6 +348,28 @@ fun DashboardScreen(
                             isTablet = isTablet,
                             onEnvironmentFilterChange = onEnvironmentFilterChange,
                             onResourceFilterChange = onResourceFilterChange
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        SectionTitle(
+                            title = "Quick Access",
+                            icon = Lucide.Zap,
+                            isTablet = isTablet
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        QuickAccessSection(
+                            items = uiState.quickAccess,
+                            isTablet = isTablet,
+                            onItemClick = { actionKey ->
+                                when (actionKey) {
+                                    "population" -> onQuickAccessPopulation()
+                                    "feeds_refill" -> onQuickAccessFeedsRefill()
+                                    "biosecurity" -> onQuickAccessBiosecurity()
+                                }
+                            }
                         )
 
                         Spacer(modifier = Modifier.height(20.dp))
@@ -467,26 +492,36 @@ private fun CommandPill(
 @Composable
 private fun SectionTitle(
     title: String,
-    subtitle: String,
+    icon: ImageVector,
     isTablet: Boolean
 ) {
-    Column {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(42.dp)
+                .clip(CircleShape)
+                .background(FarmSoftGreen),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                tint = FarmGreen,
+                modifier = Modifier.size(21.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(11.dp))
+
         Text(
             text = title,
             fontFamily = DashboardPoppins,
             fontSize = if (isTablet) 22.sp else 20.sp,
             fontWeight = FontWeight.ExtraBold,
             color = FarmInk
-        )
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Text(
-            text = subtitle,
-            fontFamily = DashboardPoppins,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = FarmMuted
         )
     }
 }
@@ -541,14 +576,22 @@ private fun FarmOverviewCard(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                stats.forEach { stat ->
-                    StatTile(stat = stat, modifier = Modifier.weight(1f))
+                stats.forEachIndexed { index, stat ->
+                    StatTile(
+                        stat = stat,
+                        index = index,
+                        modifier = Modifier.weight(1f)
+                    )
                 }
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                stats.forEach { stat ->
-                    StatTile(stat = stat, modifier = Modifier.fillMaxWidth())
+                stats.forEachIndexed { index, stat ->
+                    StatTile(
+                        stat = stat,
+                        index = index,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
         }
@@ -594,10 +637,34 @@ private fun DashboardEmptyState(
 @Composable
 private fun StatTile(
     stat: DashboardStat,
-    modifier: Modifier
+    modifier: Modifier,
+    index: Int
 ) {
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(stat.title) {
+        delay(120L + index * 80L)
+        visible = true
+    }
+
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = tween(420, easing = FastOutSlowInEasing),
+        label = "statTileAlpha"
+    )
+
+    val lift by animateFloatAsState(
+        targetValue = if (visible) 0f else 18f,
+        animationSpec = tween(520, easing = FastOutSlowInEasing),
+        label = "statTileLift"
+    )
+
     Row(
         modifier = modifier
+            .graphicsLayer {
+                this.alpha = alpha
+                translationY = lift
+            }
             .clip(RoundedCornerShape(22.dp))
             .background(Color(0xFFF8F5EF))
             .padding(horizontal = 14.dp, vertical = 14.dp),
@@ -662,6 +729,7 @@ private fun MonitoringSection(
             MonitoringCard(
                 title = "Environment",
                 description = "Temperature and ammonia",
+                icon = Lucide.Thermometer,
                 filterState = environmentFilter,
                 modifier = Modifier.weight(1f),
                 cardHeight = 350.dp,
@@ -676,6 +744,7 @@ private fun MonitoringSection(
             MonitoringCard(
                 title = "Resources",
                 description = "Feed and water levels",
+                icon = Lucide.Droplets,
                 filterState = resourceFilter,
                 modifier = Modifier.weight(1f),
                 cardHeight = 350.dp,
@@ -692,6 +761,7 @@ private fun MonitoringSection(
             MonitoringCard(
                 title = "Environment",
                 description = "Temperature and ammonia",
+                icon = Lucide.Thermometer,
                 filterState = environmentFilter,
                 modifier = Modifier.fillMaxWidth(),
                 cardHeight = 350.dp,
@@ -706,6 +776,7 @@ private fun MonitoringSection(
             MonitoringCard(
                 title = "Resources",
                 description = "Feed and water levels",
+                icon = Lucide.Droplets,
                 filterState = resourceFilter,
                 modifier = Modifier.fillMaxWidth(),
                 cardHeight = 350.dp,
@@ -734,6 +805,7 @@ private fun RowScope.SensorReadingRow(
 private fun MonitoringCard(
     title: String,
     description: String,
+    icon: ImageVector,
     filterState: SensorFilterState,
     modifier: Modifier = Modifier,
     cardHeight: Dp,
@@ -750,11 +822,19 @@ private fun MonitoringCard(
         Row(verticalAlignment = Alignment.Top) {
             Box(
                 modifier = Modifier
-                    .padding(top = 4.dp)
-                    .size(width = 4.dp, height = 38.dp)
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(if (title == "Environment") FarmGreen else FarmAmber)
-            )
+                    .padding(top = 2.dp)
+                    .size(42.dp)
+                    .clip(CircleShape)
+                    .background(if (title == "Environment") FarmSoftGreen else Color(0xFFFFF3E4)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = title,
+                    tint = if (title == "Environment") FarmGreen else FarmAmber,
+                    modifier = Modifier.size(21.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.width(12.dp))
 
@@ -819,13 +899,24 @@ private fun SensorFilterDropdown(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Location",
-                fontFamily = DashboardPoppins,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = FarmMuted
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Lucide.MapPin,
+                    contentDescription = "Location",
+                    tint = FarmMuted,
+                    modifier = Modifier.size(13.dp)
+                )
+
+                Spacer(modifier = Modifier.width(5.dp))
+
+                Text(
+                    text = "Location",
+                    fontFamily = DashboardPoppins,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = FarmMuted
+                )
+            }
 
             Spacer(modifier = Modifier.height(3.dp))
 
@@ -838,13 +929,24 @@ private fun SensorFilterDropdown(
             )
         }
 
-        Text(
-            text = "Change",
-            fontFamily = DashboardPoppins,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = FarmGreen
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = "Change",
+                fontFamily = DashboardPoppins,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = FarmGreen
+            )
+
+            Spacer(modifier = Modifier.width(3.dp))
+
+            Icon(
+                imageVector = Lucide.ChevronDown,
+                contentDescription = "Change location",
+                tint = FarmGreen,
+                modifier = Modifier.size(15.dp)
+            )
+        }
     }
 
     if (showPicker) {
@@ -883,11 +985,11 @@ private fun SensorFilterDropdown(
                                 .padding(horizontal = 14.dp, vertical = 13.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(9.dp)
-                                    .clip(CircleShape)
-                                    .background(if (isSelected) FarmGreen else FarmLine)
+                            Icon(
+                                imageVector = Lucide.MapPin,
+                                contentDescription = option.displayLabel,
+                                tint = if (isSelected) FarmGreen else FarmMuted,
+                                modifier = Modifier.size(16.dp)
                             )
 
                             Spacer(modifier = Modifier.width(10.dp))
@@ -916,7 +1018,6 @@ private fun SensorFilterDropdown(
         )
     }
 }
-
 @Composable
 private fun GaugeBlock(
     data: GaugeData,
@@ -1127,7 +1228,24 @@ private fun PendingTaskBanner(
                 color = Color.White
             )
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.14f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Lucide.ClipboardList,
+                    contentDescription = "Pending tasks",
+                    tint = Color.White,
+                    modifier = Modifier.size(23.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -1200,7 +1318,7 @@ private fun QuickAccessSection(
                     index = index,
                     modifier = Modifier.weight(1f),
                     cardWidth = null,
-                    cardHeight = 112.dp,
+                    cardHeight = 104.dp,
                     onClick = { onItemClick(item.actionKey) }
                 )
             }
@@ -1215,7 +1333,7 @@ private fun QuickAccessSection(
                     item = item,
                     index = index,
                     cardWidth = 132.dp,
-                    cardHeight = 108.dp,
+                    cardHeight = 104.dp,
                     onClick = { onItemClick(item.actionKey) }
                 )
             }
@@ -1229,13 +1347,13 @@ private fun QuickAccessCard(
     index: Int,
     modifier: Modifier = Modifier,
     cardWidth: Dp? = 132.dp,
-    cardHeight: Dp = 108.dp,
+    cardHeight: Dp = 104.dp,
     onClick: () -> Unit
 ) {
     var visible by remember { mutableStateOf(false) }
 
     LaunchedEffect(item.title) {
-        delay(index * 55L)
+        delay(90L + index * 85L)
         visible = true
     }
 
@@ -1243,10 +1361,13 @@ private fun QuickAccessCard(
         visible = visible,
         enter = fadeIn(animationSpec = tween(360)) +
                 slideInVertically(
-                    animationSpec = tween(420, easing = FastOutSlowInEasing),
-                    initialOffsetY = { it / 5 }
+                    animationSpec = tween(500, easing = FastOutSlowInEasing),
+                    initialOffsetY = { it / 2 }
                 ) +
-                scaleIn(animationSpec = tween(360, easing = FastOutSlowInEasing), initialScale = 0.96f)
+                scaleIn(
+                    animationSpec = tween(420, easing = FastOutSlowInEasing),
+                    initialScale = 0.97f
+                )
     ) {
         Column(
             modifier = if (cardWidth != null) {
@@ -1258,25 +1379,17 @@ private fun QuickAccessCard(
             }
                 .clip(RoundedCornerShape(24.dp))
                 .background(FarmSurface)
-                .border(1.dp, FarmLine.copy(alpha = 0.82f), RoundedCornerShape(24.dp))
+                .border(1.dp, FarmLine.copy(alpha = 0.55f), RoundedCornerShape(24.dp))
                 .clickable { onClick() }
-                .padding(14.dp),
+                .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(item.tint.copy(alpha = 0.13f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = item.title,
-                    tint = item.tint,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.title,
+                tint = item.tint,
+                modifier = Modifier.size(24.dp)
+            )
 
             Text(
                 text = item.title,
@@ -1284,7 +1397,8 @@ private fun QuickAccessCard(
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = FarmInk,
-                lineHeight = 15.sp
+                lineHeight = 15.sp,
+                maxLines = 2
             )
         }
     }
@@ -1298,10 +1412,51 @@ private fun DashboardSkeleton(isTablet: Boolean) {
         DashboardSkeletonBox(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(184.dp),
+                .height(156.dp),
             alpha = alpha,
             color = FarmDeepGreen,
             shape = RoundedCornerShape(30.dp)
+        )
+
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (isTablet) 150.dp else 270.dp),
+            alpha = alpha,
+            shape = RoundedCornerShape(26.dp)
+        )
+
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(112.dp),
+            alpha = alpha,
+            color = FarmGreen,
+            shape = RoundedCornerShape(26.dp)
+        )
+
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .width(220.dp)
+                .height(42.dp),
+            alpha = alpha,
+            shape = RoundedCornerShape(999.dp)
+        )
+
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(318.dp),
+            alpha = alpha,
+            shape = RoundedCornerShape(26.dp)
+        )
+
+        DashboardSkeletonBox(
+            modifier = Modifier
+                .width(196.dp)
+                .height(42.dp),
+            alpha = alpha,
+            shape = RoundedCornerShape(999.dp)
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1315,31 +1470,6 @@ private fun DashboardSkeleton(isTablet: Boolean) {
                 )
             }
         }
-
-        DashboardSkeletonBox(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(if (isTablet) 150.dp else 270.dp),
-            alpha = alpha,
-            shape = RoundedCornerShape(26.dp)
-        )
-
-        DashboardSkeletonBox(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(118.dp),
-            alpha = alpha,
-            color = FarmGreen,
-            shape = RoundedCornerShape(26.dp)
-        )
-
-        DashboardSkeletonBox(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(318.dp),
-            alpha = alpha,
-            shape = RoundedCornerShape(26.dp)
-        )
     }
 }
 
@@ -1391,10 +1521,10 @@ fun BottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BottomNavItem(Icons.Outlined.Home, "Dashboard", true, {})
-        BottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        BottomNavItem(Icons.Outlined.Edit, "Farm Management", false, onFarmManagementClick)
-        BottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, onProfileClick)
+        BottomNavItem(Lucide.LayoutDashboard, "Dashboard", true, {})
+        BottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        BottomNavItem(Lucide.House, "Farm Management", false, onFarmManagementClick)
+        BottomNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
 }
 

@@ -85,6 +85,11 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val NewBatchManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -1000,10 +1005,10 @@ private fun NewBatchBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        NewBatchBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        NewBatchBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        NewBatchBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        NewBatchBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        NewBatchBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        NewBatchBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        NewBatchBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        NewBatchBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

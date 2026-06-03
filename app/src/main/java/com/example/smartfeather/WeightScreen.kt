@@ -84,6 +84,11 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val WeightManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -1112,10 +1117,10 @@ private fun WeightBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        WeightBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        WeightBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        WeightBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        WeightBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, onProfileClick)
+        WeightBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        WeightBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        WeightBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        WeightBottomNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
 }
 

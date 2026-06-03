@@ -61,6 +61,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import kotlinx.coroutines.delay
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 data class CompletedTaskDetailUiState(
     val id: Int,
@@ -770,10 +775,10 @@ private fun CompletedDetailBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        CompletedNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        CompletedNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", true, onTasksClick)
-        CompletedNavItem(Icons.Outlined.Edit, "Farm Management", false, {})
-        CompletedNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        CompletedNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        CompletedNavItem(Lucide.ClipboardList, "Tasks", true, onTasksClick)
+        CompletedNavItem(Lucide.House, "Farm Management", false, {})
+        CompletedNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

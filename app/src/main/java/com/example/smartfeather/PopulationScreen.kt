@@ -81,6 +81,11 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val PopulationManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -867,10 +872,10 @@ fun PopulationBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        PopulationBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        PopulationBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        PopulationBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        PopulationBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        PopulationBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        PopulationBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        PopulationBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        PopulationBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

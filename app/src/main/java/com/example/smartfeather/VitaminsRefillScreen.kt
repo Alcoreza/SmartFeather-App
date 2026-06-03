@@ -85,6 +85,11 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val VitaminsManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -1016,10 +1021,10 @@ private fun VitaminsBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        VitaminsBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        VitaminsBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        VitaminsBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        VitaminsBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        VitaminsBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        VitaminsBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        VitaminsBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        VitaminsBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 

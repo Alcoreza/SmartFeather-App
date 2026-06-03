@@ -57,6 +57,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import com.composables.icons.lucide.ClipboardList
+import com.composables.icons.lucide.House
+import com.composables.icons.lucide.LayoutDashboard
+import com.composables.icons.lucide.Lucide
+import com.composables.icons.lucide.UserRound
 
 private val BiosecurityManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -335,10 +340,10 @@ private fun BiosecurityBottomNavBar(
         horizontalArrangement = Arrangement.SpaceAround,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        BiosecurityBottomNavItem(Icons.Outlined.Home, "Dashboard", false, onDashboardClick)
-        BiosecurityBottomNavItem(Icons.AutoMirrored.Outlined.List, "Tasks", false, onTasksClick)
-        BiosecurityBottomNavItem(Icons.Outlined.Edit, "Farm Management", true, onFarmClick)
-        BiosecurityBottomNavItem(Icons.Outlined.AccountCircle, "Profile", false, {})
+        BiosecurityBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
+        BiosecurityBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
+        BiosecurityBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        BiosecurityBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }
 
