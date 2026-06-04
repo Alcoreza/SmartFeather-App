@@ -90,7 +90,11 @@ data class PendingTaskDetailUiState(
     val timeAssigned: String,
     val finishBy: String,
     val priorityLabel: String,
-    val priority: TaskPriority
+    val priority: TaskPriority,
+    val houseId: Int? = null,
+    val penNumber: Int? = null,
+    val houseLabel: String = "",
+    val penLabel: String = ""
 )
 
 private val DetailPoppins = FontFamily(

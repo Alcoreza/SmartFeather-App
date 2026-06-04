@@ -34,6 +34,24 @@ data class FlockmanTasksRequest(
 )
 
 @Serializable
+data class TaskAccessCheckRequest(
+    @SerialName("task_id")
+    val taskId: Int,
+    @SerialName("employee_id")
+    val employeeId: Int
+)
+
+@Serializable
+data class TaskAccessCheckResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("access_granted")
+    val accessGranted: Boolean? = null,
+    @SerialName("message")
+    val message: String? = null
+)
+
+@Serializable
 data class CompleteTaskRequest(
     @SerialName("task_id")
     val taskId: Int,
@@ -102,7 +120,9 @@ data class TaskApiRow(
     @SerialName("house_number")
     val houseNumber: String? = null,
     @SerialName("pen_name")
-    val penName: String? = null
+    val penName: String? = null,
+    @SerialName("biosecurity_cleared")
+    val biosecurityCleared: Boolean = false
 )
 
 @Serializable
@@ -141,6 +161,41 @@ class TaskBackendService(
                 }
 
                 json.decodeFromJsonElement<List<TaskApiRow>>(parsed).map { it.toTaskItem() }
+            }
+        }
+    }
+
+    suspend fun checkTaskAccess(
+        taskId: Int,
+        employeeId: Int
+    ): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val requestBody = TaskAccessCheckRequest(
+                    taskId = taskId,
+                    employeeId = employeeId
+                )
+
+                val responseText = httpClient.post("$baseUrl/api/mobile/tasks/access-check") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(json.encodeToString(requestBody))
+                }.bodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Please complete biosecurity before opening this task.")
+                }
+
+                val result = json.decodeFromJsonElement<TaskAccessCheckResponse>(parsed)
+
+                if (result.accessGranted != true) {
+                    error(result.message ?: "Please complete biosecurity before opening this task.")
+                }
+
+                true
             }
         }
     }
@@ -251,6 +306,8 @@ class TaskBackendService(
             id = taskId,
             title = taskType,
             description = descriptionText,
+            houseId = houseId,
+            penNumber = penNumber,
             houseLabel = houseNumber ?: "-",
             penLabel = penName ?: "-",
             assignedLabel = if (!timeAssigned.isNullOrBlank()) {
@@ -277,7 +334,8 @@ class TaskBackendService(
             status = statusEnum,
             notes = notes ?: "",
             hasPhoto = !photoUrl.isNullOrBlank(),
-            photoUrl = photoUrl
+            photoUrl = photoUrl,
+            biosecurityCleared = biosecurityCleared
         )
     }
 

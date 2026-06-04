@@ -57,8 +57,12 @@ data class PersonnelLogsSubmitRequest(
     val employeeId: Int,
     @SerialName("personnel_entry_log_id")
     val personnelEntryLogId: Long,
+    @SerialName("task_id")
+    val taskId: Int? = null,
     @SerialName("house_id")
     val houseId: Long,
+    @SerialName("pen_id")
+    val penId: Long? = null,
     @SerialName("foot_bath")
     val footBath: Boolean,
     @SerialName("boots_changed")
@@ -135,7 +139,9 @@ class PersonnelLogsBackendService(
     suspend fun submit(
         employeeId: Int,
         personnelEntryLogId: Long,
+        taskId: Int? = null,
         houseId: Long,
+        penId: Long? = null,
         footBath: Boolean,
         bootsChanged: Boolean,
         protectiveClothing: Boolean
@@ -145,7 +151,9 @@ class PersonnelLogsBackendService(
                 val requestBody = PersonnelLogsSubmitRequest(
                     employeeId = employeeId,
                     personnelEntryLogId = personnelEntryLogId,
+                    taskId = taskId,
                     houseId = houseId,
+                    penId = penId,
                     footBath = footBath,
                     bootsChanged = bootsChanged,
                     protectiveClothing = protectiveClothing

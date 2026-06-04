@@ -87,6 +87,8 @@ data class TaskItem(
     val id: Int,
     val title: String,
     val description: String,
+    val houseId: Int? = null,
+    val penNumber: Int? = null,
     val houseLabel: String,
     val penLabel: String,
     val assignedLabel: String = "",
@@ -97,7 +99,8 @@ data class TaskItem(
     val status: TaskStatus,
     val notes: String = "",
     val hasPhoto: Boolean = false,
-    val photoUrl: String? = null
+    val photoUrl: String? = null,
+    val biosecurityCleared: Boolean = false
 )
 
 private val TaskManrope = FontFamily(

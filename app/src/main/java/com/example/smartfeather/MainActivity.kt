@@ -3,13 +3,35 @@ package com.example.smartfeather
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.text.style.TextAlign
 
 enum class AppScreen {
     LOGIN,
@@ -39,19 +61,47 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+private val MainManrope = FontFamily(
+    Font(R.font.manrope_extralight, FontWeight.ExtraLight),
+    Font(R.font.manrope_light, FontWeight.Light),
+    Font(R.font.manrope_regular, FontWeight.Normal),
+    Font(R.font.manrope_medium, FontWeight.Medium),
+    Font(R.font.manrope_semibold, FontWeight.SemiBold),
+    Font(R.font.manrope_bold, FontWeight.Bold),
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold),
+    Font(R.font.manrope_variablefont_wght, FontWeight.Black)
+)
+
 @Composable
 fun SmartFeatherApp() {
     val authService = remember { SupabaseAuthService() }
     val taskService = remember { TaskBackendService() }
     val dashboardService = remember { DashboardBackendService() }
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
     var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
     var loggedInEmployeeId by remember { mutableStateOf<Int?>(null) }
 
+    var pendingTaskWaitingForBiosecurity by remember {
+        mutableStateOf<PendingTaskDetailUiState?>(null)
+    }
+    var biosecurityRequiredMessage by remember {
+        mutableStateOf("Complete the biosecurity log first before opening this task.")
+    }
+
+    var isCheckingTaskAccess by remember {
+        mutableStateOf(false)
+    }
+
+    var showBiosecurityRequiredDialog by remember {
+        mutableStateOf(false)
+    }
+
     var selectedPendingTask by remember {
         mutableStateOf<PendingTaskDetailUiState?>(null)
     }
+
     var selectedCompletedTask by remember {
         mutableStateOf<CompletedTaskDetailUiState?>(null)
     }
@@ -99,6 +149,103 @@ fun SmartFeatherApp() {
 
             isDashboardLoading = false
         }
+    }
+
+    if (showBiosecurityRequiredDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showBiosecurityRequiredDialog = false
+            },
+            containerColor = Color(0xFFFFFCF7),
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Biosecurity Required",
+                    fontFamily = MainManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF121A14)
+                )
+            },
+            text = {
+                Text(
+                    text = biosecurityRequiredMessage,
+                    fontFamily = MainManrope,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF677168),
+                    lineHeight = 21.sp
+                )
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showBiosecurityRequiredDialog = false
+                        pendingTaskWaitingForBiosecurity = null
+                    }
+                ) {
+                    Text(
+                        text = "Cancel",
+                        fontFamily = MainManrope,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF677168)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBiosecurityRequiredDialog = false
+                        currentScreen = AppScreen.PERSONNEL_LOGS
+                    }
+                ) {
+                    Text(
+                        text = "Continue",
+                        fontFamily = MainManrope,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF1F7A3A)
+                    )
+                }
+            }
+        )
+    }
+
+    if (isCheckingTaskAccess) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = Color(0xFFFFFCF7),
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Checking Access",
+                    fontFamily = MainManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF121A14)
+                )
+            },
+            text = {
+                androidx.compose.foundation.layout.Column(
+                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Verifying your biosecurity status for this task.",
+                        fontFamily = MainManrope,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF677168),
+                        lineHeight = 21.sp,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.5.dp,
+                        color = Color(0xFF1F7A3A)
+                    )
+                }
+            },
+            confirmButton = {}
+        )
     }
 
     when (currentScreen) {
@@ -169,7 +316,7 @@ fun SmartFeatherApp() {
                 currentScreen = AppScreen.PROFILE
             },
             onPendingTaskClick = { task ->
-                selectedPendingTask = PendingTaskDetailUiState(
+                val pendingTask = PendingTaskDetailUiState(
                     id = task.id,
                     title = task.title,
                     description = task.description,
@@ -179,9 +326,41 @@ fun SmartFeatherApp() {
                         .replace("\n", " "),
                     priorityLabel = task.priority.name.lowercase()
                         .replaceFirstChar { it.uppercase() },
-                    priority = task.priority
+                    priority = task.priority,
+                    houseId = task.houseId,
+                    penNumber = task.penNumber,
+                    houseLabel = task.houseLabel,
+                    penLabel = task.penLabel
                 )
-                currentScreen = AppScreen.TASK_DETAIL
+
+                selectedPendingTask = pendingTask
+                pendingTaskWaitingForBiosecurity = pendingTask
+
+                val employeeId = loggedInEmployeeId
+
+                if (employeeId == null) {
+                    biosecurityRequiredMessage = "Missing employee session. Please sign in again."
+                    showBiosecurityRequiredDialog = true
+                    return@TasksScreen
+                }
+
+                coroutineScope.launch {
+                    isCheckingTaskAccess = true
+
+                    taskService.checkTaskAccess(
+                        taskId = task.id,
+                        employeeId = employeeId
+                    ).onSuccess {
+                        pendingTaskWaitingForBiosecurity = null
+                        currentScreen = AppScreen.TASK_DETAIL
+                    }.onFailure {
+                        biosecurityRequiredMessage = it.message
+                            ?: "Complete the biosecurity log first before opening this task."
+                        showBiosecurityRequiredDialog = true
+                    }
+
+                    isCheckingTaskAccess = false
+                }
             },
             onCompletedTaskClick = { task ->
                 selectedCompletedTask = CompletedTaskDetailUiState(
@@ -237,6 +416,7 @@ fun SmartFeatherApp() {
                         currentScreen = AppScreen.TASKS
                     },
                     onGoToBiosecurity = {
+                        pendingTaskWaitingForBiosecurity = selectedPendingTask
                         currentScreen = AppScreen.PERSONNEL_LOGS
                     },
                     onSubmit = { notes, photoUri ->
@@ -389,13 +569,28 @@ fun SmartFeatherApp() {
 
         AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
             employeeId = loggedInEmployeeId ?: 0,
+            lockedTaskId = pendingTaskWaitingForBiosecurity?.id,
+            lockedHouseId = pendingTaskWaitingForBiosecurity?.houseId,
+            lockedPenId = pendingTaskWaitingForBiosecurity?.penNumber,
+            lockedHouseLabel = pendingTaskWaitingForBiosecurity?.houseLabel.orEmpty(),
+            lockedPenLabel = pendingTaskWaitingForBiosecurity?.penLabel.orEmpty(),
+            onBiosecuritySubmitted = {
+                pendingTaskWaitingForBiosecurity?.let { task ->
+                    selectedPendingTask = task
+                    pendingTaskWaitingForBiosecurity = null
+                    currentScreen = AppScreen.TASK_DETAIL
+                }
+            },
             onBackToBiosecurity = {
+                pendingTaskWaitingForBiosecurity = null
                 currentScreen = AppScreen.BIOSECURITY
             },
             onNavigateToDashboard = {
+                pendingTaskWaitingForBiosecurity = null
                 currentScreen = AppScreen.DASHBOARD
             },
             onNavigateToTasks = {
+                pendingTaskWaitingForBiosecurity = null
                 currentScreen = AppScreen.TASKS
             }
         )
@@ -444,6 +639,11 @@ fun SmartFeatherApp() {
                 loggedInEmployeeId = null
                 selectedPendingTask = null
                 selectedCompletedTask = null
+                pendingTaskWaitingForBiosecurity = null
+                showBiosecurityRequiredDialog = false
+                isCheckingTaskAccess = false
+                pendingTaskWaitingForBiosecurity = null
+                biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
                 dashboardUiState = emptyDashboardState()
                 isDashboardLoading = false
                 hasLoadedDashboard = false

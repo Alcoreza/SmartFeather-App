@@ -32,11 +32,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -61,7 +57,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -70,13 +65,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import com.composables.icons.lucide.ClipboardList
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.LayoutDashboard
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val PersonnelManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -101,12 +96,16 @@ private val PersonnelDeepGreen = Color(0xFF062717)
 private val PersonnelForest = Color(0xFF103C28)
 private val PersonnelTeal = Color(0xFF2E7D6B)
 private val PersonnelBlue = Color(0xFF3F6F88)
-private val PersonnelAmber = Color(0xFFD78A2B)
-private val PersonnelDanger = Color(0xFFC62828)
 
 @Composable
 fun PersonnelLogsScreen(
     employeeId: Int,
+    lockedTaskId: Int? = null,
+    lockedHouseId: Int? = null,
+    lockedPenId: Int? = null,
+    lockedHouseLabel: String = "",
+    lockedPenLabel: String = "",
+    onBiosecuritySubmitted: () -> Unit = {},
     onBackToBiosecurity: () -> Unit,
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit
@@ -135,14 +134,20 @@ fun PersonnelLogsScreen(
     var showDialog by remember { mutableStateOf(false) }
     var dialogTitle by remember { mutableStateOf("") }
     var dialogMessage by remember { mutableStateOf("") }
+    var dialogAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
-    fun showModal(title: String, message: String) {
+    val isTaskLocked = lockedTaskId != null
+    val assignedHouseText = lockedHouseLabel.ifBlank { lockedHouseId?.let { "House $it" }.orEmpty() }
+    val assignedPenText = lockedPenLabel.ifBlank { lockedPenId?.let { "Pen $it" }.orEmpty() }
+
+    fun showModal(title: String, message: String, action: (() -> Unit)? = null) {
         dialogTitle = title
         dialogMessage = message
+        dialogAction = action
         showDialog = true
     }
 
-    LaunchedEffect(employeeId) {
+    LaunchedEffect(employeeId, lockedHouseId, lockedTaskId) {
         isContextLoading = true
         contentVisible = false
 
@@ -153,7 +158,15 @@ fun PersonnelLogsScreen(
                 name = context.name
                 role = context.role
                 houses = context.houses
-                selectedHouse = null
+                selectedHouse = if (lockedHouseId != null) {
+                    context.houses.firstOrNull { it.id == lockedHouseId.toLong() }
+                        ?: PersonnelHouseOption(
+                            id = lockedHouseId.toLong(),
+                            houseNumber = assignedHouseText.ifBlank { "House $lockedHouseId" }
+                        )
+                } else {
+                    null
+                }
                 personnelEntryLogId = context.personnelEntryLogId
             }
             .onFailure {
@@ -177,7 +190,10 @@ fun PersonnelLogsScreen(
 
     if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = {
+                showDialog = false
+                dialogAction = null
+            },
             containerColor = PersonnelSurface,
             shape = RoundedCornerShape(28.dp),
             title = {
@@ -187,7 +203,14 @@ fun PersonnelLogsScreen(
                 PersonnelDialogBody(dialogMessage)
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(
+                    onClick = {
+                        val action = dialogAction
+                        showDialog = false
+                        dialogAction = null
+                        action?.invoke()
+                    }
+                ) {
                     PersonnelDialogButtonText("OK", PersonnelGreen)
                 }
             }
@@ -287,17 +310,28 @@ fun PersonnelLogsScreen(
 
                             PersonnelLabel("House")
                             Spacer(modifier = Modifier.height(8.dp))
-                            PersonnelDropdownField(
-                                value = selectedHouse?.houseNumber.orEmpty(),
-                                placeholder = "Select house",
-                                options = houses.map { it.houseNumber },
-                                expanded = houseExpanded,
-                                onExpandedChange = { houseExpanded = it },
-                                onValueSelected = { selectedValue ->
-                                    selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
-                                    houseExpanded = false
-                                }
-                            )
+
+                            if (isTaskLocked) {
+                                PersonnelReadOnlyField(assignedHouseText.ifBlank { "-" })
+
+                                Spacer(modifier = Modifier.height(14.dp))
+
+                                PersonnelLabel("Pen")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                PersonnelReadOnlyField(assignedPenText.ifBlank { "-" })
+                            } else {
+                                PersonnelDropdownField(
+                                    value = selectedHouse?.houseNumber.orEmpty(),
+                                    placeholder = "Select house",
+                                    options = houses.map { it.houseNumber },
+                                    expanded = houseExpanded,
+                                    onExpandedChange = { houseExpanded = it },
+                                    onValueSelected = { selectedValue ->
+                                        selectedHouse = houses.firstOrNull { it.houseNumber == selectedValue }
+                                        houseExpanded = false
+                                    }
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(18.dp))
@@ -345,7 +379,8 @@ fun PersonnelLogsScreen(
                             Button(
                                 onClick = {
                                     val currentEntryLogId = personnelEntryLogId
-                                    val currentHouse = selectedHouse
+                                    val currentHouseId = lockedHouseId?.toLong() ?: selectedHouse?.id
+                                    val currentPenId = lockedPenId?.toLong()
 
                                     if (currentEntryLogId == null) {
                                         showModal(
@@ -355,10 +390,18 @@ fun PersonnelLogsScreen(
                                         return@Button
                                     }
 
-                                    if (currentHouse == null) {
+                                    if (currentHouseId == null) {
                                         showModal(
                                             title = "House Required",
                                             message = "Please select the house you will go to."
+                                        )
+                                        return@Button
+                                    }
+
+                                    if (isTaskLocked && currentPenId == null) {
+                                        showModal(
+                                            title = "Missing Assigned Pen",
+                                            message = "This task does not have a valid assigned pen."
                                         )
                                         return@Button
                                     }
@@ -382,15 +425,25 @@ fun PersonnelLogsScreen(
                                         personnelService.submit(
                                             employeeId = employeeId,
                                             personnelEntryLogId = currentEntryLogId,
-                                            houseId = currentHouse.id,
+                                            taskId = lockedTaskId,
+                                            houseId = currentHouseId,
+                                            penId = currentPenId,
                                             footBath = footBath,
                                             bootsChanged = bootsChanged,
                                             protectiveClothing = protectiveClothing
                                         ).onSuccess {
-                                            showModal(
-                                                title = "Submitted",
-                                                message = "Personnel biosecurity log submitted."
-                                            )
+                                            if (isTaskLocked) {
+                                                showModal(
+                                                    title = "Biosecurity Submitted",
+                                                    message = "You can now continue with the assigned task.",
+                                                    action = onBiosecuritySubmitted
+                                                )
+                                            } else {
+                                                showModal(
+                                                    title = "Submitted",
+                                                    message = "Personnel biosecurity log submitted."
+                                                )
+                                            }
                                         }.onFailure {
                                             showModal(
                                                 title = "Submission Failed",
