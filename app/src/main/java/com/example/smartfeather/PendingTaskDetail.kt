@@ -17,9 +17,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,10 +38,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -66,6 +65,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -74,14 +74,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.ColumnScope
 import com.composables.icons.lucide.ClipboardList
-import com.composables.icons.lucide.House
 import com.composables.icons.lucide.LayoutDashboard
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 data class PendingTaskDetailUiState(
     val id: Int,
@@ -97,57 +97,152 @@ data class PendingTaskDetailUiState(
     val penLabel: String = ""
 )
 
-private val DetailPoppins = FontFamily(
+private val DetailManrope = FontFamily(
+    Font(R.font.manrope_extralight, FontWeight.ExtraLight),
+    Font(R.font.manrope_light, FontWeight.Light),
     Font(R.font.manrope_regular, FontWeight.Normal),
     Font(R.font.manrope_medium, FontWeight.Medium),
     Font(R.font.manrope_semibold, FontWeight.SemiBold),
     Font(R.font.manrope_bold, FontWeight.Bold),
-    Font(R.font.manrope_extrabold, FontWeight.ExtraBold)
+    Font(R.font.manrope_extrabold, FontWeight.ExtraBold),
+    Font(R.font.manrope_variablefont_wght, FontWeight.Black)
 )
 
 private val DetailBackground = Color(0xFFF6F3EC)
 private val DetailSurface = Color(0xFFFFFCF7)
-private val DetailSurfaceMuted = Color(0xFFEDE7DA)
 private val DetailInk = Color(0xFF121A14)
 private val DetailMuted = Color(0xFF677168)
 private val DetailLine = Color(0xFFD8D0C3)
 private val DetailGreen = Color(0xFF1F7A3A)
 private val DetailDeepGreen = Color(0xFF062717)
 private val DetailGreenTwo = Color(0xFF155C2D)
-private val PendingAccent = Color(0xFFE79A43)
+private val DetailAmber = Color(0xFFE28622)
 
 private fun priorityChipColor(priority: TaskPriority): Color {
     return when (priority) {
         TaskPriority.LOW -> Color(0xFF2F7D46)
-        TaskPriority.MID -> Color(0xFFE28622)
+        TaskPriority.MID -> DetailAmber
         TaskPriority.HIGH -> Color(0xFFC62B2B)
+    }
+}
+
+private fun decimalOnly(value: String): String {
+    return buildString {
+        var dotUsed = false
+        value.forEach { char ->
+            if (char.isDigit()) {
+                append(char)
+            } else if (char == '.' && !dotUsed) {
+                append(char)
+                dotUsed = true
+            }
+        }
     }
 }
 
 @Composable
 fun PendingTaskDetailScreen(
+    employeeId: Int,
     task: PendingTaskDetailUiState,
     onBackClick: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
     onNavigateToTasks: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {},
     onGoToBiosecurity: () -> Unit = {},
     onSubmit: suspend (notes: String, photoUri: Uri?) -> Result<Unit> = { _, _ -> Result.success(Unit) }
 ) {
-    var notes by remember { mutableStateOf("") }
-    var selectedPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var submitError by remember { mutableStateOf<String?>(null) }
-    var isSubmitting by remember { mutableStateOf(false) }
-    var showBiosecurityDialog by remember { mutableStateOf(false) }
-    var biosecurityMessage by remember { mutableStateOf("") }
-    var contentVisible by remember { mutableStateOf(false) }
+    val populationService = remember { PopulationBackendService() }
+    val weightService = remember { WeightBackendService() }
+    val feedsService = remember { FeedsRefillBackendService() }
+    val vitaminsService = remember { VitaminsRefillBackendService() }
+    val disinfectionService = remember { DisinfectionBackendService() }
 
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
+
+    val isHatchTask = remember(task.title) { isHatchAndMortalityTask(task.title) }
+    val isWeightTask = remember(task.title) { isWeightMonitoringTask(task.title) }
+    val isFeedTask = remember(task.title) { isFeedReplenishmentTask(task.title) }
+    val isVitaminTask = remember(task.title) { isVitaminsSupplementationTask(task.title) }
+    val feederOptions = remember { feedsService.feederOptions() }
+    val isPenDisinfectionTask = remember(task.title) { isPenDisinfectionTask(task.title) }
+
+    val recordedAt = remember(task.id) {
+        LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    }
+
+    var vitaminOptions by remember(task.id) { mutableStateOf<List<VitaminInventoryOption>>(emptyList()) }
+    var selectedVitamin by remember(task.id) { mutableStateOf<VitaminInventoryOption?>(null) }
+    var vitaminType by remember(task.id) { mutableStateOf("") }
+    var bottlesUsed by remember(task.id) { mutableStateOf("") }
+    var vitaminExpanded by remember(task.id) { mutableStateOf(false) }
+
+    var eggsHatched by remember(task.id) { mutableStateOf("") }
+    var mortality by remember(task.id) { mutableStateOf("") }
+
+    var numberOfFlocks by remember(task.id) { mutableStateOf("") }
+    var flocksWithCases by remember(task.id) { mutableStateOf("") }
+    var targetWeight by remember(task.id) { mutableStateOf("") }
+    var weightSamples by remember(task.id) { mutableStateOf<List<String>>(emptyList()) }
+
+    var feedOptions by remember(task.id) { mutableStateOf<List<FeedInventoryOption>>(emptyList()) }
+    var selectedFeed by remember(task.id) { mutableStateOf<FeedInventoryOption?>(null) }
+    var feedType by remember(task.id) { mutableStateOf("") }
+    var feederNumber by remember(task.id) { mutableStateOf("") }
+    var kilograms by remember(task.id) { mutableStateOf("") }
+    var feedExpanded by remember(task.id) { mutableStateOf(false) }
+    var feederExpanded by remember(task.id) { mutableStateOf(false) }
+
+    var disinfectionActivity by remember(task.id) { mutableStateOf("Pen Disinfection") }
+    var disinfectantUsed by remember(task.id) { mutableStateOf("") }
+
+    var notes by remember(task.id) { mutableStateOf("") }
+    var selectedPhotoUri by remember(task.id) { mutableStateOf<Uri?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
+    var contentVisible by remember { mutableStateOf(false) }
+
+    var showDialog by remember { mutableStateOf(false) }
+    var dialogTitle by remember { mutableStateOf("") }
+    var dialogMessage by remember { mutableStateOf("") }
+    var dialogAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+
+    fun showModal(title: String, message: String, action: (() -> Unit)? = null) {
+        dialogTitle = title
+        dialogMessage = message
+        dialogAction = action
+        showDialog = true
+    }
 
     LaunchedEffect(task.id) {
         contentVisible = false
         delay(120)
         contentVisible = true
+    }
+
+    LaunchedEffect(task.id, isFeedTask) {
+        if (isFeedTask) {
+            feedsService.getFeedInventoryOptions()
+                .onSuccess { feedOptions = it }
+                .onFailure {
+                    showModal(
+                        title = "Feed Inventory Error",
+                        message = it.message ?: "Failed to load active feed options."
+                    )
+                }
+        }
+    }
+
+    LaunchedEffect(task.id, isVitaminTask) {
+        if (isVitaminTask) {
+            vitaminsService.getVitaminInventoryOptions()
+                .onSuccess { vitaminOptions = it }
+                .onFailure {
+                    showModal(
+                        title = "Vitamin Inventory Error",
+                        message = it.message ?: "Failed to load active vitamin options."
+                    )
+                }
+        }
     }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
@@ -156,42 +251,43 @@ fun PendingTaskDetailScreen(
         selectedPhotoUri = uri
     }
 
-    if (showBiosecurityDialog) {
+    if (showDialog) {
         AlertDialog(
-            onDismissRequest = { showBiosecurityDialog = false },
+            onDismissRequest = {
+                showDialog = false
+                dialogAction = null
+            },
             containerColor = DetailSurface,
+            shape = RoundedCornerShape(28.dp),
             title = {
                 Text(
-                    text = "Biosecurity Required",
-                    fontFamily = DetailPoppins,
+                    text = dialogTitle,
+                    fontFamily = DetailManrope,
                     fontWeight = FontWeight.ExtraBold,
                     color = DetailInk
                 )
             },
             text = {
                 Text(
-                    text = biosecurityMessage,
-                    fontFamily = DetailPoppins,
+                    text = dialogMessage,
+                    fontFamily = DetailManrope,
                     fontWeight = FontWeight.Medium,
                     color = DetailMuted,
                     lineHeight = 21.sp
                 )
             },
-            dismissButton = {
-                TextButton(onClick = { showBiosecurityDialog = false }) {
-                    Text("Back", fontFamily = DetailPoppins, color = DetailMuted)
-                }
-            },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showBiosecurityDialog = false
-                        onGoToBiosecurity()
+                        val action = dialogAction
+                        showDialog = false
+                        dialogAction = null
+                        action?.invoke()
                     }
                 ) {
                     Text(
-                        text = "Go to Personnel Logs",
-                        fontFamily = DetailPoppins,
+                        text = "OK",
+                        fontFamily = DetailManrope,
                         fontWeight = FontWeight.ExtraBold,
                         color = DetailGreen
                     )
@@ -205,7 +301,8 @@ fun PendingTaskDetailScreen(
         bottomBar = {
             TaskDetailBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
-                onTasksClick = onNavigateToTasks
+                onTasksClick = onNavigateToTasks,
+                onProfileClick = onNavigateToProfile
             )
         }
     ) { innerPadding ->
@@ -255,7 +352,115 @@ fun PendingTaskDetailScreen(
 
                         WorkBriefSection(task = task)
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(18.dp))
+
+                        if (isHatchTask) {
+                            PendingHatchMortalitySection(
+                                task = task,
+                                eggsHatched = eggsHatched,
+                                mortality = mortality,
+                                onEggsChange = { value -> eggsHatched = value.filter { it.isDigit() } },
+                                onMortalityChange = { value -> mortality = value.filter { it.isDigit() } }
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                        }
+
+                        if (isWeightTask) {
+                            PendingWeightMonitoringSection(
+                                task = task,
+                                numberOfFlocks = numberOfFlocks,
+                                flocksWithCases = flocksWithCases,
+                                targetWeight = targetWeight,
+                                weightSamples = weightSamples,
+                                onNumberOfFlocksChange = { value ->
+                                    val digitsOnly = value.filter { it.isDigit() }
+                                    numberOfFlocks = digitsOnly
+                                    val count = digitsOnly.toIntOrNull() ?: 0
+                                    weightSamples = if (count > 0) {
+                                        List(count) { index -> weightSamples.getOrNull(index) ?: "" }
+                                    } else {
+                                        emptyList()
+                                    }
+                                },
+                                onFlocksWithCasesChange = { value ->
+                                    flocksWithCases = value.filter { it.isDigit() }
+                                },
+                                onTargetWeightChange = { value ->
+                                    targetWeight = decimalOnly(value)
+                                },
+                                onWeightSampleChange = { index, value ->
+                                    weightSamples = weightSamples.mapIndexed { sampleIndex, oldValue ->
+                                        if (sampleIndex == index) decimalOnly(value) else oldValue
+                                    }
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                        }
+
+                        if (isFeedTask) {
+                            PendingFeedReplenishmentSection(
+                                task = task,
+                                feedType = feedType,
+                                feedOptions = feedOptions,
+                                feederNumber = feederNumber,
+                                kilograms = kilograms,
+                                feederOptions = feederOptions,
+                                feedExpanded = feedExpanded,
+                                feederExpanded = feederExpanded,
+                                onFeedExpandedChange = { feedExpanded = it },
+                                onFeederExpandedChange = { feederExpanded = it },
+                                onFeedSelected = { option ->
+                                    selectedFeed = option
+                                    feedType = option.itemName
+                                    feedExpanded = false
+                                },
+                                onFeederSelected = { value ->
+                                    feederNumber = value
+                                    feederExpanded = false
+                                },
+                                onKilogramsChange = { value ->
+                                    kilograms = value.filter { it.isDigit() }
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                        }
+
+                        if (isVitaminTask) {
+                            PendingVitaminsSupplementationSection(
+                                task = task,
+                                vitaminType = vitaminType,
+                                vitaminOptions = vitaminOptions,
+                                bottlesUsed = bottlesUsed,
+                                vitaminExpanded = vitaminExpanded,
+                                onVitaminExpandedChange = { vitaminExpanded = it },
+                                onVitaminSelected = { option ->
+                                    selectedVitamin = option
+                                    vitaminType = option.itemName
+                                    vitaminExpanded = false
+                                },
+                                onBottlesUsedChange = { value ->
+                                    bottlesUsed = value.filter { it.isDigit() }
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                        }
+
+                        if (isPenDisinfectionTask) {
+                            PendingPenDisinfectionTaskForm(
+                                task = task,
+                                activity = disinfectionActivity,
+                                disinfectantUsed = disinfectantUsed,
+                                recordedAt = recordedAt,
+                                onActivityChange = { disinfectionActivity = it },
+                                onDisinfectantUsedChange = { disinfectantUsed = it }
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                        }
 
                         SubmissionWorkspace(
                             selectedPhotoUri = selectedPhotoUri,
@@ -272,34 +477,243 @@ fun PendingTaskDetailScreen(
 
                         Spacer(modifier = Modifier.height(18.dp))
 
-                        submitError?.let {
-                            ErrorBanner(message = it)
-                            Spacer(modifier = Modifier.height(12.dp))
-                        }
-
                         Button(
                             onClick = {
                                 focusManager.clearFocus()
-                                submitError = null
+
+                                if (isHatchTask) {
+                                    if (task.houseId == null || task.penNumber == null) {
+                                        showModal("Missing Assignment", "This task is missing its assigned house or pen.")
+                                        return@Button
+                                    }
+
+                                    if (eggsHatched.isBlank()) {
+                                        showModal("Eggs Hatched Required", "Please enter the number of eggs hatched.")
+                                        return@Button
+                                    }
+
+                                    if (mortality.isBlank()) {
+                                        showModal("Mortality Required", "Please enter the mortality count.")
+                                        return@Button
+                                    }
+                                }
+
+                                if (isWeightTask) {
+                                    if (task.houseId == null || task.penNumber == null) {
+                                        showModal("Missing Assignment", "This task is missing its assigned house or pen.")
+                                        return@Button
+                                    }
+
+                                    val flockCount = numberOfFlocks.toIntOrNull()
+                                    val casesCount = flocksWithCases.toIntOrNull()
+                                    val targetValue = targetWeight.toDoubleOrNull()
+                                    val weightValues = weightSamples.map { it.toDoubleOrNull() }
+
+                                    when {
+                                        flockCount == null || flockCount <= 0 -> {
+                                            showModal("Number of Flocks Required", "Please enter the number of flocks sampled.")
+                                            return@Button
+                                        }
+
+                                        casesCount == null || casesCount < 0 -> {
+                                            showModal("Cases Required", "Please enter the number of flocks with cases. Use 0 if there are none.")
+                                            return@Button
+                                        }
+
+                                        casesCount > flockCount -> {
+                                            showModal("Invalid Cases", "Flocks with cases cannot be greater than the number of flocks sampled.")
+                                            return@Button
+                                        }
+
+                                        targetValue == null || targetValue <= 0.0 -> {
+                                            showModal("Target Weight Required", "Please enter a valid target weight.")
+                                            return@Button
+                                        }
+
+                                        weightSamples.size != flockCount || weightSamples.any { it.isBlank() } -> {
+                                            showModal("Weight Samples Required", "Please enter one weight sample for every flock.")
+                                            return@Button
+                                        }
+
+                                        weightValues.any { it == null || it <= 0.0 } -> {
+                                            showModal("Invalid Weight Sample", "Please enter valid weight values for all flocks.")
+                                            return@Button
+                                        }
+                                    }
+                                }
+
+                                if (isFeedTask) {
+                                    if (task.houseId == null || task.penNumber == null) {
+                                        showModal("Missing Assignment", "This task is missing its assigned house or pen.")
+                                        return@Button
+                                    }
+
+                                    if (selectedFeed == null) {
+                                        showModal("Feed Required", "Please select the feed type.")
+                                        return@Button
+                                    }
+
+                                    val feederValue = feederNumber.toIntOrNull()
+                                    if (feederValue == null || feederValue <= 0) {
+                                        showModal("Feeder Required", "Please select a valid feeder number.")
+                                        return@Button
+                                    }
+
+                                    val kilogramsValue = kilograms.toIntOrNull()
+                                    if (kilogramsValue == null || kilogramsValue <= 0) {
+                                        showModal("Kilograms Required", "Please enter the kilograms refilled.")
+                                        return@Button
+                                    }
+                                }
+
+                                if (isVitaminTask) {
+                                    if (task.houseId == null || task.penNumber == null) {
+                                        showModal("Missing Assignment", "This task is missing its assigned house or pen.")
+                                        return@Button
+                                    }
+
+                                    if (selectedVitamin == null) {
+                                        showModal("Vitamins Required", "Please select the type of vitamins.")
+                                        return@Button
+                                    }
+
+                                    val bottlesValue = bottlesUsed.toIntOrNull()
+                                    if (bottlesValue == null || bottlesValue <= 0) {
+                                        showModal("Bottles Required", "Please enter a valid bottle count.")
+                                        return@Button
+                                    }
+                                }
+
+                                if (isPenDisinfectionTask) {
+                                    if (task.houseId == null || task.penNumber == null) {
+                                        showModal("Missing Assignment", "This task is missing its assigned house or pen.")
+                                        return@Button
+                                    }
+
+                                    if (disinfectionActivity.isBlank()) {
+                                        showModal("Activity Required", "Please enter the disinfection activity.")
+                                        return@Button
+                                    }
+
+                                    if (disinfectantUsed.isBlank()) {
+                                        showModal("Disinfectant Required", "Please enter the disinfectant used.")
+                                        return@Button
+                                    }
+                                }
+
+                                if (selectedPhotoUri == null) {
+                                    showModal("Proof Photo Required", "Please upload a proof photo before submitting this task.")
+                                    return@Button
+                                }
 
                                 coroutineScope.launch {
                                     isSubmitting = true
-                                    onSubmit(notes, selectedPhotoUri)
-                                        .onFailure {
-                                            val message = it.message ?: "Failed to submit task."
 
-                                            if (
-                                                message.contains("personnel biosecurity", ignoreCase = true) ||
-                                                message.contains("scan IN", ignoreCase = true) ||
-                                                message.contains("different house", ignoreCase = true) ||
-                                                message.contains("correct house", ignoreCase = true)
-                                            ) {
-                                                biosecurityMessage = message
-                                                showBiosecurityDialog = true
-                                            } else {
-                                                submitError = message
-                                            }
+                                    val formResult = when {
+                                        isHatchTask -> {
+                                            populationService.submitPopulation(
+                                                employeeId = employeeId,
+                                                houseId = task.houseId?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
+                                                penNumber = null,
+                                                eggsHatched = eggsHatched.toInt(),
+                                                mortality = mortality.toInt(),
+                                                recordedAt = recordedAt,
+                                                taskId = task.id,
+                                                penId = task.penNumber?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen.")
+                                            )
                                         }
+
+                                        isWeightTask -> {
+                                            weightService.submitWeightSamplingTask(
+                                                employeeId = employeeId,
+                                                taskId = task.id,
+                                                houseId = task.houseId?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
+                                                penId = task.penNumber?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
+                                                numberOfFlocks = numberOfFlocks.toInt(),
+                                                flocksWithCases = flocksWithCases.toInt(),
+                                                targetWeight = targetWeight.toDouble(),
+                                                weights = weightSamples.mapNotNull { it.toDoubleOrNull() },
+                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                            ).map { it.success == true }
+                                        }
+
+                                        isFeedTask -> {
+                                            feedsService.submitFeedReplenishmentTask(
+                                                employeeId = employeeId,
+                                                taskId = task.id,
+                                                inventoryId = selectedFeed?.id
+                                                    ?: return@launch showModal("Feed Required", "Please select the feed type."),
+                                                houseId = task.houseId?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
+                                                penId = task.penNumber?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
+                                                feederNumber = feederNumber.toInt(),
+                                                kilograms = kilograms.toInt(),
+                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                            )
+                                        }
+
+                                        isVitaminTask -> {
+                                            vitaminsService.submitVitaminsSupplementationTask(
+                                                employeeId = employeeId,
+                                                taskId = task.id,
+                                                inventoryId = selectedVitamin?.id
+                                                    ?: return@launch showModal("Vitamins Required", "Please select the type of vitamins."),
+                                                houseId = task.houseId?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
+                                                penId = task.penNumber?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
+                                                bottles = bottlesUsed.toInt(),
+                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                            )
+                                        }
+
+                                        isPenDisinfectionTask -> {
+                                            disinfectionService.submitPenDisinfectionTask(
+                                                employeeId = employeeId,
+                                                taskId = task.id,
+                                                houseId = task.houseId?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
+                                                penId = task.penNumber?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
+                                                activity = disinfectionActivity.trim(),
+                                                disinfectantUsed = disinfectantUsed.trim(),
+                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                            )
+                                        }
+
+                                        else -> Result.success(true)
+                                    }
+
+                                    formResult.onSuccess { saved ->
+                                        if (!saved) {
+                                            showModal("Submission Failed", "The task data was not saved.")
+                                            isSubmitting = false
+                                            return@launch
+                                        }
+
+                                        onSubmit(notes, selectedPhotoUri)
+                                            .onFailure {
+                                                val message = it.message ?: "Failed to submit task."
+
+                                                if (
+                                                    message.contains("personnel biosecurity", ignoreCase = true) ||
+                                                    message.contains("scan IN", ignoreCase = true) ||
+                                                    message.contains("biosecurity", ignoreCase = true)
+                                                ) {
+                                                    showModal("Biosecurity Required", message, onGoToBiosecurity)
+                                                } else {
+                                                    showModal("Submission Failed", message)
+                                                }
+                                            }
+                                    }.onFailure {
+                                        showModal("Submission Failed", it.message ?: "Failed to save task data.")
+                                    }
+
                                     isSubmitting = false
                                 }
                             },
@@ -315,7 +729,7 @@ fun PendingTaskDetailScreen(
                         ) {
                             Text(
                                 text = if (isSubmitting) "Submitting..." else "Submit Task",
-                                fontFamily = DetailPoppins,
+                                fontFamily = DetailManrope,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 16.sp,
                                 color = Color.White
@@ -331,9 +745,7 @@ fun PendingTaskDetailScreen(
 }
 
 @Composable
-private fun DetailTopBar(
-    onBackClick: () -> Unit
-) {
+private fun DetailTopBar(onBackClick: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -361,7 +773,7 @@ private fun DetailTopBar(
             text = "Work Order",
             modifier = Modifier.weight(1f),
             textAlign = TextAlign.Center,
-            fontFamily = DetailPoppins,
+            fontFamily = DetailManrope,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 20.sp,
             color = DetailInk
@@ -384,27 +796,16 @@ private fun WorkOrderHeader(task: PendingTaskDetailUiState) {
             )
             .padding(20.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            StatusLabel(
-                text = "Pending task",
-                color = PendingAccent,
-                modifier = Modifier.weight(1f)
-            )
-
-            PriorityBadge(
-                label = task.priorityLabel,
-                color = priorityChipColor(task.priority)
-            )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            StatusLabel("Pending Task", DetailAmber, Modifier.weight(1f))
+            PriorityBadge(task.priorityLabel, priorityChipColor(task.priority))
         }
 
         Spacer(modifier = Modifier.height(22.dp))
 
         Text(
             text = task.title,
-            fontFamily = DetailPoppins,
+            fontFamily = DetailManrope,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 28.sp,
             color = Color.White,
@@ -413,35 +814,16 @@ private fun WorkOrderHeader(task: PendingTaskDetailUiState) {
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            TimeBlock(
-                label = "Assigned",
-                value = task.timeAssigned,
-                modifier = Modifier.weight(1f)
-            )
-
-            TimeBlock(
-                label = "Finish by",
-                value = task.finishBy,
-                modifier = Modifier.weight(1f)
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            TimeBlock("Assigned", task.timeAssigned, Modifier.weight(1f))
+            TimeBlock("Finish by", task.finishBy, Modifier.weight(1f))
         }
     }
 }
 
 @Composable
-private fun StatusLabel(
-    text: String,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+private fun StatusLabel(text: String, color: Color, modifier: Modifier = Modifier) {
+    Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
                 .size(9.dp)
@@ -453,7 +835,7 @@ private fun StatusLabel(
 
         Text(
             text = text,
-            fontFamily = DetailPoppins,
+            fontFamily = DetailManrope,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 13.sp,
             color = Color.White
@@ -462,14 +844,11 @@ private fun StatusLabel(
 }
 
 @Composable
-private fun PriorityBadge(
-    label: String,
-    color: Color
-) {
+private fun PriorityBadge(label: String, color: Color) {
     Column(horizontalAlignment = Alignment.End) {
         Text(
             text = "Priority",
-            fontFamily = DetailPoppins,
+            fontFamily = DetailManrope,
             fontWeight = FontWeight.Bold,
             fontSize = 10.sp,
             color = Color.White.copy(alpha = 0.58f)
@@ -477,7 +856,7 @@ private fun PriorityBadge(
 
         Text(
             text = label,
-            fontFamily = DetailPoppins,
+            fontFamily = DetailManrope,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 14.sp,
             color = color
@@ -486,11 +865,7 @@ private fun PriorityBadge(
 }
 
 @Composable
-private fun TimeBlock(
-    label: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
+private fun TimeBlock(label: String, value: String, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
@@ -500,7 +875,7 @@ private fun TimeBlock(
     ) {
         Text(
             text = label,
-            fontFamily = DetailPoppins,
+            fontFamily = DetailManrope,
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
             color = Color.White.copy(alpha = 0.64f)
@@ -510,7 +885,7 @@ private fun TimeBlock(
 
         Text(
             text = value.ifBlank { "-" },
-            fontFamily = DetailPoppins,
+            fontFamily = DetailManrope,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 15.sp,
             color = Color.White,
@@ -521,18 +896,14 @@ private fun TimeBlock(
 
 @Composable
 private fun WorkBriefSection(task: PendingTaskDetailUiState) {
-    SectionPanel {
-        SectionHeaderRow(
-            title = "Work brief",
-            subtitle = "Task instructions",
-            accentColor = DetailGreen
-        )
+    DetailSectionPanel {
+        DetailSectionHeaderRow("Work Brief", "Task instructions", DetailGreen)
 
         Spacer(modifier = Modifier.height(14.dp))
 
         Text(
             text = task.description,
-            fontFamily = DetailPoppins,
+            fontFamily = DetailManrope,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
             lineHeight = 23.sp,
@@ -548,12 +919,8 @@ private fun SubmissionWorkspace(
     onNotesChange: (String) -> Unit,
     onPhotoClick: () -> Unit
 ) {
-    SectionPanel {
-        SectionHeaderRow(
-            title = "Submission",
-            subtitle = "Attach proof and add notes before sending",
-            accentColor = PendingAccent
-        )
+    DetailSectionPanel {
+        DetailSectionHeaderRow("Submission", "Photo is required. Notes are optional.", DetailAmber)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -561,56 +928,37 @@ private fun SubmissionWorkspace(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        PhotoUploadArea(
-            selectedPhotoUri = selectedPhotoUri,
-            onClick = onPhotoClick
-        )
+        PhotoUploadArea(selectedPhotoUri, onPhotoClick)
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        NotesInput(
-            notes = notes,
-            onNotesChange = onNotesChange
-        )
+        NotesInput(notes, onNotesChange)
     }
 }
 
 @Composable
-private fun SectionPanel(
-    content: @Composable ColumnScope.() -> Unit
-) {
+private fun DetailSectionPanel(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
             .background(
-                brush = Brush.verticalGradient(
+                Brush.verticalGradient(
                     colors = listOf(
                         Color.White.copy(alpha = 0.94f),
                         DetailSurface.copy(alpha = 0.98f)
                     )
                 )
             )
-            .border(
-                width = 1.dp,
-                color = DetailLine.copy(alpha = 0.82f),
-                shape = RoundedCornerShape(26.dp)
-            )
+            .border(1.dp, DetailLine.copy(alpha = 0.82f), RoundedCornerShape(26.dp))
             .padding(horizontal = 18.dp, vertical = 18.dp),
         content = content
     )
 }
 
 @Composable
-private fun SectionHeaderRow(
-    title: String,
-    subtitle: String,
-    accentColor: Color
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
+private fun DetailSectionHeaderRow(title: String, subtitle: String, accentColor: Color) {
+    Row(verticalAlignment = Alignment.Top) {
         Box(
             modifier = Modifier
                 .padding(top = 4.dp)
@@ -624,7 +972,7 @@ private fun SectionHeaderRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontFamily = DetailPoppins,
+                fontFamily = DetailManrope,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
                 color = DetailInk
@@ -634,7 +982,7 @@ private fun SectionHeaderRow(
 
             Text(
                 text = subtitle,
-                fontFamily = DetailPoppins,
+                fontFamily = DetailManrope,
                 fontWeight = FontWeight.Medium,
                 fontSize = 12.sp,
                 color = DetailMuted,
@@ -651,7 +999,7 @@ private fun DetailDivider() {
             .fillMaxWidth()
             .height(1.dp)
             .background(
-                brush = Brush.horizontalGradient(
+                Brush.horizontalGradient(
                     colors = listOf(
                         Color.Transparent,
                         DetailLine.copy(alpha = 0.92f),
@@ -663,36 +1011,7 @@ private fun DetailDivider() {
 }
 
 @Composable
-private fun SectionLabel(
-    title: String,
-    subtitle: String
-) {
-    Column {
-        Text(
-            text = title,
-            fontFamily = DetailPoppins,
-            fontWeight = FontWeight.ExtraBold,
-            fontSize = 18.sp,
-            color = DetailInk
-        )
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        Text(
-            text = subtitle,
-            fontFamily = DetailPoppins,
-            fontWeight = FontWeight.Medium,
-            fontSize = 12.sp,
-            color = DetailMuted
-        )
-    }
-}
-
-@Composable
-private fun PhotoUploadArea(
-    selectedPhotoUri: Uri?,
-    onClick: () -> Unit
-) {
+private fun PhotoUploadArea(selectedPhotoUri: Uri?, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -730,8 +1049,8 @@ private fun PhotoUploadArea(
                 Spacer(modifier = Modifier.height(11.dp))
 
                 Text(
-                    text = "Upload proof of work",
-                    fontFamily = DetailPoppins,
+                    text = "Upload proof photo",
+                    fontFamily = DetailManrope,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 14.sp,
                     color = DetailInk
@@ -741,7 +1060,7 @@ private fun PhotoUploadArea(
 
                 Text(
                     text = "Tap to choose a photo",
-                    fontFamily = DetailPoppins,
+                    fontFamily = DetailManrope,
                     fontWeight = FontWeight.Medium,
                     fontSize = 12.sp,
                     color = DetailMuted
@@ -752,10 +1071,7 @@ private fun PhotoUploadArea(
 }
 
 @Composable
-private fun NotesInput(
-    notes: String,
-    onNotesChange: (String) -> Unit
-) {
+private fun NotesInput(notes: String, onNotesChange: (String) -> Unit) {
     OutlinedTextField(
         value = notes,
         onValueChange = onNotesChange,
@@ -763,10 +1079,16 @@ private fun NotesInput(
             .fillMaxWidth()
             .height(136.dp),
         shape = RoundedCornerShape(22.dp),
+        textStyle = TextStyle(
+            fontFamily = DetailManrope,
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp,
+            color = DetailInk
+        ),
         placeholder = {
             Text(
-                text = "Add notes here",
-                fontFamily = DetailPoppins,
+                text = "Add optional notes",
+                fontFamily = DetailManrope,
                 color = DetailMuted
             )
         },
@@ -786,28 +1108,10 @@ private fun NotesInput(
 }
 
 @Composable
-private fun ErrorBanner(message: String) {
-    Text(
-        text = message,
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(Color(0xFFFFECEA))
-            .border(1.dp, Color(0xFFF2B8B5), RoundedCornerShape(16.dp))
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        fontFamily = DetailPoppins,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 13.sp,
-        lineHeight = 18.sp,
-        color = Color(0xFFB3261E)
-    )
-}
-
-@Composable
 private fun PendingDetailSkeleton() {
     val alpha = skeletonAlpha()
 
-    Column(verticalArrangement = Arrangement.spacedBy(22.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
         SkeletonBox(
             modifier = Modifier
                 .fillMaxWidth()
@@ -817,32 +1121,31 @@ private fun PendingDetailSkeleton() {
             shape = RoundedCornerShape(30.dp)
         )
 
-        Column {
-            SkeletonLine(widthFraction = 0.34f, height = 18.dp, alpha = alpha)
-            Spacer(modifier = Modifier.height(12.dp))
-            SkeletonLine(widthFraction = 0.96f, height = 13.dp, alpha = alpha)
-            Spacer(modifier = Modifier.height(8.dp))
-            SkeletonLine(widthFraction = 0.88f, height = 13.dp, alpha = alpha)
-            Spacer(modifier = Modifier.height(8.dp))
-            SkeletonLine(widthFraction = 0.62f, height = 13.dp, alpha = alpha)
-        }
-
         SkeletonBox(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(184.dp),
+                .height(144.dp),
             alpha = alpha,
             color = Color(0xFFD9D2C6),
-            shape = RoundedCornerShape(24.dp)
+            shape = RoundedCornerShape(26.dp)
         )
 
         SkeletonBox(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(136.dp),
+                .height(300.dp),
             alpha = alpha,
             color = Color(0xFFD9D2C6),
-            shape = RoundedCornerShape(22.dp)
+            shape = RoundedCornerShape(26.dp)
+        )
+
+        SkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(356.dp),
+            alpha = alpha,
+            color = Color(0xFFD9D2C6),
+            shape = RoundedCornerShape(26.dp)
         )
     }
 }
@@ -863,22 +1166,6 @@ private fun skeletonAlpha(): Float {
 }
 
 @Composable
-private fun SkeletonLine(
-    widthFraction: Float,
-    height: androidx.compose.ui.unit.Dp,
-    alpha: Float,
-    color: Color = Color(0xFFCFC5B5)
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth(widthFraction)
-            .height(height)
-            .clip(RoundedCornerShape(999.dp))
-            .background(color.copy(alpha = alpha))
-    )
-}
-
-@Composable
 private fun SkeletonBox(
     modifier: Modifier,
     alpha: Float,
@@ -895,13 +1182,14 @@ private fun SkeletonBox(
 @Composable
 private fun TaskDetailBottomNavBar(
     onDashboardClick: () -> Unit,
-    onTasksClick: () -> Unit
+    onTasksClick: () -> Unit,
+    onProfileClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .background(
-                brush = Brush.verticalGradient(
+                Brush.verticalGradient(
                     colors = listOf(Color(0xFF07381F), Color(0xFF022716))
                 )
             )
@@ -912,9 +1200,13 @@ private fun TaskDetailBottomNavBar(
     ) {
         DetailNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
         DetailNavItem(Lucide.ClipboardList, "Tasks", true, onTasksClick)
-        DetailNavItem(Lucide.House, "Farm Management", false, {})
-        DetailNavItem(Lucide.UserRound, "Profile", false, {})
+        DetailNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
+}
+
+private fun isPenDisinfectionTask(title: String): Boolean {
+    val normalized = title.trim().lowercase()
+    return normalized == "pen disinfection" || normalized == "cleaning"
 }
 
 @Composable
@@ -924,10 +1216,15 @@ private fun DetailNavItem(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+
     Column(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onClick() }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) { onClick() }
             .padding(horizontal = 8.dp, vertical = 5.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -942,8 +1239,8 @@ private fun DetailNavItem(
 
         Text(
             text = label,
-            fontFamily = DetailPoppins,
-            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Medium,
+            fontFamily = DetailManrope,
+            fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
             fontSize = 10.sp,
             color = if (selected) Color.White else Color(0xFFCFE8D2),
             textAlign = TextAlign.Center,

@@ -49,10 +49,14 @@ data class PopulationContextResponse(
 data class PopulationSubmitRequest(
     @SerialName("employee_id")
     val employeeId: Int,
+    @SerialName("task_id")
+    val taskId: Int? = null,
     @SerialName("house_id")
     val houseId: Long,
+    @SerialName("pen_id")
+    val penId: Long? = null,
     @SerialName("pen_name")
-    val penName: String,
+    val penName: String? = null,
     @SerialName("eggs_hatched")
     val eggsHatched: Int,
     @SerialName("mortality")
@@ -128,17 +132,21 @@ class PopulationBackendService(
     suspend fun submitPopulation(
         employeeId: Int,
         houseId: Long,
-        penNumber: String,
+        penNumber: String? = null,
         eggsHatched: Int,
         mortality: Int,
-        recordedAt: String
+        recordedAt: String,
+        taskId: Int? = null,
+        penId: Long? = null
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val requestBody = PopulationSubmitRequest(
                     employeeId = employeeId,
+                    taskId = taskId,
                     houseId = houseId,
-                    penName = "Pen $penNumber",
+                    penId = penId,
+                    penName = penNumber?.let { "Pen $it" },
                     eggsHatched = eggsHatched,
                     mortality = mortality,
                     recordedAt = recordedAt

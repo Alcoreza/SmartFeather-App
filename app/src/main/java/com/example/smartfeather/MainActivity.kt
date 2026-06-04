@@ -3,8 +3,14 @@ package com.example.smartfeather
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -12,26 +18,19 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.runtime.rememberCoroutineScope
-import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 enum class AppScreen {
     LOGIN,
@@ -86,6 +85,7 @@ fun SmartFeatherApp() {
     var pendingTaskWaitingForBiosecurity by remember {
         mutableStateOf<PendingTaskDetailUiState?>(null)
     }
+
     var biosecurityRequiredMessage by remember {
         mutableStateOf("Complete the biosecurity log first before opening this task.")
     }
@@ -155,6 +155,7 @@ fun SmartFeatherApp() {
         AlertDialog(
             onDismissRequest = {
                 showBiosecurityRequiredDialog = false
+                biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
             },
             containerColor = Color(0xFFFFFCF7),
             shape = RoundedCornerShape(28.dp),
@@ -180,6 +181,7 @@ fun SmartFeatherApp() {
                     onClick = {
                         showBiosecurityRequiredDialog = false
                         pendingTaskWaitingForBiosecurity = null
+                        biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
                     }
                 ) {
                     Text(
@@ -194,6 +196,7 @@ fun SmartFeatherApp() {
                 TextButton(
                     onClick = {
                         showBiosecurityRequiredDialog = false
+                        biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
                         currentScreen = AppScreen.PERSONNEL_LOGS
                     }
                 ) {
@@ -222,8 +225,8 @@ fun SmartFeatherApp() {
                 )
             },
             text = {
-                androidx.compose.foundation.layout.Column(
-                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
@@ -232,7 +235,7 @@ fun SmartFeatherApp() {
                         fontWeight = FontWeight.Medium,
                         color = Color(0xFF677168),
                         lineHeight = 21.sp,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                        textAlign = TextAlign.Center
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -405,6 +408,7 @@ fun SmartFeatherApp() {
         AppScreen.TASK_DETAIL -> {
             selectedPendingTask?.let { task ->
                 PendingTaskDetailScreen(
+                    employeeId = loggedInEmployeeId ?: 0,
                     task = task,
                     onBackClick = {
                         currentScreen = AppScreen.TASKS
@@ -414,6 +418,9 @@ fun SmartFeatherApp() {
                     },
                     onNavigateToTasks = {
                         currentScreen = AppScreen.TASKS
+                    },
+                    onNavigateToProfile = {
+                        currentScreen = AppScreen.PROFILE
                     },
                     onGoToBiosecurity = {
                         pendingTaskWaitingForBiosecurity = selectedPendingTask
@@ -642,7 +649,6 @@ fun SmartFeatherApp() {
                 pendingTaskWaitingForBiosecurity = null
                 showBiosecurityRequiredDialog = false
                 isCheckingTaskAccess = false
-                pendingTaskWaitingForBiosecurity = null
                 biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
                 dashboardUiState = emptyDashboardState()
                 isDashboardLoading = false

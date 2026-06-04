@@ -47,8 +47,10 @@ data class WeightSubmitRequest(
     @SerialName("flocks_with_cases") val flocksWithCases: Int,
     @SerialName("target_weight") val targetWeight: Double,
     @SerialName("weights") val weights: List<Double>,
-    @SerialName("recorded_date") val recordedDate: String,
-    @SerialName("recorded_time") val recordedTime: String
+    @SerialName("recorded_date") val recordedDate: String? = null,
+    @SerialName("recorded_time") val recordedTime: String? = null,
+    @SerialName("recorded_at") val recordedAt: String? = null,
+    @SerialName("task_id") val taskId: Int? = null
 )
 
 @Serializable
@@ -137,29 +139,56 @@ class WeightBackendService(
         weights: List<Double>,
         recordedDate: String,
         recordedTime: String
+    ): Result<WeightSubmitResponse> = submitWeightSamplingRequest(
+        WeightSubmitRequest(
+            employeeId = employeeId,
+            houseId = houseId,
+            penId = penId,
+            numberOfFlocks = numberOfFlocks,
+            flocksWithCases = flocksWithCases,
+            targetWeight = targetWeight,
+            weights = weights,
+            recordedDate = recordedDate,
+            recordedTime = recordedTime
+        )
+    )
+
+    suspend fun submitWeightSamplingTask(
+        employeeId: Int,
+        taskId: Int,
+        houseId: Long,
+        penId: Long,
+        numberOfFlocks: Int,
+        flocksWithCases: Int,
+        targetWeight: Double,
+        weights: List<Double>,
+        recordedAt: String
+    ): Result<WeightSubmitResponse> = submitWeightSamplingRequest(
+        WeightSubmitRequest(
+            employeeId = employeeId,
+            houseId = houseId,
+            penId = penId,
+            numberOfFlocks = numberOfFlocks,
+            flocksWithCases = flocksWithCases,
+            targetWeight = targetWeight,
+            weights = weights,
+            recordedAt = recordedAt,
+            taskId = taskId
+        )
+    )
+
+    private suspend fun submitWeightSamplingRequest(
+        request: WeightSubmitRequest
     ): Result<WeightSubmitResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val responseText = httpClient.post("$baseUrl/api/mobile/weight-sampling") {
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
-                setBody(
-                    json.encodeToString(
-                        WeightSubmitRequest(
-                            employeeId = employeeId,
-                            houseId = houseId,
-                            penId = penId,
-                            numberOfFlocks = numberOfFlocks,
-                            flocksWithCases = flocksWithCases,
-                            targetWeight = targetWeight,
-                            weights = weights,
-                            recordedDate = recordedDate,
-                            recordedTime = recordedTime
-                        )
-                    )
-                )
+                setBody(json.encodeToString(request))
             }.bodyAsText()
 
             val parsed = json.parseToJsonElement(responseText)
+
             if (parsed is JsonObject && parsed["success"] == null) {
                 val error = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                 error(error.message ?: "Failed to submit weight sampling.")

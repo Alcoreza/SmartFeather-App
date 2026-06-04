@@ -18,6 +18,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Serializable
 data class DisinfectionPenApiRow(
@@ -47,6 +49,8 @@ data class DisinfectionContextResponse(
 data class DisinfectionSubmitRequest(
     @SerialName("employee_id")
     val employeeId: Int,
+    @SerialName("task_id")
+    val taskId: Int? = null,
     @SerialName("house_id")
     val houseId: Long,
     @SerialName("pen_id")
@@ -140,12 +144,14 @@ class DisinfectionBackendService(
         activity: String,
         disinfectantUsed: String,
         recordedDate: String,
-        recordedTime: String
+        recordedTime: String,
+        taskId: Int? = null
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val requestBody = DisinfectionSubmitRequest(
                     employeeId = employeeId,
+                    taskId = taskId,
                     houseId = houseId,
                     penId = penId,
                     activity = activity,
@@ -171,5 +177,28 @@ class DisinfectionBackendService(
                 response.success == true
             }
         }
+    }
+
+    suspend fun submitPenDisinfectionTask(
+        employeeId: Int,
+        taskId: Int,
+        houseId: Long,
+        penId: Long,
+        activity: String,
+        disinfectantUsed: String,
+        recordedAt: String
+    ): Result<Boolean> {
+        val parsedRecordedAt = LocalDateTime.parse(recordedAt, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+
+        return submitDisinfection(
+            employeeId = employeeId,
+            houseId = houseId,
+            penId = penId,
+            activity = activity,
+            disinfectantUsed = disinfectantUsed,
+            recordedDate = parsedRecordedAt.toLocalDate().toString(),
+            recordedTime = parsedRecordedAt.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm:ss")),
+            taskId = taskId
+        )
     }
 }

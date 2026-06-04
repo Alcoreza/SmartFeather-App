@@ -21,64 +21,44 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 data class FeedPenApiRow(
-    @SerialName("id")
-    val id: Long,
-    @SerialName("pen_name")
-    val penName: String? = null
+    @SerialName("id") val id: Long,
+    @SerialName("pen_name") val penName: String? = null
 )
 
 @Serializable
 data class FeedContextResponse(
-    @SerialName("success")
-    val success: Boolean? = null,
-    @SerialName("access_allowed")
-    val accessAllowed: Boolean? = null,
-    @SerialName("house_id")
-    val houseId: Long? = null,
-    @SerialName("house_number")
-    val houseNumber: String? = null,
-    @SerialName("pen_options")
-    val penOptions: List<FeedPenApiRow> = emptyList(),
-    @SerialName("message")
-    val message: String? = null
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("access_allowed") val accessAllowed: Boolean? = null,
+    @SerialName("house_id") val houseId: Long? = null,
+    @SerialName("house_number") val houseNumber: String? = null,
+    @SerialName("pen_options") val penOptions: List<FeedPenApiRow> = emptyList(),
+    @SerialName("message") val message: String? = null
 )
 
 @Serializable
 data class FeedInventoryApiRow(
-    @SerialName("id")
-    val id: Int,
-    @SerialName("item_name")
-    val itemName: String? = null,
-    @SerialName("remaining_stock")
-    val remainingStock: Int? = null,
-    @SerialName("unit")
-    val unit: String? = null
+    @SerialName("id") val id: Int,
+    @SerialName("item_name") val itemName: String? = null,
+    @SerialName("remaining_stock") val remainingStock: Int? = null,
+    @SerialName("unit") val unit: String? = null
 )
 
 @Serializable
 data class FeedRefillRequest(
-    @SerialName("employee_id")
-    val employeeId: Int,
-    @SerialName("inventory_id")
-    val inventoryId: Int,
-    @SerialName("house_id")
-    val houseId: Long,
-    @SerialName("pen_id")
-    val penId: Long,
-    @SerialName("feeder_number")
-    val feederNumber: Int,
-    @SerialName("kilograms")
-    val kilograms: Int,
-    @SerialName("recorded_at")
-    val recordedAt: String
+    @SerialName("employee_id") val employeeId: Int,
+    @SerialName("task_id") val taskId: Int? = null,
+    @SerialName("inventory_id") val inventoryId: Int,
+    @SerialName("house_id") val houseId: Long,
+    @SerialName("pen_id") val penId: Long,
+    @SerialName("feeder_number") val feederNumber: Int,
+    @SerialName("kilograms") val kilograms: Int,
+    @SerialName("recorded_at") val recordedAt: String
 )
 
 @Serializable
 data class FeedApiMessageResponse(
-    @SerialName("success")
-    val success: Boolean? = null,
-    @SerialName("message")
-    val message: String? = null
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("message") val message: String? = null
 )
 
 data class FeedHouseOption(
@@ -112,10 +92,7 @@ class FeedsRefillBackendService(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-    }
+    private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun getFeedsContext(employeeId: Int): Result<FeedAccessContext> {
         return withContext(Dispatchers.IO) {
@@ -136,10 +113,7 @@ class FeedsRefillBackendService(
                 FeedAccessContext(
                     accessAllowed = response.accessAllowed == true,
                     house = if (response.houseId != null && !response.houseNumber.isNullOrBlank()) {
-                        FeedHouseOption(
-                            id = response.houseId,
-                            houseNumber = response.houseNumber
-                        )
+                        FeedHouseOption(response.houseId, response.houseNumber)
                     } else {
                         null
                     },
@@ -190,18 +164,48 @@ class FeedsRefillBackendService(
         kilograms: Int,
         recordedAt: String
     ): Result<Boolean> {
+        return submitFeedRefillRequest(
+            FeedRefillRequest(
+                employeeId = employeeId,
+                inventoryId = inventoryId,
+                houseId = houseId,
+                penId = penId,
+                feederNumber = feederNumber,
+                kilograms = kilograms,
+                recordedAt = recordedAt
+            )
+        )
+    }
+
+    suspend fun submitFeedReplenishmentTask(
+        employeeId: Int,
+        taskId: Int,
+        inventoryId: Int,
+        houseId: Long,
+        penId: Long,
+        feederNumber: Int,
+        kilograms: Int,
+        recordedAt: String
+    ): Result<Boolean> {
+        return submitFeedRefillRequest(
+            FeedRefillRequest(
+                employeeId = employeeId,
+                taskId = taskId,
+                inventoryId = inventoryId,
+                houseId = houseId,
+                penId = penId,
+                feederNumber = feederNumber,
+                kilograms = kilograms,
+                recordedAt = recordedAt
+            )
+        )
+    }
+
+    private suspend fun submitFeedRefillRequest(
+        requestBody: FeedRefillRequest
+    ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val requestBody = FeedRefillRequest(
-                    employeeId = employeeId,
-                    inventoryId = inventoryId,
-                    houseId = houseId,
-                    penId = penId,
-                    feederNumber = feederNumber,
-                    kilograms = kilograms,
-                    recordedAt = recordedAt
-                )
-
                 val responseText = httpClient.post("$baseUrl/api/mobile/feed-refill") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)

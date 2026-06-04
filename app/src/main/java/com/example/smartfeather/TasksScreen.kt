@@ -33,10 +33,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.outlined.AccountCircle
-import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
@@ -894,6 +890,7 @@ private fun ErrorCard(message: String) {
         )
     }
 }
+
 @Composable
 private fun TasksBottomNavBar(
     onDashboardClick: () -> Unit,

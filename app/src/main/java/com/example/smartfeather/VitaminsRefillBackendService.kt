@@ -21,62 +21,43 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 data class VitaminPenApiRow(
-    @SerialName("id")
-    val id: Long,
-    @SerialName("pen_name")
-    val penName: String? = null
+    @SerialName("id") val id: Long,
+    @SerialName("pen_name") val penName: String? = null
 )
 
 @Serializable
 data class VitaminContextResponse(
-    @SerialName("success")
-    val success: Boolean? = null,
-    @SerialName("access_allowed")
-    val accessAllowed: Boolean? = null,
-    @SerialName("house_id")
-    val houseId: Long? = null,
-    @SerialName("house_number")
-    val houseNumber: String? = null,
-    @SerialName("pen_options")
-    val penOptions: List<VitaminPenApiRow> = emptyList(),
-    @SerialName("message")
-    val message: String? = null
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("access_allowed") val accessAllowed: Boolean? = null,
+    @SerialName("house_id") val houseId: Long? = null,
+    @SerialName("house_number") val houseNumber: String? = null,
+    @SerialName("pen_options") val penOptions: List<VitaminPenApiRow> = emptyList(),
+    @SerialName("message") val message: String? = null
 )
 
 @Serializable
 data class VitaminInventoryApiRow(
-    @SerialName("id")
-    val id: Int,
-    @SerialName("item_name")
-    val itemName: String? = null,
-    @SerialName("remaining_stock")
-    val remainingStock: Int? = null,
-    @SerialName("unit")
-    val unit: String? = null
+    @SerialName("id") val id: Int,
+    @SerialName("item_name") val itemName: String? = null,
+    @SerialName("remaining_stock") val remainingStock: Int? = null,
+    @SerialName("unit") val unit: String? = null
 )
 
 @Serializable
 data class VitaminRefillRequest(
-    @SerialName("employee_id")
-    val employeeId: Int,
-    @SerialName("inventory_id")
-    val inventoryId: Int,
-    @SerialName("house_id")
-    val houseId: Long,
-    @SerialName("pen_id")
-    val penId: Long,
-    @SerialName("bottles")
-    val bottles: Int,
-    @SerialName("recorded_at")
-    val recordedAt: String
+    @SerialName("employee_id") val employeeId: Int,
+    @SerialName("task_id") val taskId: Int? = null,
+    @SerialName("inventory_id") val inventoryId: Int,
+    @SerialName("house_id") val houseId: Long,
+    @SerialName("pen_id") val penId: Long,
+    @SerialName("bottles") val bottles: Int,
+    @SerialName("recorded_at") val recordedAt: String
 )
 
 @Serializable
 data class VitaminApiMessageResponse(
-    @SerialName("success")
-    val success: Boolean? = null,
-    @SerialName("message")
-    val message: String? = null
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("message") val message: String? = null
 )
 
 data class VitaminHouseOption(
@@ -110,10 +91,7 @@ class VitaminsRefillBackendService(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     private val httpClient = HttpClient(Android)
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-    }
+    private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun getVitaminsContext(employeeId: Int): Result<VitaminAccessContext> {
         return withContext(Dispatchers.IO) {
@@ -134,10 +112,7 @@ class VitaminsRefillBackendService(
                 VitaminAccessContext(
                     accessAllowed = response.accessAllowed == true,
                     house = if (response.houseId != null && !response.houseNumber.isNullOrBlank()) {
-                        VitaminHouseOption(
-                            id = response.houseId,
-                            houseNumber = response.houseNumber
-                        )
+                        VitaminHouseOption(response.houseId, response.houseNumber)
                     } else {
                         null
                     },
@@ -187,17 +162,45 @@ class VitaminsRefillBackendService(
         bottles: Int,
         recordedAt: String
     ): Result<Boolean> {
+        return submitVitaminRefillRequest(
+            VitaminRefillRequest(
+                employeeId = employeeId,
+                inventoryId = inventoryId,
+                houseId = houseId,
+                penId = penId,
+                bottles = bottles,
+                recordedAt = recordedAt
+            )
+        )
+    }
+
+    suspend fun submitVitaminsSupplementationTask(
+        employeeId: Int,
+        taskId: Int,
+        inventoryId: Int,
+        houseId: Long,
+        penId: Long,
+        bottles: Int,
+        recordedAt: String
+    ): Result<Boolean> {
+        return submitVitaminRefillRequest(
+            VitaminRefillRequest(
+                employeeId = employeeId,
+                taskId = taskId,
+                inventoryId = inventoryId,
+                houseId = houseId,
+                penId = penId,
+                bottles = bottles,
+                recordedAt = recordedAt
+            )
+        )
+    }
+
+    private suspend fun submitVitaminRefillRequest(
+        requestBody: VitaminRefillRequest
+    ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val requestBody = VitaminRefillRequest(
-                    employeeId = employeeId,
-                    inventoryId = inventoryId,
-                    houseId = houseId,
-                    penId = penId,
-                    bottles = bottles,
-                    recordedAt = recordedAt
-                )
-
                 val responseText = httpClient.post("$baseUrl/api/mobile/vitamin-refill") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
