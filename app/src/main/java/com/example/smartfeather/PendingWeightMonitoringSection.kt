@@ -170,16 +170,28 @@ fun PendingWeightMonitoringSection(
             WeightTaskDivider()
             Spacer(modifier = Modifier.height(16.dp))
 
-            weightSamples.forEachIndexed { index, sample ->
-                WeightTaskLabel("Flock ${index + 1} Weight")
-                Spacer(modifier = Modifier.height(8.dp))
-                WeightTaskInputField(
-                    value = sample,
-                    keyboardType = KeyboardType.Decimal,
-                    onValueChange = { onWeightSampleChange(index, it) }
-                )
+            weightSamples.chunked(2).forEachIndexed { rowIndex, rowItems ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    rowItems.forEachIndexed { itemIndex, sample ->
+                        val sampleIndex = rowIndex * 2 + itemIndex
 
-                if (index != weightSamples.lastIndex) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            WeightTaskLabel("Flock ${sampleIndex + 1} Weight")
+                            Spacer(modifier = Modifier.height(8.dp))
+                            WeightTaskInputField(
+                                value = sample,
+                                keyboardType = KeyboardType.Decimal,
+                                onValueChange = { onWeightSampleChange(sampleIndex, it) }
+                            )
+                        }
+                    }
+
+                    if (rowItems.size == 1) {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+                }
+
+                if (rowIndex != weightSamples.chunked(2).lastIndex) {
                     Spacer(modifier = Modifier.height(12.dp))
                 }
             }

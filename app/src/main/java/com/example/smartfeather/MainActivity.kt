@@ -303,9 +303,6 @@ fun SmartFeatherApp() {
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
             },
-            onNavigateToFarmManagement = {
-                currentScreen = AppScreen.DASHBOARD
-            },
             onNavigateToProfile = {
                 currentScreen = AppScreen.PROFILE
             },
@@ -389,7 +386,8 @@ fun SmartFeatherApp() {
                     priority = task.priority,
                     notes = task.notes,
                     hasPhoto = task.hasPhoto,
-                    photoUrl = task.photoUrl
+                    photoUrl = task.photoUrl,
+                    submittedFields = task.submittedFields
                 )
 
                 currentScreen = AppScreen.COMPLETED_TASK_DETAIL
@@ -448,15 +446,10 @@ fun SmartFeatherApp() {
             selectedCompletedTask?.let { task ->
                 CompletedTaskDetailScreen(
                     task = task,
-                    onBackClick = {
-                        currentScreen = AppScreen.TASKS
-                    },
-                    onNavigateToDashboard = {
-                        currentScreen = AppScreen.DASHBOARD
-                    },
-                    onNavigateToTasks = {
-                        currentScreen = AppScreen.TASKS
-                    }
+                    onBackClick = { currentScreen = AppScreen.TASKS },
+                    onNavigateToDashboard = { currentScreen = AppScreen.DASHBOARD },
+                    onNavigateToTasks = { currentScreen = AppScreen.TASKS },
+                    onNavigateToProfile = { currentScreen = AppScreen.PROFILE }
                 )
             }
         }
@@ -629,9 +622,6 @@ fun SmartFeatherApp() {
             },
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
-            },
-            onNavigateToFarmManagement = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
             },
             onLogout = {
                 loggedInEmployeeId = null

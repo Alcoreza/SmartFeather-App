@@ -31,10 +31,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.outlined.List
-import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -60,12 +57,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import kotlinx.coroutines.delay
 import com.composables.icons.lucide.ClipboardList
 import com.composables.icons.lucide.House
 import com.composables.icons.lucide.LayoutDashboard
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
+import kotlinx.coroutines.delay
 
 data class CompletedTaskDetailUiState(
     val id: Int,
@@ -80,7 +77,8 @@ data class CompletedTaskDetailUiState(
     val priority: TaskPriority,
     val notes: String,
     val hasPhoto: Boolean = true,
-    val photoUrl: String? = null
+    val photoUrl: String? = null,
+    val submittedFields: List<TaskSubmittedField> = emptyList()
 )
 
 private val CompletedPoppins = FontFamily(
@@ -108,13 +106,13 @@ private fun completedPriorityChipColor(priority: TaskPriority): Color {
         TaskPriority.HIGH -> Color(0xFFC62B2B)
     }
 }
-
 @Composable
 fun CompletedTaskDetailScreen(
     task: CompletedTaskDetailUiState,
     onBackClick: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
-    onNavigateToTasks: () -> Unit = {}
+    onNavigateToTasks: () -> Unit = {},
+    onNavigateToProfile: () -> Unit = {}
 ) {
     var contentVisible by remember { mutableStateOf(false) }
 
@@ -129,7 +127,8 @@ fun CompletedTaskDetailScreen(
         bottomBar = {
             CompletedDetailBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
-                onTasksClick = onNavigateToTasks
+                onTasksClick = onNavigateToTasks,
+                onProfileClick = onNavigateToProfile
             )
         }
     ) { innerPadding ->
@@ -180,6 +179,12 @@ fun CompletedTaskDetailScreen(
                         Spacer(modifier = Modifier.height(22.dp))
 
                         CompletedBriefPanel(task = task, isTablet = isTablet)
+
+                        if (task.submittedFields.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(22.dp))
+
+                            SubmittedDataPanel(fields = task.submittedFields)
+                        }
 
                         Spacer(modifier = Modifier.height(22.dp))
 
@@ -447,6 +452,67 @@ private fun CompletedBriefPanel(
             fontSize = if (isTablet) 15.sp else 14.sp,
             lineHeight = if (isTablet) 24.sp else 23.sp,
             color = Color(0xFF2E382F)
+        )
+    }
+}
+
+@Composable
+private fun SubmittedDataPanel(
+    fields: List<TaskSubmittedField>,
+    modifier: Modifier = Modifier
+) {
+    CompletedSectionPanel(modifier = modifier) {
+        CompletedSectionHeaderRow(
+            title = "Submitted data",
+            subtitle = "Recorded task-specific details",
+            accentColor = CompletedApproval
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            fields.forEach { field ->
+                SubmittedDataRow(
+                    label = field.label,
+                    value = field.value
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SubmittedDataRow(
+    label: String,
+    value: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color(0xFFF8F5EF))
+            .border(1.dp, CompletedLine.copy(alpha = 0.70f), RoundedCornerShape(18.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            modifier = Modifier.weight(1f),
+            fontFamily = CompletedPoppins,
+            fontWeight = FontWeight.Bold,
+            fontSize = 13.sp,
+            color = CompletedInk,
+            lineHeight = 17.sp
+        )
+
+        Text(
+            text = value.ifBlank { "-" }.replace("\n", " "),
+            fontFamily = CompletedPoppins,
+            fontWeight = FontWeight.Medium,
+            fontSize = 13.sp,
+            color = CompletedMuted,
+            textAlign = TextAlign.End,
+            lineHeight = 17.sp
         )
     }
 }
@@ -760,7 +826,8 @@ private fun CompletedSkeletonBox(
 @Composable
 private fun CompletedDetailBottomNavBar(
     onDashboardClick: () -> Unit,
-    onTasksClick: () -> Unit
+    onTasksClick: () -> Unit,
+    onProfileClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -777,8 +844,7 @@ private fun CompletedDetailBottomNavBar(
     ) {
         CompletedNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
         CompletedNavItem(Lucide.ClipboardList, "Tasks", true, onTasksClick)
-        CompletedNavItem(Lucide.House, "Farm Management", false, {})
-        CompletedNavItem(Lucide.UserRound, "Profile", false, {})
+        CompletedNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
 }
 
@@ -823,17 +889,21 @@ fun CompletedTaskDetailScreenPreview() {
     CompletedTaskDetailScreen(
         task = CompletedTaskDetailUiState(
             id = 1,
-            title = "Water Refill",
-            description = "Check the water containers or drinker system assigned to the pen and refill it with clean and sufficient water. Ensure that all drinkers are properly filled and accessible to the birds. Remove any visible dirt, debris, or contaminants around the water area. Observe the water flow to confirm that there are no leaks, blockages, or interruptions.",
-            timeAssigned = "9:21 AM",
+            title = "Hatch and Mortality Check",
+            description = "Record hatch and mortality data for the assigned pen.",
+            timeAssigned = "6-5-26\n9:21 AM",
             statusLabel = "Completed",
-            finishBy = "5:00 PM",
-            timeCompleted = "2:53 PM",
+            finishBy = "6-5-26\n5:00 PM",
+            timeCompleted = "6-5-26\n2:53 PM",
             timeCompletedLabel = "Time Completed",
             priorityLabel = "Low",
             priority = TaskPriority.LOW,
-            notes = "Water was refilled successfully. All drinkers are working properly and no leaks were observed in the assigned pen.",
-            photoUrl = null
+            notes = "Recorded successfully.",
+            photoUrl = null,
+            submittedFields = listOf(
+                TaskSubmittedField("Eggs Hatched", "25"),
+                TaskSubmittedField("Mortality", "2")
+            )
         )
     )
 }

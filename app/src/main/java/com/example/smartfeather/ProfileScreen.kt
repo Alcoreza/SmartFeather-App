@@ -109,7 +109,6 @@ fun ProfileScreen(
     employeeId: Int,
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit,
-    onNavigateToFarmManagement: () -> Unit,
     onLogout: () -> Unit
 ) {
     val profileService = remember { ProfileBackendService() }
@@ -353,8 +352,7 @@ fun ProfileScreen(
         bottomBar = {
             ProfileBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
-                onTasksClick = onNavigateToTasks,
-                onFarmManagementClick = onNavigateToFarmManagement
+                onTasksClick = onNavigateToTasks
             )
         }
     ) { innerPadding ->
@@ -1073,8 +1071,7 @@ private fun ProfileSkeletonBox(
 @Composable
 private fun ProfileBottomNavBar(
     onDashboardClick: () -> Unit,
-    onTasksClick: () -> Unit,
-    onFarmManagementClick: () -> Unit
+    onTasksClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -1101,13 +1098,6 @@ private fun ProfileBottomNavBar(
             label = "Tasks",
             selected = false,
             onClick = onTasksClick
-        )
-
-        ProfileBottomNavItem(
-            icon = Lucide.House,
-            label = "Farm Management",
-            selected = false,
-            onClick = onFarmManagementClick
         )
 
         ProfileBottomNavItem(
@@ -1161,7 +1151,6 @@ fun ProfileScreenPreview() {
         employeeId = 2,
         onNavigateToDashboard = {},
         onNavigateToTasks = {},
-        onNavigateToFarmManagement = {},
         onLogout = {}
     )
 }

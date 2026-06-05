@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -79,6 +78,11 @@ enum class TaskPriority {
     HIGH
 }
 
+data class TaskSubmittedField(
+    val label: String,
+    val value: String
+)
+
 data class TaskItem(
     val id: Int,
     val title: String,
@@ -96,6 +100,7 @@ data class TaskItem(
     val notes: String = "",
     val hasPhoto: Boolean = false,
     val photoUrl: String? = null,
+    val submittedFields: List<TaskSubmittedField> = emptyList(),
     val biosecurityCleared: Boolean = false
 )
 
@@ -108,7 +113,6 @@ private val TaskManrope = FontFamily(
 )
 
 private val TaskCream = Color(0xFFF6F3EC)
-private val TaskSurface = Color(0xFFFFFCF7)
 private val TaskSectionSurface = Color(0xFFF4EFE6)
 private val TaskInk = Color(0xFF121A14)
 private val TaskMuted = Color(0xFF677168)
@@ -124,11 +128,10 @@ private val CompletedColor = Color(0xFF3F8E4E)
 fun TasksScreen(
     employeeId: Int,
     onNavigateToDashboard: () -> Unit,
-    onNavigateToFarmManagement: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onPendingTaskClick: (TaskItem) -> Unit,
     onCompletedTaskClick: (TaskItem) -> Unit
-) {
+){
     val taskService = remember { TaskBackendService() }
 
     val tasks = remember { mutableStateListOf<TaskItem>() }
@@ -168,7 +171,6 @@ fun TasksScreen(
         bottomBar = {
             TasksBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
-                onFarmManagementClick = onNavigateToFarmManagement,
                 onProfileClick = onNavigateToProfile
             )
         }
@@ -894,7 +896,6 @@ private fun ErrorCard(message: String) {
 @Composable
 private fun TasksBottomNavBar(
     onDashboardClick: () -> Unit,
-    onFarmManagementClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
     Row(
@@ -912,7 +913,6 @@ private fun TasksBottomNavBar(
     ) {
         BottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
         BottomNavItem(Lucide.ClipboardList, "Tasks", true, {})
-        BottomNavItem(Lucide.House, "Farm Management", false, onFarmManagementClick)
         BottomNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
 }

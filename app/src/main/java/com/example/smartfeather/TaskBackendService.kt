@@ -34,6 +34,13 @@ data class FlockmanTasksRequest(
 )
 
 @Serializable
+data class TaskSubmittedFieldApiRow(
+    @SerialName("label")
+    val label: String,
+    @SerialName("value")
+    val value: String? = null
+)
+@Serializable
 data class TaskAccessCheckRequest(
     @SerialName("task_id")
     val taskId: Int,
@@ -121,6 +128,10 @@ data class TaskApiRow(
     val houseNumber: String? = null,
     @SerialName("pen_name")
     val penName: String? = null,
+    @SerialName("submitted_at")
+    val submittedAt: String? = null,
+    @SerialName("submitted_fields")
+    val submittedFields: List<TaskSubmittedFieldApiRow> = emptyList(),
     @SerialName("biosecurity_cleared")
     val biosecurityCleared: Boolean = false
 )
@@ -320,7 +331,9 @@ class TaskBackendService(
             } else {
                 ""
             },
-            submittedLabel = if (!timeCompleted.isNullOrBlank()) {
+            submittedLabel = if (!submittedAt.isNullOrBlank()) {
+                "Submitted: ${formatTaskTimestamp(submittedAt)}"
+            } else if (!timeCompleted.isNullOrBlank()) {
                 "Submitted: ${formatTaskTimestamp(timeCompleted)}"
             } else {
                 ""
@@ -335,6 +348,12 @@ class TaskBackendService(
             notes = notes ?: "",
             hasPhoto = !photoUrl.isNullOrBlank(),
             photoUrl = photoUrl,
+            submittedFields = submittedFields.map {
+                TaskSubmittedField(
+                    label = it.label,
+                    value = it.value.orEmpty()
+                )
+            },
             biosecurityCleared = biosecurityCleared
         )
     }
