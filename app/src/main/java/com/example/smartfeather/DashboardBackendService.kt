@@ -24,6 +24,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import com.composables.icons.lucide.UserRound
 
 @Serializable
 data class DashboardStatApiRow(
@@ -269,11 +270,17 @@ class DashboardBackendService(
         val action = actionKey.trim().lowercase()
 
         return when {
-            key in listOf("population", "birds", "bird") || action == "population" -> Lucide.Bird
-            key in listOf("feeds", "feed", "feeds_refill") || action == "feeds_refill" -> Lucide.Wheat
-            key in listOf("biosecurity", "shield") || action == "biosecurity" -> Lucide.ShieldCheck
-            key in listOf("tasks", "task", "list") || action == "tasks" -> Lucide.ClipboardList
-            else -> Lucide.Gauge
+            key in listOf("visitor", "visitor_log", "visitor log", "guest", "guest_log") ||
+                    action == "visitor" -> Lucide.UserRound
+            key in listOf("population", "birds", "bird") ||
+                    action == "population" -> Lucide.Bird
+            key in listOf("feeds", "feed", "feeds_refill") ||
+                    action == "feeds_refill" -> Lucide.Wheat
+            key in listOf("biosecurity", "shield") ||
+                    action == "biosecurity" -> Lucide.ShieldCheck
+            key in listOf("tasks", "task", "list") ||
+                    action == "tasks" -> Lucide.ClipboardList
+            else -> Lucide.ClipboardList
         }
     }
 }

@@ -193,9 +193,7 @@ fun placeholderDashboardState(): DashboardUiState {
             penLabel = "Pen 25"
         ),
         quickAccess = listOf(
-            QuickAccessItem("Population", Lucide.Bird, Color(0xFFD92C2C), "population"),
-            QuickAccessItem("Feeds Refill", Lucide.Wheat, Color(0xFFCC8A2D), "feeds_refill"),
-            QuickAccessItem("Biosecurity", Lucide.ShieldCheck, Color(0xFF2F8F45), "biosecurity")
+            QuickAccessItem("Visitor Log", Lucide.UserRound, Color(0xFF2E7D6B), "visitor")
         )
     )
 }
@@ -220,9 +218,7 @@ fun emptyDashboardState(): DashboardUiState {
         pendingTaskCount = 0,
         pendingTask = null,
         quickAccess = listOf(
-            QuickAccessItem("Population", Lucide.Bird, Color(0xFFD92C2C), "population"),
-            QuickAccessItem("Feeds Refill", Lucide.Wheat, Color(0xFFCC8A2D), "feeds_refill"),
-            QuickAccessItem("Biosecurity", Lucide.ShieldCheck, Color(0xFF2F8F45), "biosecurity")
+            QuickAccessItem("Visitor Log", Lucide.UserRound, Color(0xFF2E7D6B), "visitor")
         )
     )
 }
@@ -245,11 +241,8 @@ private fun formatValue(value: Float, unit: String): String {
 @Composable
 fun DashboardScreen(
     onNavigateToTasks: () -> Unit,
-    onNavigateToFarmManagement: () -> Unit,
     onNavigateToProfile: () -> Unit,
-    onQuickAccessPopulation: () -> Unit,
-    onQuickAccessFeedsRefill: () -> Unit,
-    onQuickAccessBiosecurity: () -> Unit,
+    onQuickAccessVisitor: () -> Unit,
     uiState: DashboardUiState,
     isLoading: Boolean = false,
     onEnvironmentFilterChange: (SensorFilterOption) -> Unit = {},
@@ -267,7 +260,6 @@ fun DashboardScreen(
         bottomBar = {
             BottomNavBar(
                 onTasksClick = onNavigateToTasks,
-                onFarmManagementClick = onNavigateToFarmManagement,
                 onProfileClick = onNavigateToProfile
             )
         }
@@ -353,8 +345,8 @@ fun DashboardScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         SectionTitle(
-                            title = "Quick Access",
-                            icon = Lucide.Zap,
+                            title = "Access Management",
+                            icon = Lucide.ShieldCheck,
                             isTablet = isTablet
                         )
 
@@ -365,9 +357,7 @@ fun DashboardScreen(
                             isTablet = isTablet,
                             onItemClick = { actionKey ->
                                 when (actionKey) {
-                                    "population" -> onQuickAccessPopulation()
-                                    "feeds_refill" -> onQuickAccessFeedsRefill()
-                                    "biosecurity" -> onQuickAccessBiosecurity()
+                                    "visitor" -> onQuickAccessVisitor()
                                 }
                             }
                         )
@@ -1307,36 +1297,64 @@ private fun QuickAccessSection(
     isTablet: Boolean,
     onItemClick: (String) -> Unit
 ) {
-    if (isTablet) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            items.forEachIndexed { index, item ->
-                QuickAccessCard(
-                    item = item,
-                    index = index,
-                    modifier = Modifier.weight(1f),
-                    cardWidth = null,
-                    cardHeight = 104.dp,
-                    onClick = { onItemClick(item.actionKey) }
+    val item = items.firstOrNull() ?: return
+    var visible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(item.title) {
+        delay(120)
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(animationSpec = tween(360)) +
+                slideInVertically(
+                    animationSpec = tween(460, easing = FastOutSlowInEasing),
+                    initialOffsetY = { it / 4 }
                 )
-            }
-        }
-    } else {
+    ) {
         Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items.forEachIndexed { index, item ->
-                QuickAccessCard(
-                    item = item,
-                    index = index,
-                    cardWidth = 132.dp,
-                    cardHeight = 104.dp,
-                    onClick = { onItemClick(item.actionKey) }
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(if (isTablet) 78.dp else 72.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(Color(0xFFFFFCF7), Color(0xFFF3EFE7))
+                    )
                 )
-            }
+                .border(1.dp, FarmLine.copy(alpha = 0.72f), RoundedCornerShape(22.dp))
+                .clickable { onItemClick(item.actionKey) }
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = item.icon,
+                contentDescription = item.title,
+                tint = FarmGreen,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Text(
+                text = item.title,
+                modifier = Modifier.weight(1f),
+                fontFamily = DashboardPoppins,
+                fontSize = if (isTablet) 17.sp else 15.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = FarmInk,
+                lineHeight = 18.sp
+            )
+
+            Icon(
+                imageVector = Lucide.ChevronDown,
+                contentDescription = "Open ${item.title}",
+                tint = FarmMuted,
+                modifier = Modifier
+                    .size(22.dp)
+                    .graphicsLayer(rotationZ = -90f)
+            )
         }
     }
 }
@@ -1505,7 +1523,6 @@ private fun DashboardSkeletonBox(
 @Composable
 fun BottomNavBar(
     onTasksClick: () -> Unit,
-    onFarmManagementClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
     Row(
@@ -1523,7 +1540,6 @@ fun BottomNavBar(
     ) {
         BottomNavItem(Lucide.LayoutDashboard, "Dashboard", true, {})
         BottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
-        BottomNavItem(Lucide.House, "Farm Management", false, onFarmManagementClick)
         BottomNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
 }
@@ -1568,11 +1584,8 @@ private fun BottomNavItem(
 fun DashboardScreenPreview() {
     DashboardScreen(
         onNavigateToTasks = {},
-        onNavigateToFarmManagement = {},
         onNavigateToProfile = {},
-        onQuickAccessPopulation = {},
-        onQuickAccessFeedsRefill = {},
-        onQuickAccessBiosecurity = {},
+        onQuickAccessVisitor = {},
         uiState = placeholderDashboardState()
     )
 }

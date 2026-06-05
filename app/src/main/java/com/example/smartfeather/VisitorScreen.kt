@@ -131,9 +131,9 @@ private enum class VisitorMode {
 @Composable
 fun VisitorScreen(
     employeeId: Int,
-    onBackToBiosecurity: () -> Unit,
     onNavigateToDashboard: () -> Unit,
-    onNavigateToTasks: () -> Unit
+    onNavigateToTasks: () -> Unit,
+    onNavigateToProfile: () -> Unit
 ) {
     val visitorService = remember { VisitorBackendService() }
     val coroutineScope = rememberCoroutineScope()
@@ -375,7 +375,7 @@ fun VisitorScreen(
             VisitorBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
                 onTasksClick = onNavigateToTasks,
-                onFarmClick = onBackToBiosecurity
+                onProfileClick = onNavigateToProfile
             )
         }
     ) { padding ->
@@ -401,7 +401,7 @@ fun VisitorScreen(
                     .imePadding()
                     .padding(horizontal = 18.dp, vertical = 18.dp)
             ) {
-                VisitorHero(onBackToBiosecurity = onBackToBiosecurity)
+                VisitorHero(onBackClick = onNavigateToDashboard)
 
                 Spacer(modifier = Modifier.height(18.dp))
 
@@ -791,7 +791,7 @@ fun VisitorScreen(
 
 @Composable
 private fun VisitorHero(
-    onBackToBiosecurity: () -> Unit
+    onBackClick: () -> Unit
 ) {
     val transition = rememberInfiniteTransition(label = "visitorHeroMotion")
 
@@ -842,7 +842,7 @@ private fun VisitorHero(
                     .clip(CircleShape)
                     .background(Color.White.copy(alpha = 0.14f))
                     .border(1.dp, Color.White.copy(alpha = 0.16f), CircleShape)
-                    .clickable { onBackToBiosecurity() },
+                    .clickable { onBackClick() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -1220,7 +1220,7 @@ private fun VisitorDialogButtonText(
 private fun VisitorBottomNavBar(
     onDashboardClick: () -> Unit,
     onTasksClick: () -> Unit,
-    onFarmClick: () -> Unit
+    onProfileClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -1237,8 +1237,7 @@ private fun VisitorBottomNavBar(
     ) {
         VisitorBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
         VisitorBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
-        VisitorBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
-        VisitorBottomNavItem(Lucide.UserRound, "Profile", false, {})
+        VisitorBottomNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
 }
 

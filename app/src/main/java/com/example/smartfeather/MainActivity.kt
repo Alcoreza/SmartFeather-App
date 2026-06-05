@@ -266,20 +266,11 @@ fun SmartFeatherApp() {
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
             },
-            onNavigateToFarmManagement = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
-            },
             onNavigateToProfile = {
                 currentScreen = AppScreen.PROFILE
             },
-            onQuickAccessPopulation = {
-                currentScreen = AppScreen.POPULATION
-            },
-            onQuickAccessFeedsRefill = {
-                currentScreen = AppScreen.FEEDS_REFILL
-            },
-            onQuickAccessBiosecurity = {
-                currentScreen = AppScreen.BIOSECURITY
+            onQuickAccessVisitor = {
+                currentScreen = AppScreen.VISITOR
             },
             uiState = dashboardUiState,
             isLoading = isDashboardLoading,
@@ -313,7 +304,7 @@ fun SmartFeatherApp() {
                 currentScreen = AppScreen.DASHBOARD
             },
             onNavigateToFarmManagement = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
+                currentScreen = AppScreen.DASHBOARD
             },
             onNavigateToProfile = {
                 currentScreen = AppScreen.PROFILE
@@ -604,14 +595,14 @@ fun SmartFeatherApp() {
 
         AppScreen.VISITOR -> VisitorScreen(
             employeeId = loggedInEmployeeId ?: 0,
-            onBackToBiosecurity = {
-                currentScreen = AppScreen.BIOSECURITY
-            },
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
             },
             onNavigateToTasks = {
                 currentScreen = AppScreen.TASKS
+            },
+            onNavigateToProfile = {
+                currentScreen = AppScreen.PROFILE
             }
         )
 
