@@ -27,14 +27,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val PenDisinfectionManrope = FontFamily(
+private val ChickPlacementManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
     Font(R.font.manrope_light, FontWeight.Light),
     Font(R.font.manrope_regular, FontWeight.Normal),
@@ -45,43 +45,43 @@ private val PenDisinfectionManrope = FontFamily(
     Font(R.font.manrope_variablefont_wght, FontWeight.Black)
 )
 
-private val PenDisinfectionSurface = Color(0xFFFFFCF7)
-private val PenDisinfectionSurfaceAlt = Color(0xFFF3EFE7)
-private val PenDisinfectionAutoField = Color(0xFFE8E3DA)
-private val PenDisinfectionInk = Color(0xFF121A14)
-private val PenDisinfectionMuted = Color(0xFF677168)
-private val PenDisinfectionLine = Color(0xFFD8D0C3)
-private val PenDisinfectionGreen = Color(0xFF1F7A3A)
+private val ChickPlacementSurface = Color(0xFFFFFCF7)
+private val ChickPlacementSurfaceAlt = Color(0xFFF3EFE7)
+private val ChickPlacementAutoField = Color(0xFFE8E3DA)
+private val ChickPlacementInk = Color(0xFF121A14)
+private val ChickPlacementMuted = Color(0xFF677168)
+private val ChickPlacementLine = Color(0xFFD8D0C3)
+private val ChickPlacementBlue = Color(0xFF3D6F9F)
 
 @Composable
-fun PendingPenDisinfectionTaskForm(
+fun PendingChickPlacementTaskForm(
     task: PendingTaskDetailUiState,
-    activity: String,
-    disinfectantUsed: String,
+    batchCode: String,
+    initialPopulation: String,
     recordedAt: String,
-    onActivityChange: (String) -> Unit,
-    onDisinfectantUsedChange: (String) -> Unit
+    onBatchCodeChange: (String) -> Unit,
+    onInitialPopulationChange: (String) -> Unit
 ) {
-    PenDisinfectionSectionPanel {
-        PenDisinfectionSectionHeader(
-            title = "Pen Disinfection",
-            subtitle = "Record the assigned disinfection work",
-            accentColor = PenDisinfectionGreen
+    ChickPlacementSectionPanel {
+        ChickPlacementSectionHeader(
+            title = "Chick Placement",
+            subtitle = "Start a new flock batch in the assigned pen",
+            accentColor = ChickPlacementBlue
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(modifier = Modifier.weight(1f)) {
-                PenDisinfectionLabel("House")
+                ChickPlacementLabel("House")
                 Spacer(modifier = Modifier.height(8.dp))
-                PenDisinfectionReadOnlyField(task.houseLabel.ifBlank { "-" })
+                ChickPlacementReadOnlyField(task.houseLabel.ifBlank { "-" })
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                PenDisinfectionLabel("Pen")
+                ChickPlacementLabel("Pen")
                 Spacer(modifier = Modifier.height(8.dp))
-                PenDisinfectionReadOnlyField(task.penLabel.ifBlank { "-" })
+                ChickPlacementReadOnlyField(task.penLabel.ifBlank { "-" })
             }
         }
 
@@ -89,42 +89,46 @@ fun PendingPenDisinfectionTaskForm(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(modifier = Modifier.weight(1f)) {
-                PenDisinfectionLabel("Date")
+                ChickPlacementLabel("Date")
                 Spacer(modifier = Modifier.height(8.dp))
-                PenDisinfectionReadOnlyField(formatPenDisinfectionDate(recordedAt))
+                ChickPlacementReadOnlyField(formatChickPlacementDate(recordedAt))
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                PenDisinfectionLabel("Time")
+                ChickPlacementLabel("Time")
                 Spacer(modifier = Modifier.height(8.dp))
-                PenDisinfectionReadOnlyField(formatPenDisinfectionTime(recordedAt))
+                ChickPlacementReadOnlyField(formatChickPlacementTime(recordedAt))
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        PenDisinfectionLabel("Activity")
+        ChickPlacementLabel("Batch Code")
         Spacer(modifier = Modifier.height(8.dp))
-        PenDisinfectionInputField(
-            value = activity,
-            placeholder = "Pen Disinfection",
-            onValueChange = onActivityChange
+        ChickPlacementInputField(
+            value = batchCode,
+            placeholder = "Enter batch code",
+            keyboardType = KeyboardType.Text,
+            onValueChange = onBatchCodeChange
         )
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        PenDisinfectionLabel("Disinfectant Used")
+        ChickPlacementLabel("Initial Population")
         Spacer(modifier = Modifier.height(8.dp))
-        PenDisinfectionInputField(
-            value = disinfectantUsed,
-            placeholder = "Enter disinfectant used",
-            onValueChange = onDisinfectantUsedChange
+        ChickPlacementInputField(
+            value = initialPopulation,
+            placeholder = "Enter number of chicks",
+            keyboardType = KeyboardType.Number,
+            onValueChange = { value ->
+                onInitialPopulationChange(value.filter { it.isDigit() })
+            }
         )
     }
 }
 
 @Composable
-private fun PenDisinfectionSectionPanel(content: @Composable ColumnScope.() -> Unit) {
+private fun ChickPlacementSectionPanel(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -133,18 +137,18 @@ private fun PenDisinfectionSectionPanel(content: @Composable ColumnScope.() -> U
                 Brush.verticalGradient(
                     colors = listOf(
                         Color.White.copy(alpha = 0.94f),
-                        PenDisinfectionSurface.copy(alpha = 0.98f)
+                        ChickPlacementSurface.copy(alpha = 0.98f)
                     )
                 )
             )
-            .border(1.dp, PenDisinfectionLine.copy(alpha = 0.82f), RoundedCornerShape(26.dp))
+            .border(1.dp, ChickPlacementLine.copy(alpha = 0.82f), RoundedCornerShape(26.dp))
             .padding(horizontal = 18.dp, vertical = 18.dp),
         content = content
     )
 }
 
 @Composable
-private fun PenDisinfectionSectionHeader(
+private fun ChickPlacementSectionHeader(
     title: String,
     subtitle: String,
     accentColor: Color
@@ -163,20 +167,20 @@ private fun PenDisinfectionSectionHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontFamily = PenDisinfectionManrope,
+                fontFamily = ChickPlacementManrope,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
-                color = PenDisinfectionInk
+                color = ChickPlacementInk
             )
 
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
                 text = subtitle,
-                fontFamily = PenDisinfectionManrope,
+                fontFamily = ChickPlacementManrope,
                 fontWeight = FontWeight.Medium,
                 fontSize = 12.sp,
-                color = PenDisinfectionMuted,
+                color = ChickPlacementMuted,
                 lineHeight = 16.sp
             )
         }
@@ -184,18 +188,18 @@ private fun PenDisinfectionSectionHeader(
 }
 
 @Composable
-private fun PenDisinfectionLabel(text: String) {
+private fun ChickPlacementLabel(text: String) {
     Text(
         text = text,
-        fontFamily = PenDisinfectionManrope,
+        fontFamily = ChickPlacementManrope,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 13.sp,
-        color = PenDisinfectionInk
+        color = ChickPlacementInk
     )
 }
 
 @Composable
-private fun PenDisinfectionReadOnlyField(value: String) {
+private fun ChickPlacementReadOnlyField(value: String) {
     OutlinedTextField(
         value = value,
         onValueChange = {},
@@ -204,70 +208,69 @@ private fun PenDisinfectionReadOnlyField(value: String) {
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         textStyle = TextStyle(
-            fontFamily = PenDisinfectionManrope,
+            fontFamily = ChickPlacementManrope,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
-            color = PenDisinfectionMuted
+            color = ChickPlacementMuted
         ),
         shape = RoundedCornerShape(18.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            disabledContainerColor = PenDisinfectionAutoField,
+            disabledContainerColor = ChickPlacementAutoField,
             disabledBorderColor = Color.Transparent,
-            disabledTextColor = PenDisinfectionMuted
+            disabledTextColor = ChickPlacementMuted
         )
     )
 }
 
 @Composable
-private fun PenDisinfectionInputField(
+private fun ChickPlacementInputField(
     value: String,
     placeholder: String,
+    keyboardType: KeyboardType,
     onValueChange: (String) -> Unit
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         singleLine = true,
-        keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.Words
-        ),
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         modifier = Modifier.fillMaxWidth(),
         textStyle = TextStyle(
-            fontFamily = PenDisinfectionManrope,
+            fontFamily = ChickPlacementManrope,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
-            color = PenDisinfectionInk
+            color = ChickPlacementInk
         ),
         placeholder = {
             Text(
                 text = placeholder,
-                fontFamily = PenDisinfectionManrope,
+                fontFamily = ChickPlacementManrope,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
-                color = PenDisinfectionMuted.copy(alpha = 0.72f)
+                color = ChickPlacementMuted.copy(alpha = 0.72f)
             )
         },
         shape = RoundedCornerShape(18.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = PenDisinfectionSurfaceAlt,
-            unfocusedContainerColor = PenDisinfectionSurfaceAlt,
-            focusedBorderColor = PenDisinfectionGreen,
+            focusedContainerColor = ChickPlacementSurfaceAlt,
+            unfocusedContainerColor = ChickPlacementSurfaceAlt,
+            focusedBorderColor = ChickPlacementBlue,
             unfocusedBorderColor = Color.Transparent,
-            focusedTextColor = PenDisinfectionInk,
-            unfocusedTextColor = PenDisinfectionInk,
-            cursorColor = PenDisinfectionGreen
+            focusedTextColor = ChickPlacementInk,
+            unfocusedTextColor = ChickPlacementInk,
+            cursorColor = ChickPlacementBlue
         )
     )
 }
 
-private fun formatPenDisinfectionDate(value: String): String {
+private fun formatChickPlacementDate(value: String): String {
     return runCatching {
         LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             .format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
     }.getOrDefault("-")
 }
 
-private fun formatPenDisinfectionTime(value: String): String {
+private fun formatChickPlacementTime(value: String): String {
     return runCatching {
         LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))

@@ -479,15 +479,14 @@ fun NewBirdBatchScreen(
                                             date = submittedDate,
                                             time = submittedTime
                                         ).onSuccess { result ->
-                                            if (result.isConflict) {
-                                                conflictMessage = buildString {
-                                                    append(result.message)
-                                                    if (!result.existingBatchCode.isNullOrBlank()) {
-                                                        append("\n\nCurrent Batch: ${result.existingBatchCode}")
-                                                    }
-                                                    if (!result.existingStartedAt.isNullOrBlank()) {
-                                                        append("\nStarted At: ${result.existingStartedAt}")
-                                                    }
+                                            val isConflict = result.message.contains("running batch", ignoreCase = true) ||
+                                                    result.message.contains("active batch", ignoreCase = true) ||
+                                                    result.message.contains("already", ignoreCase = true) ||
+                                                    result.message.contains("conflict", ignoreCase = true)
+
+                                            if (isConflict && !result.success) {
+                                                conflictMessage = result.message.ifBlank {
+                                                    "This pen already has a running batch."
                                                 }
                                                 showConflictDialog = true
                                             } else if (result.success) {
@@ -498,7 +497,7 @@ fun NewBirdBatchScreen(
                                                 pen = ""
                                                 selectedPen = null
                                             } else {
-                                                errorMessage = result.message
+                                                errorMessage = result.message.ifBlank { "Failed to add new batch." }
                                             }
                                         }.onFailure {
                                             errorMessage = it.message ?: "Failed to add new batch."

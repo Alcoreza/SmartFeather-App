@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -34,7 +35,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val PenDisinfectionManrope = FontFamily(
+private val PenCleaningManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
     Font(R.font.manrope_light, FontWeight.Light),
     Font(R.font.manrope_regular, FontWeight.Normal),
@@ -45,43 +46,41 @@ private val PenDisinfectionManrope = FontFamily(
     Font(R.font.manrope_variablefont_wght, FontWeight.Black)
 )
 
-private val PenDisinfectionSurface = Color(0xFFFFFCF7)
-private val PenDisinfectionSurfaceAlt = Color(0xFFF3EFE7)
-private val PenDisinfectionAutoField = Color(0xFFE8E3DA)
-private val PenDisinfectionInk = Color(0xFF121A14)
-private val PenDisinfectionMuted = Color(0xFF677168)
-private val PenDisinfectionLine = Color(0xFFD8D0C3)
-private val PenDisinfectionGreen = Color(0xFF1F7A3A)
+private val PenCleaningSurface = Color(0xFFFFFCF7)
+private val PenCleaningSurfaceAlt = Color(0xFFF3EFE7)
+private val PenCleaningAutoField = Color(0xFFE8E3DA)
+private val PenCleaningInk = Color(0xFF121A14)
+private val PenCleaningMuted = Color(0xFF677168)
+private val PenCleaningLine = Color(0xFFD8D0C3)
+private val PenCleaningGreen = Color(0xFF1F7A3A)
 
 @Composable
-fun PendingPenDisinfectionTaskForm(
+fun PendingPenCleaningTaskForm(
     task: PendingTaskDetailUiState,
-    activity: String,
-    disinfectantUsed: String,
+    materialsUsed: String,
     recordedAt: String,
-    onActivityChange: (String) -> Unit,
-    onDisinfectantUsedChange: (String) -> Unit
+    onMaterialsUsedChange: (String) -> Unit
 ) {
-    PenDisinfectionSectionPanel {
-        PenDisinfectionSectionHeader(
-            title = "Pen Disinfection",
-            subtitle = "Record the assigned disinfection work",
-            accentColor = PenDisinfectionGreen
+    PenCleaningSectionPanel {
+        PenCleaningSectionHeader(
+            title = "Pen Cleaning",
+            subtitle = "Record the assigned pen cleaning work",
+            accentColor = PenCleaningGreen
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(modifier = Modifier.weight(1f)) {
-                PenDisinfectionLabel("House")
+                PenCleaningLabel("House")
                 Spacer(modifier = Modifier.height(8.dp))
-                PenDisinfectionReadOnlyField(task.houseLabel.ifBlank { "-" })
+                PenCleaningReadOnlyField(task.houseLabel.ifBlank { "-" })
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                PenDisinfectionLabel("Pen")
+                PenCleaningLabel("Pen")
                 Spacer(modifier = Modifier.height(8.dp))
-                PenDisinfectionReadOnlyField(task.penLabel.ifBlank { "-" })
+                PenCleaningReadOnlyField(task.penLabel.ifBlank { "-" })
             }
         }
 
@@ -89,42 +88,32 @@ fun PendingPenDisinfectionTaskForm(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(modifier = Modifier.weight(1f)) {
-                PenDisinfectionLabel("Date")
+                PenCleaningLabel("Date")
                 Spacer(modifier = Modifier.height(8.dp))
-                PenDisinfectionReadOnlyField(formatPenDisinfectionDate(recordedAt))
+                PenCleaningReadOnlyField(formatPenCleaningDate(recordedAt))
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                PenDisinfectionLabel("Time")
+                PenCleaningLabel("Time")
                 Spacer(modifier = Modifier.height(8.dp))
-                PenDisinfectionReadOnlyField(formatPenDisinfectionTime(recordedAt))
+                PenCleaningReadOnlyField(formatPenCleaningTime(recordedAt))
             }
         }
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        PenDisinfectionLabel("Activity")
+        PenCleaningLabel("Cleaning Materials Used")
         Spacer(modifier = Modifier.height(8.dp))
-        PenDisinfectionInputField(
-            value = activity,
-            placeholder = "Pen Disinfection",
-            onValueChange = onActivityChange
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        PenDisinfectionLabel("Disinfectant Used")
-        Spacer(modifier = Modifier.height(8.dp))
-        PenDisinfectionInputField(
-            value = disinfectantUsed,
-            placeholder = "Enter disinfectant used",
-            onValueChange = onDisinfectantUsedChange
+        PenCleaningTextArea(
+            value = materialsUsed,
+            placeholder = "Enter materials used",
+            onValueChange = onMaterialsUsedChange
         )
     }
 }
 
 @Composable
-private fun PenDisinfectionSectionPanel(content: @Composable ColumnScope.() -> Unit) {
+private fun PenCleaningSectionPanel(content: @Composable ColumnScope.() -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -133,18 +122,18 @@ private fun PenDisinfectionSectionPanel(content: @Composable ColumnScope.() -> U
                 Brush.verticalGradient(
                     colors = listOf(
                         Color.White.copy(alpha = 0.94f),
-                        PenDisinfectionSurface.copy(alpha = 0.98f)
+                        PenCleaningSurface.copy(alpha = 0.98f)
                     )
                 )
             )
-            .border(1.dp, PenDisinfectionLine.copy(alpha = 0.82f), RoundedCornerShape(26.dp))
+            .border(1.dp, PenCleaningLine.copy(alpha = 0.82f), RoundedCornerShape(26.dp))
             .padding(horizontal = 18.dp, vertical = 18.dp),
         content = content
     )
 }
 
 @Composable
-private fun PenDisinfectionSectionHeader(
+private fun PenCleaningSectionHeader(
     title: String,
     subtitle: String,
     accentColor: Color
@@ -163,20 +152,20 @@ private fun PenDisinfectionSectionHeader(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontFamily = PenDisinfectionManrope,
+                fontFamily = PenCleaningManrope,
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 18.sp,
-                color = PenDisinfectionInk
+                color = PenCleaningInk
             )
 
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
                 text = subtitle,
-                fontFamily = PenDisinfectionManrope,
+                fontFamily = PenCleaningManrope,
                 fontWeight = FontWeight.Medium,
                 fontSize = 12.sp,
-                color = PenDisinfectionMuted,
+                color = PenCleaningMuted,
                 lineHeight = 16.sp
             )
         }
@@ -184,18 +173,18 @@ private fun PenDisinfectionSectionHeader(
 }
 
 @Composable
-private fun PenDisinfectionLabel(text: String) {
+private fun PenCleaningLabel(text: String) {
     Text(
         text = text,
-        fontFamily = PenDisinfectionManrope,
+        fontFamily = PenCleaningManrope,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 13.sp,
-        color = PenDisinfectionInk
+        color = PenCleaningInk
     )
 }
 
 @Composable
-private fun PenDisinfectionReadOnlyField(value: String) {
+private fun PenCleaningReadOnlyField(value: String) {
     OutlinedTextField(
         value = value,
         onValueChange = {},
@@ -204,22 +193,22 @@ private fun PenDisinfectionReadOnlyField(value: String) {
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         textStyle = TextStyle(
-            fontFamily = PenDisinfectionManrope,
+            fontFamily = PenCleaningManrope,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
-            color = PenDisinfectionMuted
+            color = PenCleaningMuted
         ),
         shape = RoundedCornerShape(18.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            disabledContainerColor = PenDisinfectionAutoField,
+            disabledContainerColor = PenCleaningAutoField,
             disabledBorderColor = Color.Transparent,
-            disabledTextColor = PenDisinfectionMuted
+            disabledTextColor = PenCleaningMuted
         )
     )
 }
 
 @Composable
-private fun PenDisinfectionInputField(
+private fun PenCleaningTextArea(
     value: String,
     placeholder: String,
     onValueChange: (String) -> Unit
@@ -227,47 +216,50 @@ private fun PenDisinfectionInputField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        singleLine = true,
+        minLines = 3,
+        maxLines = 5,
         keyboardOptions = KeyboardOptions(
-            capitalization = KeyboardCapitalization.Words
+            capitalization = KeyboardCapitalization.Sentences
         ),
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 112.dp),
         textStyle = TextStyle(
-            fontFamily = PenDisinfectionManrope,
+            fontFamily = PenCleaningManrope,
             fontWeight = FontWeight.Medium,
             fontSize = 14.sp,
-            color = PenDisinfectionInk
+            color = PenCleaningInk
         ),
         placeholder = {
             Text(
                 text = placeholder,
-                fontFamily = PenDisinfectionManrope,
+                fontFamily = PenCleaningManrope,
                 fontWeight = FontWeight.Medium,
                 fontSize = 14.sp,
-                color = PenDisinfectionMuted.copy(alpha = 0.72f)
+                color = PenCleaningMuted.copy(alpha = 0.72f)
             )
         },
         shape = RoundedCornerShape(18.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = PenDisinfectionSurfaceAlt,
-            unfocusedContainerColor = PenDisinfectionSurfaceAlt,
-            focusedBorderColor = PenDisinfectionGreen,
+            focusedContainerColor = PenCleaningSurfaceAlt,
+            unfocusedContainerColor = PenCleaningSurfaceAlt,
+            focusedBorderColor = PenCleaningGreen,
             unfocusedBorderColor = Color.Transparent,
-            focusedTextColor = PenDisinfectionInk,
-            unfocusedTextColor = PenDisinfectionInk,
-            cursorColor = PenDisinfectionGreen
+            focusedTextColor = PenCleaningInk,
+            unfocusedTextColor = PenCleaningInk,
+            cursorColor = PenCleaningGreen
         )
     )
 }
 
-private fun formatPenDisinfectionDate(value: String): String {
+private fun formatPenCleaningDate(value: String): String {
     return runCatching {
         LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             .format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
     }.getOrDefault("-")
 }
 
-private fun formatPenDisinfectionTime(value: String): String {
+private fun formatPenCleaningTime(value: String): String {
     return runCatching {
         LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
             .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))

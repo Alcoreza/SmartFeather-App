@@ -156,6 +156,9 @@ fun PendingTaskDetailScreen(
     val feedsService = remember { FeedsRefillBackendService() }
     val vitaminsService = remember { VitaminsRefillBackendService() }
     val disinfectionService = remember { DisinfectionBackendService() }
+    val penCleaningService = remember { PenCleaningBackendService() }
+    val sensorInspectionService = remember { SensorInspectionBackendService() }
+    val newBatchService = remember { NewBatchBackendService() }
 
     val focusManager = LocalFocusManager.current
     val coroutineScope = rememberCoroutineScope()
@@ -165,7 +168,20 @@ fun PendingTaskDetailScreen(
     val isFeedTask = remember(task.title) { isFeedReplenishmentTask(task.title) }
     val isVitaminTask = remember(task.title) { isVitaminsSupplementationTask(task.title) }
     val feederOptions = remember { feedsService.feederOptions() }
-    val isPenDisinfectionTask = remember(task.title) { isPenDisinfectionTask(task.title) }
+    val isPenDisinfectionTaskType = remember(task.title) {
+        isPendingPenDisinfectionTaskType(task.title)
+    }
+
+    val isPenCleaningTaskType = remember(task.title) {
+        isPendingPenCleaningTaskType(task.title)
+    }
+
+    val isSensorInspectionTaskType = remember(task.title) {
+        isPendingSensorInspectionTaskType(task.title)
+    }
+    val isChickPlacementTaskType = remember(task.title) {
+        isPendingChickPlacementTaskType(task.title)
+    }
 
     val recordedAt = remember(task.id) {
         LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
@@ -195,6 +211,14 @@ fun PendingTaskDetailScreen(
 
     var disinfectionActivity by remember(task.id) { mutableStateOf("Pen Disinfection") }
     var disinfectantUsed by remember(task.id) { mutableStateOf("") }
+
+    var cleaningMaterialsUsed by remember(task.id) { mutableStateOf("") }
+
+    var sensorInspectionChecklist by remember(task.id) {
+        mutableStateOf(SensorInspectionChecklistState())
+    }
+    var chickPlacementBatchCode by remember(task.id) { mutableStateOf("") }
+    var chickPlacementInitialPopulation by remember(task.id) { mutableStateOf("") }
 
     var notes by remember(task.id) { mutableStateOf("") }
     var selectedPhotoUri by remember(task.id) { mutableStateOf<Uri?>(null) }
@@ -449,7 +473,7 @@ fun PendingTaskDetailScreen(
                             Spacer(modifier = Modifier.height(18.dp))
                         }
 
-                        if (isPenDisinfectionTask) {
+                        if (isPenDisinfectionTaskType) {
                             PendingPenDisinfectionTaskForm(
                                 task = task,
                                 activity = disinfectionActivity,
@@ -457,6 +481,41 @@ fun PendingTaskDetailScreen(
                                 recordedAt = recordedAt,
                                 onActivityChange = { disinfectionActivity = it },
                                 onDisinfectantUsedChange = { disinfectantUsed = it }
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                        }
+
+                        if (isPenCleaningTaskType) {
+                            PendingPenCleaningTaskForm(
+                                task = task,
+                                materialsUsed = cleaningMaterialsUsed,
+                                recordedAt = recordedAt,
+                                onMaterialsUsedChange = { cleaningMaterialsUsed = it }
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                        }
+
+                        if (isSensorInspectionTaskType) {
+                            PendingSensorInspectionTaskForm(
+                                task = task,
+                                checklist = sensorInspectionChecklist,
+                                recordedAt = recordedAt,
+                                onChecklistChange = { sensorInspectionChecklist = it }
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+                        }
+
+                        if (isChickPlacementTaskType) {
+                            PendingChickPlacementTaskForm(
+                                task = task,
+                                batchCode = chickPlacementBatchCode,
+                                initialPopulation = chickPlacementInitialPopulation,
+                                recordedAt = recordedAt,
+                                onBatchCodeChange = { chickPlacementBatchCode = it },
+                                onInitialPopulationChange = { chickPlacementInitialPopulation = it }
                             )
 
                             Spacer(modifier = Modifier.height(18.dp))
@@ -584,7 +643,7 @@ fun PendingTaskDetailScreen(
                                     }
                                 }
 
-                                if (isPenDisinfectionTask) {
+                                if (isPenDisinfectionTaskType) {
                                     if (task.houseId == null || task.penNumber == null) {
                                         showModal("Missing Assignment", "This task is missing its assigned house or pen.")
                                         return@Button
@@ -597,6 +656,43 @@ fun PendingTaskDetailScreen(
 
                                     if (disinfectantUsed.isBlank()) {
                                         showModal("Disinfectant Required", "Please enter the disinfectant used.")
+                                        return@Button
+                                    }
+                                }
+
+                                if (isPenCleaningTaskType) {
+                                    if (task.houseId == null || task.penNumber == null) {
+                                        showModal("Missing Assignment", "This task is missing its assigned house or pen.")
+                                        return@Button
+                                    }
+
+                                    if (cleaningMaterialsUsed.isBlank()) {
+                                        showModal("Materials Required", "Please enter the cleaning materials used.")
+                                        return@Button
+                                    }
+                                }
+
+                                if (isSensorInspectionTaskType) {
+                                    if (task.houseId == null || task.penNumber == null) {
+                                        showModal("Missing Assignment", "This task is missing its assigned house or pen.")
+                                        return@Button
+                                    }
+                                }
+
+                                if (isChickPlacementTaskType) {
+                                    if (task.houseId == null || task.penNumber == null) {
+                                        showModal("Missing Assignment", "This task is missing its assigned house or pen.")
+                                        return@Button
+                                    }
+
+                                    if (chickPlacementBatchCode.isBlank()) {
+                                        showModal("Batch Code Required", "Please enter the batch code.")
+                                        return@Button
+                                    }
+
+                                    val populationValue = chickPlacementInitialPopulation.toIntOrNull()
+                                    if (populationValue == null || populationValue <= 0) {
+                                        showModal("Population Required", "Please enter a valid initial population.")
                                         return@Button
                                     }
                                 }
@@ -672,7 +768,7 @@ fun PendingTaskDetailScreen(
                                             )
                                         }
 
-                                        isPenDisinfectionTask -> {
+                                        isPenDisinfectionTaskType -> {
                                             disinfectionService.submitPenDisinfectionTask(
                                                 employeeId = employeeId,
                                                 taskId = task.id,
@@ -682,6 +778,46 @@ fun PendingTaskDetailScreen(
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
                                                 activity = disinfectionActivity.trim(),
                                                 disinfectantUsed = disinfectantUsed.trim(),
+                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                            )
+                                        }
+
+                                        isPenCleaningTaskType -> {
+                                            penCleaningService.submitPenCleaningTask(
+                                                employeeId = employeeId,
+                                                taskId = task.id,
+                                                houseId = task.houseId?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
+                                                penId = task.penNumber?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
+                                                materialsUsed = cleaningMaterialsUsed.trim(),
+                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                            )
+                                        }
+
+                                        isSensorInspectionTaskType -> {
+                                            sensorInspectionService.submitSensorInspectionTask(
+                                                employeeId = employeeId,
+                                                taskId = task.id,
+                                                houseId = task.houseId?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
+                                                penId = task.penNumber?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
+                                                checklist = sensorInspectionChecklist,
+                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                            )
+                                        }
+
+                                        isChickPlacementTaskType -> {
+                                            newBatchService.submitChickPlacementTask(
+                                                employeeId = employeeId,
+                                                taskId = task.id,
+                                                batchCode = chickPlacementBatchCode.trim(),
+                                                houseId = task.houseId?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
+                                                penId = task.penNumber?.toLong()
+                                                    ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
+                                                initialPopulation = chickPlacementInitialPopulation.toInt(),
                                                 recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
                                             )
                                         }
@@ -862,6 +998,21 @@ private fun PriorityBadge(label: String, color: Color) {
             color = color
         )
     }
+}
+
+private fun isPendingPenCleaningTaskType(title: String): Boolean {
+    val normalized = title.trim().lowercase()
+    return normalized == "pen cleaning"
+}
+
+private fun isPendingSensorInspectionTaskType(title: String): Boolean {
+    val normalized = title.trim().lowercase()
+    return normalized == "sensor inspection"
+}
+
+private fun isPendingChickPlacementTaskType(title: String): Boolean {
+    val normalized = title.trim().lowercase()
+    return normalized == "chick placement"
 }
 
 @Composable
@@ -1204,9 +1355,9 @@ private fun TaskDetailBottomNavBar(
     }
 }
 
-private fun isPenDisinfectionTask(title: String): Boolean {
+private fun isPendingPenDisinfectionTaskType(title: String): Boolean {
     val normalized = title.trim().lowercase()
-    return normalized == "pen disinfection" || normalized == "cleaning"
+    return normalized == "pen disinfection"
 }
 
 @Composable
