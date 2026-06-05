@@ -36,6 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val PendingVitaminManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -73,6 +76,7 @@ fun PendingVitaminsSupplementationSection(
     vitaminOptions: List<VitaminInventoryOption>,
     bottlesUsed: String,
     vitaminExpanded: Boolean,
+    recordedAt: String,
     onVitaminExpandedChange: (Boolean) -> Unit,
     onVitaminSelected: (VitaminInventoryOption) -> Unit,
     onBottlesUsedChange: (String) -> Unit
@@ -97,6 +101,22 @@ fun PendingVitaminsSupplementationSection(
                 PendingVitaminLabel("Pen")
                 Spacer(modifier = Modifier.height(8.dp))
                 PendingVitaminReadOnlyField(task.penLabel.ifBlank { "-" })
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
+                PendingVitaminLabel("Date")
+                Spacer(modifier = Modifier.height(8.dp))
+                PendingVitaminReadOnlyField(formatPendingVitaminDate(recordedAt))
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                PendingVitaminLabel("Time")
+                Spacer(modifier = Modifier.height(8.dp))
+                PendingVitaminReadOnlyField(formatPendingVitaminTime(recordedAt))
             }
         }
 
@@ -320,4 +340,18 @@ private fun PendingVitaminDropdownField(
             }
         }
     }
+}
+
+private fun formatPendingVitaminDate(value: String): String {
+    return runCatching {
+        LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            .format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }.getOrDefault("-")
+}
+
+private fun formatPendingVitaminTime(value: String): String {
+    return runCatching {
+        LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }.getOrDefault("-")
 }

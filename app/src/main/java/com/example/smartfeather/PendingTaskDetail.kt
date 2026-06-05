@@ -383,8 +383,13 @@ fun PendingTaskDetailScreen(
                                 task = task,
                                 eggsHatched = eggsHatched,
                                 mortality = mortality,
-                                onEggsChange = { value -> eggsHatched = value.filter { it.isDigit() } },
-                                onMortalityChange = { value -> mortality = value.filter { it.isDigit() } }
+                                recordedAt = recordedAt,
+                                onEggsChange = { value ->
+                                    eggsHatched = value.filter { it.isDigit() }
+                                },
+                                onMortalityChange = { value ->
+                                    mortality = value.filter { it.isDigit() }
+                                }
                             )
 
                             Spacer(modifier = Modifier.height(18.dp))
@@ -397,6 +402,7 @@ fun PendingTaskDetailScreen(
                                 flocksWithCases = flocksWithCases,
                                 targetWeight = targetWeight,
                                 weightSamples = weightSamples,
+                                recordedAt = recordedAt,
                                 onNumberOfFlocksChange = { value ->
                                     val digitsOnly = value.filter { it.isDigit() }
                                     numberOfFlocks = digitsOnly
@@ -433,6 +439,7 @@ fun PendingTaskDetailScreen(
                                 feederOptions = feederOptions,
                                 feedExpanded = feedExpanded,
                                 feederExpanded = feederExpanded,
+                                recordedAt = recordedAt,
                                 onFeedExpandedChange = { feedExpanded = it },
                                 onFeederExpandedChange = { feederExpanded = it },
                                 onFeedSelected = { option ->
@@ -459,6 +466,7 @@ fun PendingTaskDetailScreen(
                                 vitaminOptions = vitaminOptions,
                                 bottlesUsed = bottlesUsed,
                                 vitaminExpanded = vitaminExpanded,
+                                recordedAt = recordedAt,
                                 onVitaminExpandedChange = { vitaminExpanded = it },
                                 onVitaminSelected = { option ->
                                     selectedVitamin = option

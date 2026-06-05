@@ -36,6 +36,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val PendingFeedManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -76,6 +79,7 @@ fun PendingFeedReplenishmentSection(
     feederOptions: List<String>,
     feedExpanded: Boolean,
     feederExpanded: Boolean,
+    recordedAt: String,
     onFeedExpandedChange: (Boolean) -> Unit,
     onFeederExpandedChange: (Boolean) -> Unit,
     onFeedSelected: (FeedInventoryOption) -> Unit,
@@ -102,6 +106,22 @@ fun PendingFeedReplenishmentSection(
                 PendingFeedLabel("Pen")
                 Spacer(modifier = Modifier.height(8.dp))
                 PendingFeedReadOnlyField(task.penLabel.ifBlank { "-" })
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
+                PendingFeedLabel("Date")
+                Spacer(modifier = Modifier.height(8.dp))
+                PendingFeedReadOnlyField(formatPendingFeedDate(recordedAt))
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                PendingFeedLabel("Time")
+                Spacer(modifier = Modifier.height(8.dp))
+                PendingFeedReadOnlyField(formatPendingFeedTime(recordedAt))
             }
         }
 
@@ -338,4 +358,18 @@ private fun PendingFeedDropdownField(
             }
         }
     }
+}
+
+private fun formatPendingFeedDate(value: String): String {
+    return runCatching {
+        LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            .format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }.getOrDefault("-")
+}
+
+private fun formatPendingFeedTime(value: String): String {
+    return runCatching {
+        LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }.getOrDefault("-")
 }

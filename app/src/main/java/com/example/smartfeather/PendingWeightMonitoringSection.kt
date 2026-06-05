@@ -30,6 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 private val WeightTaskManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -80,6 +83,7 @@ fun PendingWeightMonitoringSection(
     flocksWithCases: String,
     targetWeight: String,
     weightSamples: List<String>,
+    recordedAt: String,
     onNumberOfFlocksChange: (String) -> Unit,
     onFlocksWithCasesChange: (String) -> Unit,
     onTargetWeightChange: (String) -> Unit,
@@ -108,6 +112,22 @@ fun PendingWeightMonitoringSection(
                 WeightTaskLabel("Pen")
                 Spacer(modifier = Modifier.height(8.dp))
                 WeightTaskReadOnlyField(task.penLabel.ifBlank { "-" })
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(modifier = Modifier.weight(1f)) {
+                WeightTaskLabel("Date")
+                Spacer(modifier = Modifier.height(8.dp))
+                WeightTaskReadOnlyField(formatWeightTaskDate(recordedAt))
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                WeightTaskLabel("Time")
+                Spacer(modifier = Modifier.height(8.dp))
+                WeightTaskReadOnlyField(formatWeightTaskTime(recordedAt))
             }
         }
 
@@ -345,4 +365,18 @@ private fun WeightSummaryBox(label: String, value: String, modifier: Modifier = 
             lineHeight = 18.sp
         )
     }
+}
+
+private fun formatWeightTaskDate(value: String): String {
+    return runCatching {
+        LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            .format(DateTimeFormatter.ofPattern("M-d-yy", Locale.getDefault()))
+    }.getOrDefault("-")
+}
+
+private fun formatWeightTaskTime(value: String): String {
+    return runCatching {
+        LocalDateTime.parse(value, DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+            .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+    }.getOrDefault("-")
 }
