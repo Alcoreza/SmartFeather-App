@@ -95,7 +95,6 @@ fun PendingWeightMonitoringSection(
     WeightTaskSectionPanel {
         WeightTaskSectionHeader(
             title = "Weight Monitoring",
-            subtitle = "Record sampled flock weights for the assigned pen",
             accentColor = WeightTaskBlue
         )
 
@@ -229,40 +228,25 @@ private fun WeightTaskSectionPanel(content: @Composable ColumnScope.() -> Unit) 
 @Composable
 private fun WeightTaskSectionHeader(
     title: String,
-    subtitle: String,
     accentColor: Color
 ) {
-    Row(verticalAlignment = Alignment.Top) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .size(width = 4.dp, height = 28.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = WeightTaskManrope,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = WeightTaskInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = WeightTaskManrope,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = WeightTaskMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = WeightTaskManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = WeightTaskInk
+        )
     }
 }
 

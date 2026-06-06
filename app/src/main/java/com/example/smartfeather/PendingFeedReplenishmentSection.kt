@@ -89,10 +89,8 @@ fun PendingFeedReplenishmentSection(
     PendingFeedSectionPanel {
         PendingFeedSectionHeader(
             title = "Feed Replenishment",
-            subtitle = "Record feed usage for the assigned pen",
             accentColor = PendingFeedAmber
         )
-
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -191,40 +189,25 @@ private fun PendingFeedSectionPanel(
 @Composable
 private fun PendingFeedSectionHeader(
     title: String,
-    subtitle: String,
     accentColor: Color
 ) {
-    Row(verticalAlignment = Alignment.Top) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .size(width = 4.dp, height = 28.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = PendingFeedManrope,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = PendingFeedInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = PendingFeedManrope,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = PendingFeedMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = PendingFeedManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = PendingFeedInk
+        )
     }
 }
 

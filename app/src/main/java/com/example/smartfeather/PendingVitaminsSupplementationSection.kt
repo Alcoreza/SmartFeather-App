@@ -84,7 +84,6 @@ fun PendingVitaminsSupplementationSection(
     PendingVitaminSectionPanel {
         PendingVitaminSectionHeader(
             title = "Vitamins Supplementation",
-            subtitle = "Record vitamin usage for the assigned pen",
             accentColor = PendingVitaminTeal
         )
 
@@ -173,40 +172,25 @@ private fun PendingVitaminSectionPanel(
 @Composable
 private fun PendingVitaminSectionHeader(
     title: String,
-    subtitle: String,
     accentColor: Color
 ) {
-    Row(verticalAlignment = Alignment.Top) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .size(width = 4.dp, height = 28.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = PendingVitaminManrope,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = PendingVitaminInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = PendingVitaminManrope,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = PendingVitaminMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = PendingVitaminManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = PendingVitaminInk
+        )
     }
 }
 

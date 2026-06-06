@@ -434,8 +434,7 @@ private fun CompletedBriefPanel(
 ) {
     CompletedSectionPanel {
         CompletedSectionHeaderRow(
-            title = "Work brief",
-            subtitle = "Completed task instructions",
+            title = "Task Instructions",
             accentColor = CompletedGreen
         )
 
@@ -463,8 +462,7 @@ private fun SubmittedDataPanel(
 ) {
     CompletedSectionPanel(modifier = modifier) {
         CompletedSectionHeaderRow(
-            title = "Submitted data",
-            subtitle = "Recorded task-specific details",
+            title = "Submitted Data",
             accentColor = CompletedApproval
         )
 
@@ -525,8 +523,7 @@ private fun PhotoPanel(
 ) {
     CompletedSectionPanel(modifier = modifier) {
         CompletedSectionHeaderRow(
-            title = "Proof photo",
-            subtitle = "Submitted visual evidence",
+            title = "Proof Photo",
             accentColor = CompletedApproval
         )
 
@@ -565,8 +562,7 @@ private fun NotesPanel(
 ) {
     CompletedSectionPanel(modifier = modifier) {
         CompletedSectionHeaderRow(
-            title = "Worker notes",
-            subtitle = "Submitted remarks",
+            title = "Worker Notes",
             accentColor = CompletedGreen
         )
 
@@ -622,43 +618,25 @@ private fun CompletedSectionPanel(
 @Composable
 private fun CompletedSectionHeaderRow(
     title: String,
-    subtitle: String,
     accentColor: Color
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .size(width = 4.dp, height = 28.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = CompletedPoppins,
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                color = CompletedInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = CompletedPoppins,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = CompletedMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = CompletedPoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 17.sp,
+            color = CompletedInk
+        )
     }
 }
 

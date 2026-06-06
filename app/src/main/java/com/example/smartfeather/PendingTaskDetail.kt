@@ -1056,7 +1056,7 @@ private fun TimeBlock(label: String, value: String, modifier: Modifier = Modifie
 @Composable
 private fun WorkBriefSection(task: PendingTaskDetailUiState) {
     DetailSectionPanel {
-        DetailSectionHeaderRow("Work Brief", "Task instructions", DetailGreen)
+        DetailSectionHeaderRow("Task Instructions", DetailGreen)
 
         Spacer(modifier = Modifier.height(14.dp))
 
@@ -1079,7 +1079,7 @@ private fun SubmissionWorkspace(
     onPhotoClick: () -> Unit
 ) {
     DetailSectionPanel {
-        DetailSectionHeaderRow("Submission", "Photo is required. Notes are optional.", DetailAmber)
+        DetailSectionHeaderRow("Submission", DetailAmber)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -1116,38 +1116,24 @@ private fun DetailSectionPanel(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun DetailSectionHeaderRow(title: String, subtitle: String, accentColor: Color) {
-    Row(verticalAlignment = Alignment.Top) {
+private fun DetailSectionHeaderRow(title: String, accentColor: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .size(width = 4.dp, height = 28.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = DetailManrope,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = DetailInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = DetailManrope,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = DetailMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = DetailManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = DetailInk
+        )
     }
 }
 

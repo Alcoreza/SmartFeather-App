@@ -72,7 +72,6 @@ fun PendingHatchMortalitySection(
     HatchSectionPanel {
         HatchSectionHeader(
             title = "Hatch and Mortality",
-            subtitle = "Record production changes for the assigned pen",
             accentColor = HatchRed
         )
 
@@ -153,40 +152,25 @@ private fun HatchSectionPanel(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun HatchSectionHeader(
     title: String,
-    subtitle: String,
     accentColor: Color
 ) {
-    Row(verticalAlignment = Alignment.Top) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .size(width = 4.dp, height = 28.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = HatchManrope,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = HatchInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = HatchManrope,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = HatchMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = HatchManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = HatchInk
+        )
     }
 }
 

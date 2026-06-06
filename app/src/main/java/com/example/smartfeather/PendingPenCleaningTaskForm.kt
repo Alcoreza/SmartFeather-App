@@ -64,7 +64,6 @@ fun PendingPenCleaningTaskForm(
     PenCleaningSectionPanel {
         PenCleaningSectionHeader(
             title = "Pen Cleaning",
-            subtitle = "Record the assigned pen cleaning work",
             accentColor = PenCleaningGreen
         )
 
@@ -135,40 +134,25 @@ private fun PenCleaningSectionPanel(content: @Composable ColumnScope.() -> Unit)
 @Composable
 private fun PenCleaningSectionHeader(
     title: String,
-    subtitle: String,
     accentColor: Color
 ) {
-    Row(verticalAlignment = Alignment.Top) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .size(width = 4.dp, height = 28.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = PenCleaningManrope,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = PenCleaningInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = PenCleaningManrope,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = PenCleaningMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = PenCleaningManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = PenCleaningInk
+        )
     }
 }
 

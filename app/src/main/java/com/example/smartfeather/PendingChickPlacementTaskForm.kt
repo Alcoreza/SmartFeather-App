@@ -65,7 +65,6 @@ fun PendingChickPlacementTaskForm(
     ChickPlacementSectionPanel {
         ChickPlacementSectionHeader(
             title = "Chick Placement",
-            subtitle = "Start a new flock batch in the assigned pen",
             accentColor = ChickPlacementBlue
         )
 
@@ -150,40 +149,25 @@ private fun ChickPlacementSectionPanel(content: @Composable ColumnScope.() -> Un
 @Composable
 private fun ChickPlacementSectionHeader(
     title: String,
-    subtitle: String,
     accentColor: Color
 ) {
-    Row(verticalAlignment = Alignment.Top) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .size(width = 4.dp, height = 28.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = ChickPlacementManrope,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = ChickPlacementInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = ChickPlacementManrope,
-                fontWeight = FontWeight.Medium,
-                fontSize = 12.sp,
-                color = ChickPlacementMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = ChickPlacementManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = ChickPlacementInk
+        )
     }
 }
 
