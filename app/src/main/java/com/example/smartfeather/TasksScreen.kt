@@ -230,12 +230,13 @@ fun TasksScreen(
 
     suspend fun refreshFirstPages(
         forceRefresh: Boolean,
-        showSkeleton: Boolean
+        showSkeleton: Boolean,
+        showRefreshIndicator: Boolean
     ) {
         if (showSkeleton) {
             isLoading = true
             contentVisible = false
-        } else {
+        } else if (showRefreshIndicator) {
             isRefreshing = true
         }
 
@@ -346,7 +347,8 @@ fun TasksScreen(
 
         refreshFirstPages(
             forceRefresh = false,
-            showSkeleton = !hasCache
+            showSkeleton = !hasCache,
+            showRefreshIndicator = false
         )
     }
 
@@ -365,7 +367,8 @@ fun TasksScreen(
                 coroutineScope.launch {
                     refreshFirstPages(
                         forceRefresh = true,
-                        showSkeleton = false
+                        showSkeleton = false,
+                        showRefreshIndicator = true
                     )
                 }
             },

@@ -177,10 +177,6 @@ fun PersonnelLogsScreen(
                 houses = emptyList()
                 selectedHouse = null
                 personnelEntryLogId = null
-                showModal(
-                    title = "Unable to Continue",
-                    message = it.message ?: "Failed to load personnel biosecurity context."
-                )
             }
 
         isContextLoading = false
@@ -222,8 +218,7 @@ fun PersonnelLogsScreen(
         bottomBar = {
             PersonnelBottomNavBar(
                 onDashboardClick = onNavigateToDashboard,
-                onTasksClick = onNavigateToTasks,
-                onFarmClick = onBackToBiosecurity
+                onTasksClick = onNavigateToTasks
             )
         }
     ) { padding ->
@@ -889,8 +884,7 @@ private fun PersonnelSkeletonBox(
 @Composable
 private fun PersonnelBottomNavBar(
     onDashboardClick: () -> Unit,
-    onTasksClick: () -> Unit,
-    onFarmClick: () -> Unit
+    onTasksClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -906,8 +900,7 @@ private fun PersonnelBottomNavBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         PersonnelBottomNavItem(Lucide.LayoutDashboard, "Dashboard", false, onDashboardClick)
-        PersonnelBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
-        PersonnelBottomNavItem(Lucide.House, "Farm Management", true, onFarmClick)
+        PersonnelBottomNavItem(Lucide.ClipboardList, "Tasks", true, onTasksClick)
         PersonnelBottomNavItem(Lucide.UserRound, "Profile", false, {})
     }
 }

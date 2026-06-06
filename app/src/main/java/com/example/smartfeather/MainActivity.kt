@@ -694,7 +694,7 @@ fun SmartFeatherApp() {
             },
             onBackToBiosecurity = {
                 pendingTaskWaitingForBiosecurity = null
-                currentScreen = AppScreen.BIOSECURITY
+                currentScreen = AppScreen.TASKS
             },
             onNavigateToDashboard = {
                 pendingTaskWaitingForBiosecurity = null
