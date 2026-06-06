@@ -166,7 +166,12 @@ class PopulationBackendService(
                 }
 
                 val result = json.decodeFromJsonElement<PopulationApiMessageResponse>(parsed)
-                result.success == true
+
+                if (result.success != true) {
+                    error(result.message ?: "Failed to submit population data.")
+                }
+
+                true
             }
         }
     }

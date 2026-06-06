@@ -63,6 +63,7 @@ import com.composables.icons.lucide.LayoutDashboard
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.width
 
 data class CompletedTaskDetailUiState(
     val id: Int,
@@ -835,10 +836,13 @@ private fun CompletedNavItem(
 ) {
     Column(
         modifier = Modifier
+            .width(92.dp)
+            .height(52.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 5.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 4.dp, vertical = 5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = icon,
@@ -853,7 +857,7 @@ private fun CompletedNavItem(
             text = label,
             fontFamily = CompletedPoppins,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-            fontSize = 10.sp,
+            fontSize = 9.sp,
             color = if (selected) Color.White else Color(0xFFCFE8D2),
             textAlign = TextAlign.Center,
             lineHeight = 11.sp

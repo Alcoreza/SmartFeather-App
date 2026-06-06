@@ -1176,10 +1176,13 @@ private fun BottomNavItem(
 ) {
     Column(
         modifier = Modifier
+            .width(92.dp)
+            .height(52.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable { onClick() }
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 4.dp, vertical = 5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = icon,
@@ -1193,7 +1196,7 @@ private fun BottomNavItem(
         Text(
             text = label,
             fontFamily = TaskManrope,
-            fontSize = 10.sp,
+            fontSize = 9.sp,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
             color = if (selected) Color.White else Color(0xFFD7ECD9),
             textAlign = TextAlign.Center,

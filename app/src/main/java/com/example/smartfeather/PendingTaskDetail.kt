@@ -82,6 +82,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.compose.material.icons.outlined.PhotoCamera
+import androidx.compose.material.icons.outlined.Upload
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
+import androidx.compose.foundation.layout.width
 
 data class PendingTaskDetailUiState(
     val id: Int,
@@ -161,6 +170,7 @@ fun PendingTaskDetailScreen(
     val newBatchService = remember { NewBatchBackendService() }
 
     val focusManager = LocalFocusManager.current
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
     val isHatchTask = remember(task.title) { isHatchAndMortalityTask(task.title) }
@@ -222,6 +232,7 @@ fun PendingTaskDetailScreen(
 
     var notes by remember(task.id) { mutableStateOf("") }
     var selectedPhotoUri by remember(task.id) { mutableStateOf<Uri?>(null) }
+    var cameraImageUri by remember(task.id) { mutableStateOf<Uri?>(null) }
     var isSubmitting by remember { mutableStateOf(false) }
     var contentVisible by remember { mutableStateOf(false) }
 
@@ -272,7 +283,47 @@ fun PendingTaskDetailScreen(
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        selectedPhotoUri = uri
+        if (uri != null) {
+            selectedPhotoUri = uri
+        }
+    }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success) {
+            selectedPhotoUri = cameraImageUri
+        }
+    }
+
+    val launchCamera = {
+        val imageFile = File.createTempFile(
+            "task_${task.id}_${System.currentTimeMillis()}",
+            ".jpg",
+            context.cacheDir
+        )
+
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            imageFile
+        )
+
+        cameraImageUri = uri
+        cameraLauncher.launch(uri)
+    }
+
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            launchCamera()
+        } else {
+            showModal(
+                title = "Camera Permission Required",
+                message = "Please allow camera access to take a proof photo."
+            )
+        }
     }
 
     if (showDialog) {
@@ -533,12 +584,24 @@ fun PendingTaskDetailScreen(
                             selectedPhotoUri = selectedPhotoUri,
                             notes = notes,
                             onNotesChange = { notes = it },
-                            onPhotoClick = {
+                            onUploadClick = {
                                 photoPickerLauncher.launch(
                                     PickVisualMediaRequest(
                                         ActivityResultContracts.PickVisualMedia.ImageOnly
                                     )
                                 )
+                            },
+                            onCameraClick = {
+                                if (
+                                    ContextCompat.checkSelfPermission(
+                                        context,
+                                        Manifest.permission.CAMERA
+                                    ) == PackageManager.PERMISSION_GRANTED
+                                ) {
+                                    launchCamera()
+                                } else {
+                                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                                }
                             }
                         )
 
@@ -555,12 +618,24 @@ fun PendingTaskDetailScreen(
                                     }
 
                                     if (eggsHatched.isBlank()) {
-                                        showModal("Eggs Hatched Required", "Please enter the number of eggs hatched.")
+                                        showModal("Eggs Hatched Required", "Please enter eggs hatched. Enter 0 if there are no newly hatched eggs.")
                                         return@Button
                                     }
 
                                     if (mortality.isBlank()) {
-                                        showModal("Mortality Required", "Please enter the mortality count.")
+                                        showModal("Mortality Required", "Please enter mortality. Enter 0 if there are no mortalities.")
+                                        return@Button
+                                    }
+
+                                    val eggsValue = eggsHatched.toIntOrNull()
+                                    if (eggsValue == null || eggsValue < 0) {
+                                        showModal("Invalid Eggs Hatched", "Eggs hatched must be 0 or higher.")
+                                        return@Button
+                                    }
+
+                                    val mortalityValue = mortality.toIntOrNull()
+                                    if (mortalityValue == null || mortalityValue < 0) {
+                                        showModal("Invalid Mortality", "Mortality must be 0 or higher.")
                                         return@Button
                                     }
                                 }
@@ -1076,7 +1151,8 @@ private fun SubmissionWorkspace(
     selectedPhotoUri: Uri?,
     notes: String,
     onNotesChange: (String) -> Unit,
-    onPhotoClick: () -> Unit
+    onUploadClick: () -> Unit,
+    onCameraClick: () -> Unit
 ) {
     DetailSectionPanel {
         DetailSectionHeaderRow("Submission", DetailAmber)
@@ -1087,11 +1163,80 @@ private fun SubmissionWorkspace(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        PhotoUploadArea(selectedPhotoUri, onPhotoClick)
+        PhotoUploadActions(
+            onUploadClick = onUploadClick,
+            onCameraClick = onCameraClick
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        PhotoUploadArea(selectedPhotoUri)
 
         Spacer(modifier = Modifier.height(14.dp))
 
         NotesInput(notes, onNotesChange)
+    }
+}
+
+@Composable
+private fun PhotoUploadActions(
+    onUploadClick: () -> Unit,
+    onCameraClick: () -> Unit
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        PhotoActionButton(
+            label = "Upload",
+            icon = Icons.Outlined.Upload,
+            color = DetailGreen,
+            modifier = Modifier.weight(1f),
+            onClick = onUploadClick
+        )
+
+        PhotoActionButton(
+            label = "Camera",
+            icon = Icons.Outlined.PhotoCamera,
+            color = DetailAmber,
+            modifier = Modifier.weight(1f),
+            onClick = onCameraClick
+        )
+    }
+}
+
+@Composable
+private fun PhotoActionButton(
+    label: String,
+    icon: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = modifier
+            .height(48.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(color.copy(alpha = 0.12f))
+            .border(1.dp, color.copy(alpha = 0.22f), RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = label,
+            tint = color,
+            modifier = Modifier.size(19.dp)
+        )
+
+        Spacer(modifier = Modifier.size(8.dp))
+
+        Text(
+            text = label,
+            fontFamily = DetailManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 13.sp,
+            color = color
+        )
     }
 }
 
@@ -1156,15 +1301,14 @@ private fun DetailDivider() {
 }
 
 @Composable
-private fun PhotoUploadArea(selectedPhotoUri: Uri?, onClick: () -> Unit) {
+private fun PhotoUploadArea(selectedPhotoUri: Uri?) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(184.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(DetailSurface)
-            .border(1.dp, DetailLine, RoundedCornerShape(24.dp))
-            .clickable { onClick() },
+            .border(1.dp, DetailLine, RoundedCornerShape(24.dp)),
         contentAlignment = Alignment.Center
     ) {
         if (selectedPhotoUri != null) {
@@ -1180,12 +1324,12 @@ private fun PhotoUploadArea(selectedPhotoUri: Uri?, onClick: () -> Unit) {
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFEAF3EC)),
+                        .background(DetailGreen.copy(alpha = 0.12f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Edit,
-                        contentDescription = "Upload proof photo",
+                        imageVector = Icons.Outlined.Upload,
+                        contentDescription = "Proof photo",
                         tint = DetailGreen,
                         modifier = Modifier.size(23.dp)
                     )
@@ -1194,7 +1338,7 @@ private fun PhotoUploadArea(selectedPhotoUri: Uri?, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(11.dp))
 
                 Text(
-                    text = "Upload proof photo",
+                    text = "Proof photo required",
                     fontFamily = DetailManrope,
                     fontWeight = FontWeight.ExtraBold,
                     fontSize = 14.sp,
@@ -1204,7 +1348,7 @@ private fun PhotoUploadArea(selectedPhotoUri: Uri?, onClick: () -> Unit) {
                 Spacer(modifier = Modifier.height(3.dp))
 
                 Text(
-                    text = "Tap to choose a photo",
+                    text = "Upload from gallery or take a photo",
                     fontFamily = DetailManrope,
                     fontWeight = FontWeight.Medium,
                     fontSize = 12.sp,
@@ -1365,13 +1509,16 @@ private fun DetailNavItem(
 
     Column(
         modifier = Modifier
+            .width(92.dp)
+            .height(52.dp)
             .clip(RoundedCornerShape(16.dp))
             .clickable(
                 interactionSource = interactionSource,
                 indication = null
             ) { onClick() }
-            .padding(horizontal = 8.dp, vertical = 5.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(horizontal = 4.dp, vertical = 5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
         Icon(
             imageVector = icon,
@@ -1386,7 +1533,7 @@ private fun DetailNavItem(
             text = label,
             fontFamily = DetailManrope,
             fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.SemiBold,
-            fontSize = 10.sp,
+            fontSize = 9.sp,
             color = if (selected) Color.White else Color(0xFFCFE8D2),
             textAlign = TextAlign.Center,
             lineHeight = 11.sp
