@@ -1,8 +1,13 @@
 package com.example.smartfeather
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,14 +35,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.launch
-import android.Manifest
-import android.content.pm.PackageManager
-import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.launch
 
 enum class AppScreen {
     LOGIN,
@@ -106,6 +106,10 @@ fun SmartFeatherApp() {
         mutableStateOf(false)
     }
 
+    var isLoadingSubmittedTaskDetail by remember {
+        mutableStateOf(false)
+    }
+
     var showBiosecurityRequiredDialog by remember {
         mutableStateOf(false)
     }
@@ -126,6 +130,51 @@ fun SmartFeatherApp() {
     var selectedEnvironmentPenId by remember { mutableStateOf<Int?>(null) }
     var selectedResourceHouseId by remember { mutableStateOf<Int?>(null) }
     var selectedResourcePenId by remember { mutableStateOf<Int?>(null) }
+
+    fun openCompletedTaskDetail(
+        task: TaskItem,
+        submittedFields: List<TaskSubmittedField>
+    ) {
+        selectedCompletedTask = CompletedTaskDetailUiState(
+            id = task.id,
+            title = task.title,
+            description = task.description,
+            timeAssigned = task.assignedLabel.replace("\n", " "),
+            finishBy = task.finishByLabel
+                .removePrefix("Finish by: ")
+                .replace("\n", " "),
+            timeCompleted = when (task.status) {
+                TaskStatus.FOR_APPROVAL -> task.submittedLabel
+                    .removePrefix("Submitted: ")
+                    .replace("\n", " ")
+
+                TaskStatus.COMPLETED -> task.completedLabel
+                    .removePrefix("Completed: ")
+                    .replace("\n", " ")
+
+                else -> ""
+            },
+            timeCompletedLabel = if (task.status == TaskStatus.FOR_APPROVAL) {
+                "Submitted"
+            } else {
+                "Time Completed"
+            },
+            statusLabel = if (task.status == TaskStatus.FOR_APPROVAL) {
+                "For Approval"
+            } else {
+                "Completed"
+            },
+            priorityLabel = task.priority.name.lowercase()
+                .replaceFirstChar { it.uppercase() },
+            priority = task.priority,
+            notes = task.notes,
+            hasPhoto = task.hasPhoto,
+            photoUrl = task.photoUrl,
+            submittedFields = submittedFields
+        )
+
+        currentScreen = AppScreen.COMPLETED_TASK_DETAIL
+    }
 
     LaunchedEffect(loggedInEmployeeId) {
         val employeeId = loggedInEmployeeId ?: return@LaunchedEffect
@@ -150,6 +199,7 @@ fun SmartFeatherApp() {
                     deviceName = deviceName
                 )
             }
+
             println("FCM TOKEN GENERATED: $token")
         }
     }
@@ -290,6 +340,46 @@ fun SmartFeatherApp() {
         )
     }
 
+    if (isLoadingSubmittedTaskDetail) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = Color(0xFFFFFCF7),
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Loading Details",
+                    fontFamily = MainManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF121A14)
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Preparing the submitted task record.",
+                        fontFamily = MainManrope,
+                        fontWeight = FontWeight.Medium,
+                        color = Color(0xFF677168),
+                        lineHeight = 21.sp,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.5.dp,
+                        color = Color(0xFF1F7A3A)
+                    )
+                }
+            },
+            confirmButton = {}
+        )
+    }
+
     when (currentScreen) {
         AppScreen.LOGIN -> LoginScreen(
             onLoginClick = { username, password ->
@@ -393,43 +483,33 @@ fun SmartFeatherApp() {
                 }
             },
             onCompletedTaskClick = { task ->
-                selectedCompletedTask = CompletedTaskDetailUiState(
-                    id = task.id,
-                    title = task.title,
-                    description = task.description,
-                    timeAssigned = task.assignedLabel.replace("\n", " "),
-                    finishBy = task.finishByLabel
-                        .removePrefix("Finish by: ")
-                        .replace("\n", " "),
-                    timeCompleted = when (task.status) {
-                        TaskStatus.FOR_APPROVAL -> task.submittedLabel
-                            .removePrefix("Submitted: ")
-                            .replace("\n", " ")
-                        TaskStatus.COMPLETED -> task.completedLabel
-                            .removePrefix("Completed: ")
-                            .replace("\n", " ")
-                        else -> ""
-                    },
-                    timeCompletedLabel = if (task.status == TaskStatus.FOR_APPROVAL) {
-                        "Submitted"
-                    } else {
-                        "Time Completed"
-                    },
-                    statusLabel = if (task.status == TaskStatus.FOR_APPROVAL) {
-                        "For Approval"
-                    } else {
-                        "Completed"
-                    },
-                    priorityLabel = task.priority.name.lowercase()
-                        .replaceFirstChar { it.uppercase() },
-                    priority = task.priority,
-                    notes = task.notes,
-                    hasPhoto = task.hasPhoto,
-                    photoUrl = task.photoUrl,
-                    submittedFields = task.submittedFields
-                )
+                val employeeId = loggedInEmployeeId
 
-                currentScreen = AppScreen.COMPLETED_TASK_DETAIL
+                if (employeeId == null) {
+                    openCompletedTaskDetail(
+                        task = task,
+                        submittedFields = task.submittedFields
+                    )
+                    return@TasksScreen
+                }
+
+                coroutineScope.launch {
+                    isLoadingSubmittedTaskDetail = true
+
+                    val submittedFields = taskService.getSubmittedTaskFields(
+                        taskId = task.id,
+                        employeeId = employeeId
+                    ).getOrElse {
+                        task.submittedFields
+                    }
+
+                    isLoadingSubmittedTaskDetail = false
+
+                    openCompletedTaskDetail(
+                        task = task,
+                        submittedFields = submittedFields
+                    )
+                }
             }
         )
 
@@ -474,6 +554,7 @@ fun SmartFeatherApp() {
                         )
 
                         result.onSuccess {
+                            TaskBackendService.clearTaskCache(employeeId)
                             currentScreen = AppScreen.TASKS
                         }.map { Unit }
                     }
@@ -669,6 +750,7 @@ fun SmartFeatherApp() {
                 pendingTaskWaitingForBiosecurity = null
                 showBiosecurityRequiredDialog = false
                 isCheckingTaskAccess = false
+                isLoadingSubmittedTaskDetail = false
                 biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
                 dashboardUiState = emptyDashboardState()
                 isDashboardLoading = false
@@ -677,6 +759,7 @@ fun SmartFeatherApp() {
                 selectedEnvironmentPenId = null
                 selectedResourceHouseId = null
                 selectedResourcePenId = null
+                TaskBackendService.clearTaskCache()
                 currentScreen = AppScreen.LOGIN
             }
         )

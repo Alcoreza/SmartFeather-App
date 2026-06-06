@@ -32,10 +32,13 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -45,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,10 +65,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ClipboardList
-import com.composables.icons.lucide.House
 import com.composables.icons.lucide.LayoutDashboard
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
+import kotlinx.coroutines.launch
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 
 enum class TaskStatus {
     PENDING,
@@ -116,14 +121,15 @@ private val TaskCream = Color(0xFFF6F3EC)
 private val TaskSectionSurface = Color(0xFFF4EFE6)
 private val TaskInk = Color(0xFF121A14)
 private val TaskMuted = Color(0xFF677168)
-private val TaskLine = Color(0xFFD8D0C3)
+private val TaskLine = Color(0xFFD2C8B8)
 private val TaskGreen = Color(0xFF1F7A3A)
 private val TaskDeepGreen = Color(0xFF062717)
 
-private val PendingColor = Color(0xFFD78A2B)
-private val ApprovalColor = Color(0xFFC47A16)
-private val CompletedColor = Color(0xFF3F8E4E)
+private val PendingColor = Color(0xFF8A7A2E)
+private val ApprovalColor = Color(0xFF2F6F68)
+private val CompletedColor = Color(0xFF2F7D46)
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TasksScreen(
     employeeId: Int,
@@ -131,40 +137,218 @@ fun TasksScreen(
     onNavigateToProfile: () -> Unit,
     onPendingTaskClick: (TaskItem) -> Unit,
     onCompletedTaskClick: (TaskItem) -> Unit
-){
+) {
     val taskService = remember { TaskBackendService() }
+    val coroutineScope = rememberCoroutineScope()
 
-    val tasks = remember { mutableStateListOf<TaskItem>() }
+    val pendingTasks = remember { mutableStateListOf<TaskItem>() }
+    val forApprovalTasks = remember { mutableStateListOf<TaskItem>() }
+    val completedTasks = remember { mutableStateListOf<TaskItem>() }
+
+    var taskCounts by remember { mutableStateOf(TaskCounts()) }
+
+    var pendingPage by remember { mutableStateOf(1) }
+    var forApprovalPage by remember { mutableStateOf(1) }
+    var completedPage by remember { mutableStateOf(1) }
+
+    var pendingHasMore by remember { mutableStateOf(false) }
+    var forApprovalHasMore by remember { mutableStateOf(false) }
+    var completedHasMore by remember { mutableStateOf(false) }
+
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
+    var isPendingLoadingMore by remember { mutableStateOf(false) }
+    var isForApprovalLoadingMore by remember { mutableStateOf(false) }
+    var isCompletedLoadingMore by remember { mutableStateOf(false) }
+
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var contentVisible by remember { mutableStateOf(false) }
-
     var showPendingTasks by remember { mutableStateOf(true) }
     var showForApprovalTasks by remember { mutableStateOf(true) }
     var showCompletedTasks by remember { mutableStateOf(true) }
 
-    LaunchedEffect(employeeId) {
-        isLoading = true
-        contentVisible = false
+    fun applyCachedPage(
+        status: TaskStatus,
+        cachedPage: CachedTaskPage
+    ) {
+        taskCounts = cachedPage.counts
+
+        when (status) {
+            TaskStatus.PENDING -> {
+                pendingTasks.clear()
+                pendingTasks.addAll(cachedPage.tasks)
+                pendingPage = cachedPage.page
+                pendingHasMore = cachedPage.hasMore
+            }
+
+            TaskStatus.FOR_APPROVAL -> {
+                forApprovalTasks.clear()
+                forApprovalTasks.addAll(cachedPage.tasks)
+                forApprovalPage = cachedPage.page
+                forApprovalHasMore = cachedPage.hasMore
+            }
+
+            TaskStatus.COMPLETED -> {
+                completedTasks.clear()
+                completedTasks.addAll(cachedPage.tasks)
+                completedPage = cachedPage.page
+                completedHasMore = cachedPage.hasMore
+            }
+        }
+    }
+
+    fun applyPageResult(
+        status: TaskStatus,
+        page: Int,
+        result: TaskPageResult
+    ) {
+        taskCounts = result.counts
+
+        when (status) {
+            TaskStatus.PENDING -> {
+                if (page == 1) pendingTasks.clear()
+                pendingTasks.addAll(result.tasks)
+                pendingPage = page
+                pendingHasMore = result.hasMore
+            }
+
+            TaskStatus.FOR_APPROVAL -> {
+                if (page == 1) forApprovalTasks.clear()
+                forApprovalTasks.addAll(result.tasks)
+                forApprovalPage = page
+                forApprovalHasMore = result.hasMore
+            }
+
+            TaskStatus.COMPLETED -> {
+                if (page == 1) completedTasks.clear()
+                completedTasks.addAll(result.tasks)
+                completedPage = page
+                completedHasMore = result.hasMore
+            }
+        }
+    }
+
+    suspend fun refreshFirstPages(
+        forceRefresh: Boolean,
+        showSkeleton: Boolean
+    ) {
+        if (showSkeleton) {
+            isLoading = true
+            contentVisible = false
+        } else {
+            isRefreshing = true
+        }
+
         errorMessage = null
 
-        taskService.getTasksForFlockman(employeeId)
-            .onSuccess { items ->
-                tasks.clear()
-                tasks.addAll(items)
-            }
-            .onFailure { throwable ->
-                tasks.clear()
-                errorMessage = throwable.message ?: "Failed to load tasks."
-            }
+        if (forceRefresh) {
+            TaskBackendService.clearTaskCache(employeeId)
+        }
+
+        pendingPage = 1
+        forApprovalPage = 1
+        completedPage = 1
+
+        val pendingResult = taskService.getTasksForFlockman(
+            employeeId = employeeId,
+            status = TaskStatus.PENDING,
+            page = 1,
+            perPage = 10,
+            forceRefresh = forceRefresh
+        )
+
+        val forApprovalResult = taskService.getTasksForFlockman(
+            employeeId = employeeId,
+            status = TaskStatus.FOR_APPROVAL,
+            page = 1,
+            perPage = 10,
+            forceRefresh = forceRefresh
+        )
+
+        val completedResult = taskService.getTasksForFlockman(
+            employeeId = employeeId,
+            status = TaskStatus.COMPLETED,
+            page = 1,
+            perPage = 10,
+            forceRefresh = forceRefresh
+        )
+
+        pendingResult.onSuccess { applyPageResult(TaskStatus.PENDING, 1, it) }
+            .onFailure { errorMessage = it.message ?: "Unable to load pending tasks." }
+
+        forApprovalResult.onSuccess { applyPageResult(TaskStatus.FOR_APPROVAL, 1, it) }
+            .onFailure { errorMessage = it.message ?: "Unable to load for approval tasks." }
+
+        completedResult.onSuccess { applyPageResult(TaskStatus.COMPLETED, 1, it) }
+            .onFailure { errorMessage = it.message ?: "Unable to load completed tasks." }
 
         isLoading = false
+        isRefreshing = false
         contentVisible = true
     }
 
-    val pendingTasks = tasks.filter { it.status == TaskStatus.PENDING }
-    val forApprovalTasks = tasks.filter { it.status == TaskStatus.FOR_APPROVAL }
-    val completedTasks = tasks.filter { it.status == TaskStatus.COMPLETED }
+    fun loadMoreTasks(status: TaskStatus) {
+        val nextPage = when (status) {
+            TaskStatus.PENDING -> pendingPage + 1
+            TaskStatus.FOR_APPROVAL -> forApprovalPage + 1
+            TaskStatus.COMPLETED -> completedPage + 1
+        }
+
+        coroutineScope.launch {
+            when (status) {
+                TaskStatus.PENDING -> isPendingLoadingMore = true
+                TaskStatus.FOR_APPROVAL -> isForApprovalLoadingMore = true
+                TaskStatus.COMPLETED -> isCompletedLoadingMore = true
+            }
+
+            taskService.getTasksForFlockman(
+                employeeId = employeeId,
+                status = status,
+                page = nextPage,
+                perPage = 10
+            ).onSuccess { result ->
+                applyPageResult(status, nextPage, result)
+            }.onFailure { throwable ->
+                errorMessage = throwable.message ?: "Unable to load more tasks."
+            }
+
+            when (status) {
+                TaskStatus.PENDING -> isPendingLoadingMore = false
+                TaskStatus.FOR_APPROVAL -> isForApprovalLoadingMore = false
+                TaskStatus.COMPLETED -> isCompletedLoadingMore = false
+            }
+        }
+    }
+
+    LaunchedEffect(employeeId) {
+        val cachedPending = taskService.getCachedTaskPage(employeeId, TaskStatus.PENDING)
+        val cachedForApproval = taskService.getCachedTaskPage(employeeId, TaskStatus.FOR_APPROVAL)
+        val cachedCompleted = taskService.getCachedTaskPage(employeeId, TaskStatus.COMPLETED)
+
+        val hasCache = cachedPending != null || cachedForApproval != null || cachedCompleted != null
+
+        if (cachedPending != null) {
+            applyCachedPage(TaskStatus.PENDING, cachedPending)
+        }
+
+        if (cachedForApproval != null) {
+            applyCachedPage(TaskStatus.FOR_APPROVAL, cachedForApproval)
+        }
+
+        if (cachedCompleted != null) {
+            applyCachedPage(TaskStatus.COMPLETED, cachedCompleted)
+        }
+
+        if (hasCache) {
+            isLoading = false
+            contentVisible = true
+        }
+
+        refreshFirstPages(
+            forceRefresh = false,
+            showSkeleton = !hasCache
+        )
+    }
 
     Scaffold(
         containerColor = TaskCream,
@@ -175,93 +359,113 @@ fun TasksScreen(
             )
         }
     ) { innerPadding ->
-        Box(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = {
+                coroutineScope.launch {
+                    refreshFirstPages(
+                        forceRefresh = true,
+                        showSkeleton = false
+                    )
+                }
+            },
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFBF8F1), TaskCream, Color(0xFFEDE7DA))
-                    )
-                )
                 .padding(innerPadding)
         ) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp, vertical = 18.dp)
-            ) {
-                TaskHeader(
-                    pendingCount = pendingTasks.size,
-                    approvalCount = forApprovalTasks.size,
-                    completedCount = completedTasks.size
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                if (isLoading) {
-                    TaskLoadingSkeleton()
-                    Spacer(modifier = Modifier.height(20.dp))
-                    return@Column
-                }
-
-                errorMessage?.let {
-                    ErrorCard(message = it)
-                    Spacer(modifier = Modifier.height(18.dp))
-                }
-
-                AnimatedVisibility(
-                    visible = contentVisible,
-                    enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
-                        animationSpec = tween(420, easing = FastOutSlowInEasing),
-                        initialOffsetY = { it / 10 }
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color(0xFFFBF8F1), TaskCream, Color(0xFFEDE7DA))
+                        )
                     )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 18.dp, vertical = 18.dp)
                 ) {
-                    Column {
-                        TaskStatusSection(
-                            title = "Pending",
-                            subtitle = "Tasks waiting to be completed",
-                            count = pendingTasks.size,
-                            color = PendingColor,
-                            isExpanded = showPendingTasks,
-                            onToggleClick = { showPendingTasks = !showPendingTasks },
-                            visible = showPendingTasks,
-                            items = pendingTasks,
-                            emptyText = "No pending tasks right now.",
-                            onTaskClick = onPendingTaskClick
-                        )
+                    TaskHeader(
+                        pendingCount = taskCounts.pending,
+                        approvalCount = taskCounts.forApproval,
+                        completedCount = taskCounts.completed
+                    )
 
-                        Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(18.dp))
 
-                        TaskStatusSection(
-                            title = "For Approval",
-                            subtitle = "Submitted tasks waiting for verification",
-                            count = forApprovalTasks.size,
-                            color = ApprovalColor,
-                            isExpanded = showForApprovalTasks,
-                            onToggleClick = { showForApprovalTasks = !showForApprovalTasks },
-                            visible = showForApprovalTasks,
-                            items = forApprovalTasks,
-                            emptyText = "No tasks waiting for verification.",
-                            onTaskClick = onCompletedTaskClick
-                        )
-
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        TaskStatusSection(
-                            title = "Completed",
-                            subtitle = "Verified and finished work",
-                            count = completedTasks.size,
-                            color = CompletedColor,
-                            isExpanded = showCompletedTasks,
-                            onToggleClick = { showCompletedTasks = !showCompletedTasks },
-                            visible = showCompletedTasks,
-                            items = completedTasks,
-                            emptyText = "No completed tasks yet.",
-                            onTaskClick = onCompletedTaskClick
-                        )
-
+                    if (isLoading) {
+                        TaskLoadingSkeleton()
                         Spacer(modifier = Modifier.height(20.dp))
+                        return@Column
+                    }
+
+                    errorMessage?.let {
+                        ErrorCard(message = it)
+                        Spacer(modifier = Modifier.height(18.dp))
+                    }
+
+                    AnimatedVisibility(
+                        visible = contentVisible,
+                        enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
+                            animationSpec = tween(420, easing = FastOutSlowInEasing),
+                            initialOffsetY = { it / 10 }
+                        )
+                    ) {
+                        Column {
+                            TaskStatusSection(
+                                title = "Pending",
+                                count = taskCounts.pending,
+                                color = PendingColor,
+                                isExpanded = showPendingTasks,
+                                onToggleClick = { showPendingTasks = !showPendingTasks },
+                                visible = showPendingTasks,
+                                items = pendingTasks,
+                                emptyText = "No pending tasks right now.",
+                                hasMore = pendingHasMore,
+                                isLoadingMore = isPendingLoadingMore,
+                                onLoadMore = { loadMoreTasks(TaskStatus.PENDING) },
+                                onTaskClick = onPendingTaskClick
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            TaskStatusSection(
+                                title = "For Approval",
+                                count = taskCounts.forApproval,
+                                color = ApprovalColor,
+                                isExpanded = showForApprovalTasks,
+                                onToggleClick = { showForApprovalTasks = !showForApprovalTasks },
+                                visible = showForApprovalTasks,
+                                items = forApprovalTasks,
+                                emptyText = "No tasks waiting for verification.",
+                                hasMore = forApprovalHasMore,
+                                isLoadingMore = isForApprovalLoadingMore,
+                                onLoadMore = { loadMoreTasks(TaskStatus.FOR_APPROVAL) },
+                                onTaskClick = onCompletedTaskClick
+                            )
+
+                            Spacer(modifier = Modifier.height(24.dp))
+
+                            TaskStatusSection(
+                                title = "Completed",
+                                count = taskCounts.completed,
+                                color = CompletedColor,
+                                isExpanded = showCompletedTasks,
+                                onToggleClick = { showCompletedTasks = !showCompletedTasks },
+                                visible = showCompletedTasks,
+                                items = completedTasks,
+                                emptyText = "No completed tasks yet.",
+                                hasMore = completedHasMore,
+                                isLoadingMore = isCompletedLoadingMore,
+                                onLoadMore = { loadMoreTasks(TaskStatus.COMPLETED) },
+                                onTaskClick = onCompletedTaskClick
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+                        }
                     }
                 }
             }
@@ -356,7 +560,6 @@ private fun QuietMetric(
 @Composable
 private fun TaskStatusSection(
     title: String,
-    subtitle: String,
     count: Int,
     color: Color,
     isExpanded: Boolean,
@@ -364,6 +567,9 @@ private fun TaskStatusSection(
     visible: Boolean,
     items: List<TaskItem>,
     emptyText: String,
+    hasMore: Boolean,
+    isLoadingMore: Boolean,
+    onLoadMore: () -> Unit,
     onTaskClick: (TaskItem) -> Unit
 ) {
     Column(
@@ -376,7 +582,6 @@ private fun TaskStatusSection(
     ) {
         SectionHeader(
             text = title,
-            subtitle = subtitle,
             count = count,
             containerColor = color,
             isExpanded = isExpanded,
@@ -389,6 +594,9 @@ private fun TaskStatusSection(
             visible = visible,
             items = items,
             emptyText = emptyText,
+            hasMore = hasMore,
+            isLoadingMore = isLoadingMore,
+            onLoadMore = onLoadMore,
             onTaskClick = onTaskClick
         )
     }
@@ -397,7 +605,6 @@ private fun TaskStatusSection(
 @Composable
 private fun SectionHeader(
     text: String,
-    subtitle: String,
     count: Int,
     containerColor: Color,
     isExpanded: Boolean,
@@ -411,7 +618,7 @@ private fun SectionHeader(
             modifier = Modifier
                 .size(42.dp)
                 .clip(CircleShape)
-                .background(containerColor.copy(alpha = 0.13f)),
+                .background(containerColor.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -425,26 +632,14 @@ private fun SectionHeader(
 
         Spacer(modifier = Modifier.width(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = text,
-                fontFamily = TaskManrope,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = TaskInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = TaskManrope,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 11.sp,
-                color = TaskMuted,
-                lineHeight = 13.sp
-            )
-        }
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            fontFamily = TaskManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = TaskInk
+        )
 
         Box(
             modifier = Modifier
@@ -469,6 +664,9 @@ private fun AnimatedTaskListSection(
     visible: Boolean,
     items: List<TaskItem>,
     emptyText: String,
+    hasMore: Boolean,
+    isLoadingMore: Boolean,
+    onLoadMore: () -> Unit,
     onTaskClick: (TaskItem) -> Unit
 ) {
     AnimatedVisibility(
@@ -485,6 +683,9 @@ private fun AnimatedTaskListSection(
         TaskListSection(
             items = items,
             emptyText = emptyText,
+            hasMore = hasMore,
+            isLoadingMore = isLoadingMore,
+            onLoadMore = onLoadMore,
             onTaskClick = onTaskClick
         )
     }
@@ -494,6 +695,9 @@ private fun AnimatedTaskListSection(
 private fun TaskListSection(
     items: List<TaskItem>,
     emptyText: String,
+    hasMore: Boolean,
+    isLoadingMore: Boolean,
+    onLoadMore: () -> Unit,
     onTaskClick: (TaskItem) -> Unit
 ) {
     if (items.isEmpty()) {
@@ -501,7 +705,7 @@ private fun TaskListSection(
         return
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
         items.forEachIndexed { index, item ->
             AnimatedVisibility(
                 visible = true,
@@ -512,10 +716,16 @@ private fun TaskListSection(
             ) {
                 TaskRow(
                     item = item,
-                    index = index,
                     onTaskClick = onTaskClick
                 )
             }
+        }
+
+        if (hasMore) {
+            LoadMoreTasksButton(
+                isLoading = isLoadingMore,
+                onClick = onLoadMore
+            )
         }
     }
 }
@@ -540,9 +750,54 @@ private fun EmptyTaskCard(emptyText: String) {
 }
 
 @Composable
+private fun LoadMoreTasksButton(
+    isLoading: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(999.dp))
+                .background(TaskGreen.copy(alpha = 0.09f))
+                .clickable(enabled = !isLoading) { onClick() }
+                .padding(horizontal = 18.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(15.dp),
+                    strokeWidth = 2.dp,
+                    color = TaskGreen
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = "Load more tasks",
+                    tint = TaskGreen,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = if (isLoading) "Loading" else "Load more",
+                fontFamily = TaskManrope,
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 12.sp,
+                color = TaskGreen
+            )
+        }
+    }
+}
+
+@Composable
 private fun TaskRow(
     item: TaskItem,
-    index: Int,
     onTaskClick: (TaskItem) -> Unit
 ) {
     Column(
@@ -550,7 +805,7 @@ private fun TaskRow(
             .fillMaxWidth()
             .height(132.dp)
             .clip(RoundedCornerShape(22.dp))
-            .background(taskRowColor(item.status, index))
+            .background(taskRowColor(item.status))
             .clickable { onTaskClick(item) }
             .padding(horizontal = 15.dp, vertical = 15.dp)
     ) {
@@ -693,20 +948,12 @@ private fun TaskTimeLabel(
     )
 }
 
-private fun taskRowColor(status: TaskStatus, index: Int): Color {
-    val base = when (status) {
-        TaskStatus.PENDING -> Color(0xFFF1E1CA)
-        TaskStatus.FOR_APPROVAL -> Color(0xFFF4E6D1)
-        TaskStatus.COMPLETED -> Color(0xFFEAF3E6)
+private fun taskRowColor(status: TaskStatus): Color {
+    return when (status) {
+        TaskStatus.PENDING -> Color(0xFFFFFCF7)
+        TaskStatus.FOR_APPROVAL -> Color(0xFFFFFCF7)
+        TaskStatus.COMPLETED -> Color(0xFFFAFFF8)
     }
-
-    val alternate = when (status) {
-        TaskStatus.PENDING -> Color(0xFFEBD8BC)
-        TaskStatus.FOR_APPROVAL -> Color(0xFFEEDBC0)
-        TaskStatus.COMPLETED -> Color(0xFFE1ECDE)
-    }
-
-    return if (index % 2 == 0) base else alternate
 }
 
 private fun priorityLabel(priority: TaskPriority): String {
@@ -719,9 +966,9 @@ private fun priorityLabel(priority: TaskPriority): String {
 
 private fun priorityColor(priority: TaskPriority): Color {
     return when (priority) {
-        TaskPriority.LOW -> Color(0xFF6E8233)
-        TaskPriority.MID -> Color(0xFFC27A16)
-        TaskPriority.HIGH -> Color(0xFFC04432)
+        TaskPriority.LOW -> Color(0xFF6D7E3A)
+        TaskPriority.MID -> Color(0xFF8A7A2E)
+        TaskPriority.HIGH -> Color(0xFFB8483A)
     }
 }
 

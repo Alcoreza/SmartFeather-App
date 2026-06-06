@@ -30,7 +30,61 @@ import java.util.Locale
 @Serializable
 data class FlockmanTasksRequest(
     @SerialName("employee_id")
+    val employeeId: Int,
+    @SerialName("status")
+    val status: String,
+    @SerialName("page")
+    val page: Int,
+    @SerialName("per_page")
+    val perPage: Int
+)
+
+@Serializable
+data class TaskCountsApiRow(
+    @SerialName("pending")
+    val pending: Int = 0,
+    @SerialName("for_approval")
+    val forApproval: Int = 0,
+    @SerialName("completed")
+    val completed: Int = 0
+)
+
+@Serializable
+data class TaskPaginationApiRow(
+    @SerialName("current_page")
+    val currentPage: Int = 1,
+    @SerialName("per_page")
+    val perPage: Int = 10,
+    @SerialName("has_more")
+    val hasMore: Boolean = false
+)
+
+@Serializable
+data class FlockmanTasksResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("tasks")
+    val tasks: List<TaskApiRow> = emptyList(),
+    @SerialName("counts")
+    val counts: TaskCountsApiRow = TaskCountsApiRow(),
+    @SerialName("pagination")
+    val pagination: TaskPaginationApiRow = TaskPaginationApiRow()
+)
+
+@Serializable
+data class SubmittedTaskDetailRequest(
+    @SerialName("task_id")
+    val taskId: Int,
+    @SerialName("employee_id")
     val employeeId: Int
+)
+
+@Serializable
+data class SubmittedTaskDetailResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("submitted_fields")
+    val submittedFields: List<TaskSubmittedFieldApiRow> = emptyList()
 )
 
 @Serializable
@@ -40,6 +94,7 @@ data class TaskSubmittedFieldApiRow(
     @SerialName("value")
     val value: String? = null
 )
+
 @Serializable
 data class TaskAccessCheckRequest(
     @SerialName("task_id")
@@ -144,6 +199,26 @@ data class ApiMessageResponse(
     val message: String? = null
 )
 
+data class TaskCounts(
+    val pending: Int = 0,
+    val forApproval: Int = 0,
+    val completed: Int = 0
+)
+
+data class TaskPageResult(
+    val tasks: List<TaskItem>,
+    val counts: TaskCounts,
+    val hasMore: Boolean
+)
+
+data class CachedTaskPage(
+    val tasks: List<TaskItem>,
+    val counts: TaskCounts,
+    val page: Int,
+    val hasMore: Boolean,
+    val cachedAtMillis: Long
+)
+
 class TaskBackendService(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
@@ -153,10 +228,47 @@ class TaskBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getTasksForFlockman(employeeId: Int): Result<List<TaskItem>> {
+    companion object {
+        private val taskCache = mutableMapOf<String, CachedTaskPage>()
+
+        fun clearTaskCache(employeeId: Int? = null) {
+            if (employeeId == null) {
+                taskCache.clear()
+                return
+            }
+
+            taskCache.keys
+                .filter { it.startsWith("$employeeId|") }
+                .forEach { taskCache.remove(it) }
+        }
+    }
+
+    fun getCachedTaskPage(
+        employeeId: Int,
+        status: TaskStatus
+    ): CachedTaskPage? {
+        return taskCache[cacheKey(employeeId, status)]
+    }
+
+    suspend fun getTasksForFlockman(
+        employeeId: Int,
+        status: TaskStatus,
+        page: Int = 1,
+        perPage: Int = 10,
+        forceRefresh: Boolean = false
+    ): Result<TaskPageResult> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val requestBody = FlockmanTasksRequest(employeeId)
+                if (forceRefresh && page == 1) {
+                    taskCache.remove(cacheKey(employeeId, status))
+                }
+
+                val requestBody = FlockmanTasksRequest(
+                    employeeId = employeeId,
+                    status = status.toApiStatus(),
+                    page = page,
+                    perPage = perPage
+                )
 
                 val responseText = httpClient.post("$baseUrl/api/mobile/tasks") {
                     contentType(ContentType.Application.Json)
@@ -166,12 +278,80 @@ class TaskBackendService(
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
-                if (parsed is JsonObject && parsed["message"] != null && parsed["taskid"] == null) {
+                if (parsed is JsonObject && parsed["tasks"] == null) {
                     val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
                     error(errorResponse.message ?: "Failed to load tasks.")
                 }
 
-                json.decodeFromJsonElement<List<TaskApiRow>>(parsed).map { it.toTaskItem() }
+                val response = json.decodeFromJsonElement<FlockmanTasksResponse>(parsed)
+                val pageItems = response.tasks.map { it.toTaskItem() }
+
+                val counts = TaskCounts(
+                    pending = response.counts.pending,
+                    forApproval = response.counts.forApproval,
+                    completed = response.counts.completed
+                )
+
+                val key = cacheKey(employeeId, status)
+                val existingCache = taskCache[key]
+                val mergedTasks = if (page == 1 || existingCache == null) {
+                    pageItems
+                } else {
+                    (existingCache.tasks + pageItems)
+                        .distinctBy { it.id }
+                }
+
+                taskCache[key] = CachedTaskPage(
+                    tasks = mergedTasks,
+                    counts = counts,
+                    page = page,
+                    hasMore = response.pagination.hasMore,
+                    cachedAtMillis = System.currentTimeMillis()
+                )
+
+                TaskPageResult(
+                    tasks = pageItems,
+                    counts = counts,
+                    hasMore = response.pagination.hasMore
+                )
+            }
+        }
+    }
+
+    suspend fun getSubmittedTaskFields(
+        taskId: Int,
+        employeeId: Int
+    ): Result<List<TaskSubmittedField>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val responseText = httpClient.post("$baseUrl/api/mobile/tasks/submitted-detail") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    setBody(
+                        json.encodeToString(
+                            SubmittedTaskDetailRequest(
+                                taskId = taskId,
+                                employeeId = employeeId
+                            )
+                        )
+                    )
+                }.bodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["submitted_fields"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Failed to load submitted task details.")
+                }
+
+                val response = json.decodeFromJsonElement<SubmittedTaskDetailResponse>(parsed)
+
+                response.submittedFields.map {
+                    TaskSubmittedField(
+                        label = it.label,
+                        value = it.value.orEmpty()
+                    )
+                }
             }
         }
     }
@@ -247,7 +427,13 @@ class TaskBackendService(
                 }
 
                 val result = json.decodeFromJsonElement<ApiMessageResponse>(parsed)
-                result.success == true
+                val success = result.success == true
+
+                if (success) {
+                    clearTaskCache(employeeId)
+                }
+
+                success
             }
         }
     }
@@ -294,6 +480,21 @@ class TaskBackendService(
             )
 
         return path
+    }
+
+    private fun cacheKey(
+        employeeId: Int,
+        status: TaskStatus
+    ): String {
+        return "$employeeId|${status.name}"
+    }
+
+    private fun TaskStatus.toApiStatus(): String {
+        return when (this) {
+            TaskStatus.PENDING -> "Pending"
+            TaskStatus.FOR_APPROVAL -> "For Approval"
+            TaskStatus.COMPLETED -> "Completed"
+        }
     }
 
     private fun TaskApiRow.toTaskItem(): TaskItem {
