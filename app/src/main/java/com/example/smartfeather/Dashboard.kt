@@ -718,7 +718,6 @@ private fun MonitoringSection(
         ) {
             MonitoringCard(
                 title = "Environment",
-                description = "Temperature and ammonia",
                 icon = Lucide.Thermometer,
                 filterState = environmentFilter,
                 modifier = Modifier.weight(1f),
@@ -733,7 +732,6 @@ private fun MonitoringSection(
 
             MonitoringCard(
                 title = "Resources",
-                description = "Feed and water levels",
                 icon = Lucide.Droplets,
                 filterState = resourceFilter,
                 modifier = Modifier.weight(1f),
@@ -750,7 +748,6 @@ private fun MonitoringSection(
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             MonitoringCard(
                 title = "Environment",
-                description = "Temperature and ammonia",
                 icon = Lucide.Thermometer,
                 filterState = environmentFilter,
                 modifier = Modifier.fillMaxWidth(),
@@ -765,7 +762,6 @@ private fun MonitoringSection(
 
             MonitoringCard(
                 title = "Resources",
-                description = "Feed and water levels",
                 icon = Lucide.Droplets,
                 filterState = resourceFilter,
                 modifier = Modifier.fillMaxWidth(),
@@ -794,7 +790,6 @@ private fun RowScope.SensorReadingRow(
 @Composable
 private fun MonitoringCard(
     title: String,
-    description: String,
     icon: ImageVector,
     filterState: SensorFilterState,
     modifier: Modifier = Modifier,
@@ -809,10 +804,9 @@ private fun MonitoringCard(
             .background(FarmSurface)
             .padding(16.dp)
     ) {
-        Row(verticalAlignment = Alignment.Top) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
-                    .padding(top = 2.dp)
                     .size(42.dp)
                     .clip(CircleShape)
                     .background(if (title == "Environment") FarmSoftGreen else Color(0xFFFFF3E4)),
@@ -828,23 +822,13 @@ private fun MonitoringCard(
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    fontFamily = DashboardPoppins,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = FarmInk
-                )
-
-                Text(
-                    text = description,
-                    fontFamily = DashboardPoppins,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = FarmMuted
-                )
-            }
+            Text(
+                text = title,
+                fontFamily = DashboardPoppins,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = FarmInk
+            )
         }
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -880,8 +864,7 @@ private fun SensorFilterDropdown(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(18.dp))
-            .background(FarmSurfaceAlt)
-            .border(1.dp, FarmLine, RoundedCornerShape(18.dp))
+            .background(Color(0xFFF8F5EF))
             .clickable(enabled = filterState.options.isNotEmpty()) {
                 showPicker = true
             }
