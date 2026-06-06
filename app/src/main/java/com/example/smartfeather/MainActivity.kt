@@ -31,6 +31,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.google.firebase.messaging.FirebaseMessaging
 
 enum class AppScreen {
     LOGIN,
@@ -76,8 +83,13 @@ fun SmartFeatherApp() {
     val authService = remember { SupabaseAuthService() }
     val taskService = remember { TaskBackendService() }
     val dashboardService = remember { DashboardBackendService() }
+    val deviceTokenService = remember { MobileDeviceTokenBackendService() }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = {}
+    )
 
     var currentScreen by remember { mutableStateOf(AppScreen.LOGIN) }
     var loggedInEmployeeId by remember { mutableStateOf<Int?>(null) }
@@ -114,6 +126,33 @@ fun SmartFeatherApp() {
     var selectedEnvironmentPenId by remember { mutableStateOf<Int?>(null) }
     var selectedResourceHouseId by remember { mutableStateOf<Int?>(null) }
     var selectedResourcePenId by remember { mutableStateOf<Int?>(null) }
+
+    LaunchedEffect(loggedInEmployeeId) {
+        val employeeId = loggedInEmployeeId ?: return@LaunchedEffect
+
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        FirebaseMessaging.getInstance().token.addOnSuccessListener { token ->
+            val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}"
+
+            coroutineScope.launch {
+                deviceTokenService.saveDeviceToken(
+                    employeeId = employeeId,
+                    fcmToken = token,
+                    deviceName = deviceName
+                )
+            }
+            println("FCM TOKEN GENERATED: $token")
+        }
+    }
 
     LaunchedEffect(
         currentScreen,

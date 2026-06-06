@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.example.smartfeather" />
+                  <option name="mobileSdkAppId" value="1:944727971693:android:607a614cffb179b1122c64" />
+                  <option name="projectId" value="smartfeather-fba68" />
+                  <option name="projectNumber" value="944727971693" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

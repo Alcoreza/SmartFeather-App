@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.services)
 }
 
 android {
@@ -59,6 +60,8 @@ dependencies {
     implementation("io.ktor:ktor-client-android:2.3.12")
     implementation("io.coil-kt:coil-compose:2.7.0")
     implementation("com.composables:icons-lucide:1.1.0")
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging)
 
 
 
