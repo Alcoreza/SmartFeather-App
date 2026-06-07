@@ -816,7 +816,7 @@ fun PendingTaskDetailScreen(
                                                 flocksWithCases = flocksWithCases.toInt(),
                                                 targetWeight = targetWeight.toDouble(),
                                                 weights = weightSamples.mapNotNull { it.toDoubleOrNull() },
-                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                                recordedAt = recordedAt
                                             ).map { it.success == true }
                                         }
 
@@ -832,7 +832,7 @@ fun PendingTaskDetailScreen(
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
                                                 feederNumber = feederNumber.toInt(),
                                                 kilograms = kilograms.toInt(),
-                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                                recordedAt = recordedAt
                                             )
                                         }
 
@@ -847,7 +847,7 @@ fun PendingTaskDetailScreen(
                                                 penId = task.penNumber?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
                                                 bottles = bottlesUsed.toInt(),
-                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                                recordedAt = recordedAt
                                             )
                                         }
 
@@ -861,7 +861,7 @@ fun PendingTaskDetailScreen(
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
                                                 activity = disinfectionActivity.trim(),
                                                 disinfectantUsed = disinfectantUsed.trim(),
-                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                                recordedAt = recordedAt
                                             )
                                         }
 
@@ -874,7 +874,7 @@ fun PendingTaskDetailScreen(
                                                 penId = task.penNumber?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
                                                 materialsUsed = cleaningMaterialsUsed.trim(),
-                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                                recordedAt = recordedAt
                                             )
                                         }
 
@@ -887,7 +887,7 @@ fun PendingTaskDetailScreen(
                                                 penId = task.penNumber?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
                                                 checklist = sensorInspectionChecklist,
-                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                                recordedAt = recordedAt
                                             )
                                         }
 
@@ -901,7 +901,7 @@ fun PendingTaskDetailScreen(
                                                 penId = task.penNumber?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned pen."),
                                                 initialPopulation = chickPlacementInitialPopulation.toInt(),
-                                                recordedAt = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+                                                recordedAt = recordedAt
                                             )
                                         }
 

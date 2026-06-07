@@ -69,9 +69,16 @@ private fun averageWeightDisplay(weights: List<String>): String {
 private fun weightStatusDisplay(averageText: String, targetText: String): String {
     val average = averageText.toDoubleOrNull() ?: return "-"
     val target = targetText.toDoubleOrNull() ?: return "-"
+
+    if (target <= 0.0) return "-"
+
+    val normalMarginPercent = 5.0
+    val lowerNormalLimit = target * (1 - (normalMarginPercent / 100))
+    val upperNormalLimit = target * (1 + (normalMarginPercent / 100))
+
     return when {
-        average < target -> "Underweight"
-        average > target -> "Overweight"
+        average < lowerNormalLimit -> "Underweight"
+        average > upperNormalLimit -> "Overweight"
         else -> "Normal"
     }
 }
@@ -154,7 +161,7 @@ fun PendingWeightMonitoringSection(
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                WeightTaskLabel("Target Weight")
+                WeightTaskLabel("Target Weight (grams)")
                 Spacer(modifier = Modifier.height(8.dp))
                 WeightTaskInputField(
                     value = targetWeight,

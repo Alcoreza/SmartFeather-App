@@ -533,7 +533,7 @@ private fun FarmOverviewCard(
     ) {
         Column {
             Text(
-                text = "Daily Production",
+                text = "Daily Overview",
                 fontFamily = DashboardPoppins,
                 fontSize = if (isTablet) 22.sp else 19.sp,
                 fontWeight = FontWeight.ExtraBold,
