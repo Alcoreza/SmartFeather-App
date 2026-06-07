@@ -1,6 +1,7 @@
 package com.example.smartfeather
 
 import android.Manifest
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -14,6 +15,11 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
 class SmartFeatherFirebaseMessagingService : FirebaseMessagingService() {
+    companion object {
+        const val SENSOR_ALERT_CHANNEL_ID = "sensor_alerts"
+        private val SENSOR_ALERT_VIBRATION = longArrayOf(0, 500, 250, 500)
+    }
+
     override fun onMessageReceived(message: RemoteMessage) {
         val title = message.notification?.title
             ?: message.data["title"]
@@ -30,19 +36,26 @@ class SmartFeatherFirebaseMessagingService : FirebaseMessagingService() {
         super.onNewToken(token)
     }
 
-    private fun showNotification(title: String, body: String) {
-        val channelId = "sensor_alerts"
-
+    private fun createSensorAlertChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                channelId,
+                SENSOR_ALERT_CHANNEL_ID,
                 "Sensor Alerts",
                 NotificationManager.IMPORTANCE_HIGH
-            )
+            ).apply {
+                description = "Critical SmartFeather sensor alerts"
+                enableVibration(true)
+                vibrationPattern = SENSOR_ALERT_VIBRATION
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
 
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(channel)
         }
+    }
+
+    private fun showNotification(title: String, body: String) {
+        createSensorAlertChannel()
 
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -62,12 +75,16 @@ class SmartFeatherFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val notification = NotificationCompat.Builder(this, channelId)
+        val notification = NotificationCompat.Builder(this, SENSOR_ALERT_CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setVibrate(SENSOR_ALERT_VIBRATION)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .build()
