@@ -2,6 +2,7 @@ package com.example.smartfeather
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,10 +15,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +63,18 @@ private val PenDisinfectionMuted = Color(0xFF677168)
 private val PenDisinfectionLine = Color(0xFFD8D0C3)
 private val PenDisinfectionGreen = Color(0xFF1F7A3A)
 
+private val PenDisinfectionOptions = listOf(
+    "Quaternary ammonium compound",
+    "Iodophor disinfectant",
+    "Chlorine solution",
+    "Virkon S",
+    "Glutaraldehyde disinfectant",
+    "Hydrogen peroxide disinfectant",
+    "Phenolic disinfectant",
+    "Lime wash",
+    "Others"
+)
+
 @Composable
 fun PendingPenDisinfectionTaskForm(
     task: PendingTaskDetailUiState,
@@ -62,6 +84,19 @@ fun PendingPenDisinfectionTaskForm(
     onActivityChange: (String) -> Unit,
     onDisinfectantUsedChange: (String) -> Unit
 ) {
+    var disinfectantExpanded by remember { mutableStateOf(false) }
+    var isOtherSelected by remember { mutableStateOf(false) }
+
+    val fixedOptions = PenDisinfectionOptions.filterNot { it == "Others" }
+    val isCustomDisinfectant = disinfectantUsed.isNotBlank() && fixedOptions.none { it == disinfectantUsed }
+    val showOtherField = isOtherSelected || isCustomDisinfectant
+    val selectedDisinfectantLabel = when {
+        disinfectantUsed.isBlank() && showOtherField -> "Others"
+        disinfectantUsed.isBlank() -> ""
+        isCustomDisinfectant -> "Others"
+        else -> disinfectantUsed
+    }
+
     PenDisinfectionSectionPanel {
         PenDisinfectionSectionHeader(
             title = "Pen Disinfection",
@@ -102,23 +137,38 @@ fun PendingPenDisinfectionTaskForm(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        PenDisinfectionLabel("Activity")
-        Spacer(modifier = Modifier.height(8.dp))
-        PenDisinfectionInputField(
-            value = activity,
-            placeholder = "Pen Disinfection",
-            onValueChange = onActivityChange
-        )
-
-        Spacer(modifier = Modifier.height(14.dp))
-
         PenDisinfectionLabel("Disinfectant Used")
         Spacer(modifier = Modifier.height(8.dp))
-        PenDisinfectionInputField(
-            value = disinfectantUsed,
-            placeholder = "Enter disinfectant used",
-            onValueChange = onDisinfectantUsedChange
+        PenDisinfectionDropdownField(
+            value = selectedDisinfectantLabel,
+            placeholder = "Select disinfectant",
+            options = PenDisinfectionOptions,
+            expanded = disinfectantExpanded,
+            onExpandedChange = { disinfectantExpanded = it },
+            onValueSelected = { selected ->
+                disinfectantExpanded = false
+
+                if (selected == "Others") {
+                    isOtherSelected = true
+                    onDisinfectantUsedChange("")
+                } else {
+                    isOtherSelected = false
+                    onDisinfectantUsedChange(selected)
+                }
+            }
         )
+
+        if (showOtherField) {
+            Spacer(modifier = Modifier.height(14.dp))
+
+            PenDisinfectionLabel("Other Disinfectant")
+            Spacer(modifier = Modifier.height(8.dp))
+            PenDisinfectionInputField(
+                value = disinfectantUsed,
+                placeholder = "Enter disinfectant used",
+                onValueChange = onDisinfectantUsedChange
+            )
+        }
     }
 }
 
@@ -200,6 +250,71 @@ private fun PenDisinfectionReadOnlyField(value: String) {
             disabledTextColor = PenDisinfectionMuted
         )
     )
+}
+
+@Composable
+private fun PenDisinfectionDropdownField(
+    value: String,
+    placeholder: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onValueSelected: (String) -> Unit
+) {
+    Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(PenDisinfectionSurfaceAlt)
+                .clickable { onExpandedChange(true) }
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (value.isBlank()) placeholder else value,
+                    fontFamily = PenDisinfectionManrope,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = if (value.isBlank()) PenDisinfectionMuted else PenDisinfectionInk,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = placeholder,
+                    tint = PenDisinfectionGreen,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier.background(PenDisinfectionSurface)
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = option,
+                            fontFamily = PenDisinfectionManrope,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PenDisinfectionInk
+                        )
+                    },
+                    onClick = { onValueSelected(option) }
+                )
+            }
+        }
+    }
 }
 
 @Composable

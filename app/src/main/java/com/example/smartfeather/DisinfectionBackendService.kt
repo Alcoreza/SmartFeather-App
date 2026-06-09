@@ -194,7 +194,7 @@ class DisinfectionBackendService(
             employeeId = employeeId,
             houseId = houseId,
             penId = penId,
-            activity = activity,
+            activity = activity.ifBlank { "Pen Disinfection" },
             disinfectantUsed = disinfectantUsed,
             recordedDate = parsedRecordedAt.toLocalDate().toString(),
             recordedTime = parsedRecordedAt.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm:ss")),

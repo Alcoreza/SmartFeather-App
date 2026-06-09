@@ -62,6 +62,7 @@ dependencies {
     implementation("com.composables:icons-lucide:1.1.0")
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
+    implementation("androidx.compose.material:material")
 
 
 

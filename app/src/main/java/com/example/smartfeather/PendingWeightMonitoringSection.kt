@@ -72,7 +72,7 @@ private fun weightStatusDisplay(averageText: String, targetText: String): String
 
     if (target <= 0.0) return "-"
 
-    val normalMarginPercent = 5.0
+    val normalMarginPercent = 3.0
     val lowerNormalLimit = target * (1 - (normalMarginPercent / 100))
     val upperNormalLimit = target * (1 + (normalMarginPercent / 100))
 
@@ -139,7 +139,7 @@ fun PendingWeightMonitoringSection(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        WeightTaskLabel("Number of Flocks")
+        WeightTaskLabel("Number of Chickens")
         Spacer(modifier = Modifier.height(8.dp))
         WeightTaskInputField(
             value = numberOfFlocks,
@@ -151,7 +151,7 @@ fun PendingWeightMonitoringSection(
 
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Column(modifier = Modifier.weight(1f)) {
-                WeightTaskLabel("Cases")
+                WeightTaskLabel("Chickens with Cases")
                 Spacer(modifier = Modifier.height(8.dp))
                 WeightTaskInputField(
                     value = flocksWithCases,
@@ -182,7 +182,7 @@ fun PendingWeightMonitoringSection(
                         val sampleIndex = rowIndex * 2 + itemIndex
 
                         Column(modifier = Modifier.weight(1f)) {
-                            WeightTaskLabel("Flock ${sampleIndex + 1} Weight")
+                            WeightTaskLabel("Chicken ${sampleIndex + 1} Weight")
                             Spacer(modifier = Modifier.height(8.dp))
                             WeightTaskInputField(
                                 value = sample,

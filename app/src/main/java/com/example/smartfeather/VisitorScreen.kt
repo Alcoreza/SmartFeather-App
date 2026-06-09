@@ -528,17 +528,17 @@ fun VisitorScreen(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                        if (mode == VisitorMode.TIME_IN) {
+                            Spacer(modifier = Modifier.height(18.dp))
 
-                        VisitorSectionPanel {
-                            VisitorSectionHeader(
-                                title = "Visitor Photo",
-                                accentColor = VisitorSlate
-                            )
+                            VisitorSectionPanel {
+                                VisitorSectionHeader(
+                                    title = "Visitor Photo",
+                                    accentColor = VisitorSlate
+                                )
 
-                            Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(modifier = Modifier.height(16.dp))
 
-                            if (mode == VisitorMode.TIME_IN) {
                                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                                     VisitorActionButton(
                                         label = "Upload",
@@ -573,54 +573,54 @@ fun VisitorScreen(
                                 }
 
                                 Spacer(modifier = Modifier.height(14.dp))
+
+                                VisitorPhotoPreview(
+                                    selectedPhotoUri = selectedPhotoUri,
+                                    selectedPhotoUrl = selectedPhotoUrl
+                                )
                             }
 
-                            VisitorPhotoPreview(
-                                selectedPhotoUri = selectedPhotoUri,
-                                selectedPhotoUrl = selectedPhotoUrl
-                            )
-                        }
+                            Spacer(modifier = Modifier.height(18.dp))
 
-                        Spacer(modifier = Modifier.height(18.dp))
+                            VisitorSectionPanel {
+                                VisitorSectionHeader(
+                                    title = "Biosecurity Checklist",
+                                    accentColor = VisitorGreen
+                                )
 
-                        VisitorSectionPanel {
-                            VisitorSectionHeader(
-                                title = "Biosecurity Checklist",
-                                accentColor = VisitorGreen
-                            )
+                                Spacer(modifier = Modifier.height(14.dp))
 
-                            Spacer(modifier = Modifier.height(14.dp))
+                                VisitorChecklistItem(
+                                    label = "Foot Bath",
+                                    checked = footBath,
+                                    enabled = true,
+                                    readOnlyStyle = false,
+                                    accentColor = VisitorGreen,
+                                    onCheckedChange = { footBath = it }
+                                )
 
-                            VisitorChecklistItem(
-                                label = "Foot Bath",
-                                checked = footBath,
-                                enabled = mode == VisitorMode.TIME_IN,
-                                readOnlyStyle = mode == VisitorMode.TIME_OUT,
-                                accentColor = VisitorGreen,
-                                onCheckedChange = { footBath = it }
-                            )
+                                Spacer(modifier = Modifier.height(10.dp))
 
-                            Spacer(modifier = Modifier.height(10.dp))
+                                VisitorChecklistItem(
+                                    label = "Sanitation",
+                                    checked = sanitation,
+                                    enabled = true,
+                                    readOnlyStyle = false,
+                                    accentColor = VisitorTeal,
+                                    onCheckedChange = { sanitation = it }
+                                )
 
-                            VisitorChecklistItem(
-                                label = "Sanitation",
-                                checked = sanitation,
-                                enabled = mode == VisitorMode.TIME_IN,
-                                readOnlyStyle = mode == VisitorMode.TIME_OUT,
-                                accentColor = VisitorTeal,
-                                onCheckedChange = { sanitation = it }
-                            )
+                                Spacer(modifier = Modifier.height(10.dp))
 
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            VisitorChecklistItem(
-                                label = "PPE",
-                                checked = ppe,
-                                enabled = mode == VisitorMode.TIME_IN,
-                                readOnlyStyle = mode == VisitorMode.TIME_OUT,
-                                accentColor = VisitorBlue,
-                                onCheckedChange = { ppe = it }
-                            )
+                                VisitorChecklistItem(
+                                    label = "PPE",
+                                    checked = ppe,
+                                    enabled = true,
+                                    readOnlyStyle = false,
+                                    accentColor = VisitorBlue,
+                                    onCheckedChange = { ppe = it }
+                                )
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(18.dp))

@@ -21,67 +21,63 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 data class PersonnelHouseApiRow(
-    @SerialName("id")
-    val id: Long,
-    @SerialName("house_number")
-    val houseNumber: String? = null
+    @SerialName("id") val id: Long,
+    @SerialName("house_number") val houseNumber: String? = null
+)
+
+@Serializable
+data class PersonnelPreviousBiosecurityResponse(
+    @SerialName("house_id") val houseId: Long? = null,
+    @SerialName("pen_id") val penId: Long? = null,
+    @SerialName("foot_bath") val footBath: Boolean = false,
+    @SerialName("boots_changed") val bootsChanged: Boolean = false,
+    @SerialName("protective_clothing") val protectiveClothing: Boolean = false
 )
 
 @Serializable
 data class PersonnelLogsContextResponse(
-    @SerialName("success")
-    val success: Boolean? = null,
-    @SerialName("employee_id")
-    val employeeId: Int? = null,
-    @SerialName("personnel_entry_log_id")
-    val personnelEntryLogId: Long? = null,
-    @SerialName("name")
-    val name: String? = null,
-    @SerialName("role")
-    val role: String? = null,
-    @SerialName("status")
-    val status: String? = null,
-    @SerialName("date")
-    val date: String? = null,
-    @SerialName("time")
-    val time: String? = null,
-    @SerialName("houses")
-    val houses: List<PersonnelHouseApiRow> = emptyList(),
-    @SerialName("message")
-    val message: String? = null
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("employee_id") val employeeId: Int? = null,
+    @SerialName("personnel_entry_log_id") val personnelEntryLogId: Long? = null,
+    @SerialName("name") val name: String? = null,
+    @SerialName("role") val role: String? = null,
+    @SerialName("status") val status: String? = null,
+    @SerialName("date") val date: String? = null,
+    @SerialName("time") val time: String? = null,
+    @SerialName("houses") val houses: List<PersonnelHouseApiRow> = emptyList(),
+    @SerialName("previous_biosecurity") val previousBiosecurity: PersonnelPreviousBiosecurityResponse? = null,
+    @SerialName("message") val message: String? = null
 )
 
 @Serializable
 data class PersonnelLogsSubmitRequest(
-    @SerialName("employee_id")
-    val employeeId: Int,
-    @SerialName("personnel_entry_log_id")
-    val personnelEntryLogId: Long,
-    @SerialName("task_id")
-    val taskId: Int? = null,
-    @SerialName("house_id")
-    val houseId: Long,
-    @SerialName("pen_id")
-    val penId: Long? = null,
-    @SerialName("foot_bath")
-    val footBath: Boolean,
-    @SerialName("boots_changed")
-    val bootsChanged: Boolean,
-    @SerialName("protective_clothing")
-    val protectiveClothing: Boolean
+    @SerialName("employee_id") val employeeId: Int,
+    @SerialName("personnel_entry_log_id") val personnelEntryLogId: Long,
+    @SerialName("task_id") val taskId: Int? = null,
+    @SerialName("house_id") val houseId: Long,
+    @SerialName("pen_id") val penId: Long? = null,
+    @SerialName("foot_bath") val footBath: Boolean,
+    @SerialName("boots_changed") val bootsChanged: Boolean,
+    @SerialName("protective_clothing") val protectiveClothing: Boolean
 )
 
 @Serializable
 data class PersonnelLogsSubmitResponse(
-    @SerialName("success")
-    val success: Boolean? = null,
-    @SerialName("message")
-    val message: String? = null
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("message") val message: String? = null
 )
 
 data class PersonnelHouseOption(
     val id: Long,
     val houseNumber: String
+)
+
+data class PersonnelPreviousBiosecurity(
+    val houseId: Long?,
+    val penId: Long?,
+    val footBath: Boolean,
+    val bootsChanged: Boolean,
+    val protectiveClothing: Boolean
 )
 
 data class PersonnelLogsContext(
@@ -92,7 +88,8 @@ data class PersonnelLogsContext(
     val status: String,
     val date: String,
     val time: String,
-    val houses: List<PersonnelHouseOption>
+    val houses: List<PersonnelHouseOption>,
+    val previousBiosecurity: PersonnelPreviousBiosecurity?
 )
 
 class PersonnelLogsBackendService(
@@ -129,6 +126,15 @@ class PersonnelLogsBackendService(
                         PersonnelHouseOption(
                             id = it.id,
                             houseNumber = it.houseNumber?.ifBlank { "Unknown" } ?: "Unknown"
+                        )
+                    },
+                    previousBiosecurity = result.previousBiosecurity?.let {
+                        PersonnelPreviousBiosecurity(
+                            houseId = it.houseId,
+                            penId = it.penId,
+                            footBath = it.footBath,
+                            bootsChanged = it.bootsChanged,
+                            protectiveClothing = it.protectiveClothing
                         )
                     }
                 )

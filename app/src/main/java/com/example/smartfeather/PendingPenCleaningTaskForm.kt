@@ -2,6 +2,7 @@ package com.example.smartfeather
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,10 +16,19 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -54,6 +64,20 @@ private val PenCleaningMuted = Color(0xFF677168)
 private val PenCleaningLine = Color(0xFFD8D0C3)
 private val PenCleaningGreen = Color(0xFF1F7A3A)
 
+private val PenCleaningMaterialOptions = listOf(
+    "Broom",
+    "Dustpan",
+    "Scraper",
+    "Shovel",
+    "Brush",
+    "Water hose",
+    "Mild detergent",
+    "Cleaning soap",
+    "Litter rake",
+    "Waste collection bag",
+    "Others"
+)
+
 @Composable
 fun PendingPenCleaningTaskForm(
     task: PendingTaskDetailUiState,
@@ -61,6 +85,19 @@ fun PendingPenCleaningTaskForm(
     recordedAt: String,
     onMaterialsUsedChange: (String) -> Unit
 ) {
+    var materialExpanded by remember { mutableStateOf(false) }
+    var isOtherSelected by remember { mutableStateOf(false) }
+
+    val fixedOptions = PenCleaningMaterialOptions.filterNot { it == "Others" }
+    val isCustomMaterial = materialsUsed.isNotBlank() && fixedOptions.none { it == materialsUsed }
+    val showOtherField = isOtherSelected || isCustomMaterial
+    val selectedMaterialLabel = when {
+        materialsUsed.isBlank() && showOtherField -> "Others"
+        materialsUsed.isBlank() -> ""
+        isCustomMaterial -> "Others"
+        else -> materialsUsed
+    }
+
     PenCleaningSectionPanel {
         PenCleaningSectionHeader(
             title = "Pen Cleaning",
@@ -101,13 +138,38 @@ fun PendingPenCleaningTaskForm(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        PenCleaningLabel("Cleaning Materials Used")
+        PenCleaningLabel("Cleaning Material Used")
         Spacer(modifier = Modifier.height(8.dp))
-        PenCleaningTextArea(
-            value = materialsUsed,
-            placeholder = "Enter materials used",
-            onValueChange = onMaterialsUsedChange
+        PenCleaningDropdownField(
+            value = selectedMaterialLabel,
+            placeholder = "Select material",
+            options = PenCleaningMaterialOptions,
+            expanded = materialExpanded,
+            onExpandedChange = { materialExpanded = it },
+            onValueSelected = { selected ->
+                materialExpanded = false
+
+                if (selected == "Others") {
+                    isOtherSelected = true
+                    onMaterialsUsedChange("")
+                } else {
+                    isOtherSelected = false
+                    onMaterialsUsedChange(selected)
+                }
+            }
         )
+
+        if (showOtherField) {
+            Spacer(modifier = Modifier.height(14.dp))
+
+            PenCleaningLabel("Other Material")
+            Spacer(modifier = Modifier.height(8.dp))
+            PenCleaningTextArea(
+                value = materialsUsed,
+                placeholder = "Enter material used",
+                onValueChange = onMaterialsUsedChange
+            )
+        }
     }
 }
 
@@ -189,6 +251,71 @@ private fun PenCleaningReadOnlyField(value: String) {
             disabledTextColor = PenCleaningMuted
         )
     )
+}
+
+@Composable
+private fun PenCleaningDropdownField(
+    value: String,
+    placeholder: String,
+    options: List<String>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    onValueSelected: (String) -> Unit
+) {
+    Box {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clip(RoundedCornerShape(18.dp))
+                .background(PenCleaningSurfaceAlt)
+                .clickable { onExpandedChange(true) }
+                .padding(horizontal = 14.dp),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (value.isBlank()) placeholder else value,
+                    fontFamily = PenCleaningManrope,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 14.sp,
+                    color = if (value.isBlank()) PenCleaningMuted else PenCleaningInk,
+                    modifier = Modifier.weight(1f)
+                )
+
+                Icon(
+                    imageVector = Icons.Filled.KeyboardArrowDown,
+                    contentDescription = placeholder,
+                    tint = PenCleaningGreen,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { onExpandedChange(false) },
+            modifier = Modifier.background(PenCleaningSurface)
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            text = option,
+                            fontFamily = PenCleaningManrope,
+                            fontWeight = FontWeight.SemiBold,
+                            color = PenCleaningInk
+                        )
+                    },
+                    onClick = { onValueSelected(option) }
+                )
+            }
+        }
+    }
 }
 
 @Composable

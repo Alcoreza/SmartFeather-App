@@ -26,16 +26,23 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -66,14 +73,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.composables.icons.lucide.ClipboardList
-import com.composables.icons.lucide.House
 import com.composables.icons.lucide.LayoutDashboard
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.width
 
 private val PersonnelManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -99,6 +103,7 @@ private val PersonnelForest = Color(0xFF103C28)
 private val PersonnelTeal = Color(0xFF2E7D6B)
 private val PersonnelBlue = Color(0xFF3F6F88)
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun PersonnelLogsScreen(
     employeeId: Int,
@@ -138,6 +143,9 @@ fun PersonnelLogsScreen(
     var dialogMessage by remember { mutableStateOf("") }
     var dialogAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
+    var isPulledBiosecurity by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
+
     val isTaskLocked = lockedTaskId != null
     val assignedHouseText = lockedHouseLabel.ifBlank { lockedHouseId?.let { "House $it" }.orEmpty() }
     val assignedPenText = lockedPenLabel.ifBlank { lockedPenId?.let { "Pen $it" }.orEmpty() }
@@ -149,9 +157,11 @@ fun PersonnelLogsScreen(
         showDialog = true
     }
 
-    LaunchedEffect(employeeId, lockedHouseId, lockedTaskId) {
-        isContextLoading = true
-        contentVisible = false
+    suspend fun loadPersonnelContext(showSkeleton: Boolean) {
+        if (showSkeleton) {
+            isContextLoading = true
+            contentVisible = false
+        }
 
         personnelService.getContext(employeeId)
             .onSuccess { context ->
@@ -160,6 +170,12 @@ fun PersonnelLogsScreen(
                 name = context.name
                 role = context.role
                 houses = context.houses
+
+                val pulledBiosecurity = context.previousBiosecurity != null
+                val previousHouseId = context.previousBiosecurity?.houseId
+
+                isPulledBiosecurity = pulledBiosecurity
+
                 selectedHouse = if (lockedHouseId != null) {
                     context.houses.firstOrNull { it.id == lockedHouseId.toLong() }
                         ?: PersonnelHouseOption(
@@ -167,8 +183,15 @@ fun PersonnelLogsScreen(
                             houseNumber = assignedHouseText.ifBlank { "House $lockedHouseId" }
                         )
                 } else {
-                    null
+                    previousHouseId?.let { houseId ->
+                        context.houses.firstOrNull { it.id == houseId }
+                    }
                 }
+
+                footBath = context.previousBiosecurity?.footBath == true
+                bootsChanged = context.previousBiosecurity?.bootsChanged == true
+                protectiveClothing = context.previousBiosecurity?.protectiveClothing == true
+
                 personnelEntryLogId = context.personnelEntryLogId
             }
             .onFailure {
@@ -178,12 +201,33 @@ fun PersonnelLogsScreen(
                 role = ""
                 houses = emptyList()
                 selectedHouse = null
+                footBath = false
+                bootsChanged = false
+                protectiveClothing = false
                 personnelEntryLogId = null
+                isPulledBiosecurity = false
             }
 
-        isContextLoading = false
-        delay(120)
-        contentVisible = true
+        if (showSkeleton) {
+            isContextLoading = false
+            delay(120)
+            contentVisible = true
+        }
+    }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            coroutineScope.launch {
+                isRefreshing = true
+                loadPersonnelContext(showSkeleton = false)
+                isRefreshing = false
+            }
+        }
+    )
+
+    LaunchedEffect(employeeId, lockedHouseId, lockedPenId, lockedTaskId) {
+        loadPersonnelContext(showSkeleton = true)
     }
 
     if (showDialog) {
@@ -229,10 +273,15 @@ fun PersonnelLogsScreen(
                 .fillMaxSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFBF8F1), PersonnelBackground, Color(0xFFEDE7DA))
+                        colors = listOf(
+                            Color(0xFFFBF8F1),
+                            PersonnelBackground,
+                            Color(0xFFEDE7DA)
+                        )
                     )
                 )
                 .padding(padding)
+                .pullRefresh(pullRefreshState)
         ) {
             Column(
                 modifier = Modifier
@@ -345,6 +394,7 @@ fun PersonnelLogsScreen(
                                 label = "Foot Bath",
                                 checked = footBath,
                                 accentColor = PersonnelGreen,
+                                readOnly = isPulledBiosecurity,
                                 onCheckedChange = { footBath = it }
                             )
 
@@ -354,6 +404,7 @@ fun PersonnelLogsScreen(
                                 label = "Boots Changed",
                                 checked = bootsChanged,
                                 accentColor = PersonnelTeal,
+                                readOnly = isPulledBiosecurity,
                                 onCheckedChange = { bootsChanged = it }
                             )
 
@@ -363,6 +414,7 @@ fun PersonnelLogsScreen(
                                 label = "Protective Clothing",
                                 checked = protectiveClothing,
                                 accentColor = PersonnelBlue,
+                                readOnly = isPulledBiosecurity,
                                 onCheckedChange = { protectiveClothing = it }
                             )
                         }
@@ -473,6 +525,14 @@ fun PersonnelLogsScreen(
                     }
                 }
             }
+
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                backgroundColor = PersonnelSurface,
+                contentColor = PersonnelGreen
+            )
         }
     }
 }
@@ -594,47 +654,49 @@ private fun PersonnelChecklistItem(
     label: String,
     checked: Boolean,
     accentColor: Color,
+    readOnly: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    val containerColor = when {
+        readOnly -> PersonnelAutoField.copy(alpha = 0.72f)
+        checked -> accentColor.copy(alpha = 0.10f)
+        else -> PersonnelSurfaceAlt
+    }
+
+    val textColor = if (readOnly) PersonnelMuted else PersonnelInk
+
+    val itemModifier = Modifier
+        .fillMaxWidth()
+        .clip(RoundedCornerShape(18.dp))
+        .background(containerColor)
+        .padding(horizontal = 12.dp, vertical = 10.dp)
+
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(if (checked) accentColor.copy(alpha = 0.10f) else PersonnelSurfaceAlt)
-            .clickable { onCheckedChange(!checked) }
-            .padding(horizontal = 14.dp, vertical = 13.dp),
+        modifier = if (readOnly) itemModifier else itemModifier.clickable { onCheckedChange(!checked) },
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(if (checked) accentColor else Color.Transparent)
-                .border(
-                    2.dp,
-                    if (checked) accentColor else PersonnelLine,
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (checked) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                )
-            }
-        }
+        Checkbox(
+            checked = checked,
+            onCheckedChange = if (readOnly) null else onCheckedChange,
+            enabled = !readOnly,
+            colors = CheckboxDefaults.colors(
+                checkedColor = accentColor,
+                uncheckedColor = PersonnelLine,
+                checkmarkColor = Color.White,
+                disabledCheckedColor = PersonnelMuted.copy(alpha = 0.45f),
+                disabledUncheckedColor = PersonnelMuted.copy(alpha = 0.30f),
+                disabledIndeterminateColor = PersonnelMuted.copy(alpha = 0.30f)
+            )
+        )
 
-        Spacer(modifier = Modifier.size(12.dp))
+        Spacer(modifier = Modifier.size(8.dp))
 
         Text(
             text = label,
             fontFamily = PersonnelManrope,
             fontWeight = FontWeight.ExtraBold,
             fontSize = 14.sp,
-            color = PersonnelInk
+            color = textColor
         )
     }
 }
