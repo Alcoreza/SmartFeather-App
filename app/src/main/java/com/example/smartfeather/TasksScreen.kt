@@ -70,6 +70,9 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
 import kotlinx.coroutines.launch
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+
 
 enum class TaskStatus {
     PENDING,
@@ -125,9 +128,9 @@ private val TaskLine = Color(0xFFD2C8B8)
 private val TaskGreen = Color(0xFF1F7A3A)
 private val TaskDeepGreen = Color(0xFF062717)
 
-private val PendingColor = Color(0xFF8A7A2E)
-private val ApprovalColor = Color(0xFF2F6F68)
-private val CompletedColor = Color(0xFF2F7D46)
+private val PendingColor = Color(0xFFD79A2B)
+private val ApprovalColor = Color(0xFF2F8F88)
+private val CompletedColor = Color(0xFF3FA65A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -140,6 +143,7 @@ fun TasksScreen(
 ) {
     val taskService = remember { TaskBackendService() }
     val coroutineScope = rememberCoroutineScope()
+    val refreshState = rememberPullToRefreshState()
 
     val pendingTasks = remember { mutableStateListOf<TaskItem>() }
     val forApprovalTasks = remember { mutableStateListOf<TaskItem>() }
@@ -362,20 +366,30 @@ fun TasksScreen(
         }
     ) { innerPadding ->
         PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = {
-                coroutineScope.launch {
-                    refreshFirstPages(
-                        forceRefresh = true,
-                        showSkeleton = false,
-                        showRefreshIndicator = true
-                    )
-                }
+        isRefreshing = isRefreshing,
+        onRefresh = {
+            coroutineScope.launch {
+                refreshFirstPages(
+                    forceRefresh = true,
+                    showSkeleton = false,
+                    showRefreshIndicator = true
+                )
+            }
+        },
+        state = refreshState,
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    isRefreshing = isRefreshing,
+                    state = refreshState,
+                    containerColor = Color.White,
+                    color = TaskGreen
+                )
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+    ) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -488,7 +502,11 @@ private fun TaskHeader(
             .clip(RoundedCornerShape(30.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(TaskDeepGreen, Color(0xFF0E4025), Color(0xFF155C2D))
+                    colors = listOf(
+                        Color(0xFF082416),
+                        Color(0xFF103420),
+                        Color(0xFF16512A)
+                    )
                 )
             )
             .padding(horizontal = 20.dp, vertical = 22.dp)
@@ -497,31 +515,88 @@ private fun TaskHeader(
             text = "Tasks",
             fontFamily = TaskManrope,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 29.sp,
-            color = Color.White
-        )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = "Assigned work, submissions, and completed tasks.",
-            fontFamily = TaskManrope,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 13.sp,
-            color = Color.White.copy(alpha = 0.72f),
-            lineHeight = 18.sp
+            fontSize = 28.sp,
+            color = Color.White,
+            lineHeight = 30.sp
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(9.dp)
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            QuietMetric("Pending", pendingCount.toString(), PendingColor, Modifier.weight(1f))
-            QuietMetric("Approval", approvalCount.toString(), ApprovalColor, Modifier.weight(1f))
-            QuietMetric("Done", completedCount.toString(), CompletedColor, Modifier.weight(1f))
+            MetricTile(
+                label = "Pending",
+                value = pendingCount.toString(),
+                accent = PendingColor,
+                modifier = Modifier.weight(1f)
+            )
+            MetricTile(
+                label = "Approval",
+                value = approvalCount.toString(),
+                accent = ApprovalColor,
+                modifier = Modifier.weight(1f)
+            )
+            MetricTile(
+                label = "Done",
+                value = completedCount.toString(),
+                accent = CompletedColor,
+                modifier = Modifier.weight(1f)
+            )
         }
+    }
+}
+
+@Composable
+private fun MetricTile(
+    label: String,
+    value: String,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(Color.White.copy(alpha = 0.08f))
+            .border(
+                width = 1.dp,
+                color = Color.White.copy(alpha = 0.10f),
+                shape = RoundedCornerShape(20.dp)
+            )
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            modifier = Modifier
+                .width(22.dp)
+                .height(2.dp)
+                .clip(RoundedCornerShape(999.dp))
+                .background(accent.copy(alpha = 0.80f))
+        )
+
+        Spacer(modifier = Modifier.height(9.dp))
+
+        Text(
+            text = value,
+            fontFamily = TaskManrope,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 20.sp,
+            color = Color.White.copy(alpha = 0.92f),
+            lineHeight = 20.sp
+        )
+
+        Spacer(modifier = Modifier.height(4.dp))
+
+        Text(
+            text = label,
+            fontFamily = TaskManrope,
+            fontWeight = FontWeight.Medium,
+            fontSize = 10.sp,
+            color = Color.White.copy(alpha = 0.68f),
+            textAlign = TextAlign.Center,
+            lineHeight = 12.sp
+        )
     }
 }
 
@@ -535,7 +610,8 @@ private fun QuietMetric(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(18.dp))
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(Color.White.copy(alpha = 0.14f))
+            .border(1.dp, Color.White.copy(alpha = 0.18f), RoundedCornerShape(18.dp))
             .padding(horizontal = 10.dp, vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -543,18 +619,18 @@ private fun QuietMetric(
             text = value,
             fontFamily = TaskManrope,
             fontWeight = FontWeight.ExtraBold,
-            fontSize = 18.sp,
+            fontSize = 21.sp,
             color = color
         )
 
-        Spacer(modifier = Modifier.height(2.dp))
+        Spacer(modifier = Modifier.height(3.dp))
 
         Text(
             text = label,
             fontFamily = TaskManrope,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Medium,
             fontSize = 10.sp,
-            color = Color.White.copy(alpha = 0.76f),
+            color = Color.White.copy(alpha = 0.92f),
             textAlign = TextAlign.Center
         )
     }
@@ -619,7 +695,7 @@ private fun SectionHeader(
     ) {
         Box(
             modifier = Modifier
-                .size(42.dp)
+                .size(44.dp)
                 .clip(CircleShape)
                 .background(containerColor.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
@@ -970,7 +1046,7 @@ private fun priorityLabel(priority: TaskPriority): String {
 private fun priorityColor(priority: TaskPriority): Color {
     return when (priority) {
         TaskPriority.LOW -> Color(0xFF6D7E3A)
-        TaskPriority.MID -> Color(0xFF8A7A2E)
+        TaskPriority.MID -> Color(0xFFF0A64A)
         TaskPriority.HIGH -> Color(0xFFB8483A)
     }
 }
@@ -984,8 +1060,111 @@ private fun TaskLoadingSkeleton() {
     }
 }
 
+
+
 @Composable
 private fun SkeletonSection() {
+    val alpha = skeletonAlpha()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(TaskSectionSurface)
+            .border(1.dp, TaskLine.copy(alpha = 0.50f), RoundedCornerShape(28.dp))
+            .padding(14.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SkeletonBox(
+                modifier = Modifier.size(42.dp),
+                alpha = alpha,
+                color = Color(0xFFD9D2C6),
+                shape = CircleShape
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            SkeletonBox(
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(22.dp),
+                alpha = alpha,
+                color = Color(0xFFD9D2C6),
+                shape = RoundedCornerShape(999.dp)
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            SkeletonBox(
+                modifier = Modifier.size(34.dp),
+                alpha = alpha,
+                color = Color(0xFFD9D2C6),
+                shape = CircleShape
+            )
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        SkeletonTaskCard(alpha = alpha)
+        Spacer(modifier = Modifier.height(10.dp))
+        SkeletonTaskCard(alpha = alpha)
+    }
+}
+
+@Composable
+private fun SkeletonHeader() {
+    val alpha = skeletonAlpha()
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(30.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        TaskDeepGreen.copy(alpha = 0.94f),
+                        Color(0xFF0E4025).copy(alpha = 0.94f),
+                        Color(0xFF155C2D).copy(alpha = 0.94f)
+                    )
+                )
+            )
+            .padding(horizontal = 20.dp, vertical = 22.dp)
+    ) {
+        SkeletonLine(
+            widthFraction = 0.34f,
+            height = 28.dp,
+            alpha = alpha,
+            color = Color.White.copy(alpha = 0.38f)
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        SkeletonLine(
+            widthFraction = 0.78f,
+            height = 12.dp,
+            alpha = alpha,
+            color = Color.White.copy(alpha = 0.24f)
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            repeat(3) {
+                SkeletonBox(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(58.dp),
+                    alpha = alpha,
+                    color = Color.White.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SkeletonStatusCard(accent: Color) {
     val alpha = skeletonAlpha()
 
     Column(
@@ -1000,7 +1179,7 @@ private fun SkeletonSection() {
             SkeletonBox(
                 modifier = Modifier.size(42.dp),
                 alpha = alpha,
-                color = Color(0xFFDAD4C8),
+                color = accent.copy(alpha = 0.22f),
                 shape = CircleShape
             )
 
@@ -1009,7 +1188,7 @@ private fun SkeletonSection() {
             Column(modifier = Modifier.weight(1f)) {
                 SkeletonLine(widthFraction = 0.42f, height = 18.dp, alpha = alpha)
                 Spacer(modifier = Modifier.height(7.dp))
-                SkeletonLine(widthFraction = 0.78f, height = 11.dp, alpha = alpha)
+                SkeletonLine(widthFraction = 0.72f, height = 11.dp, alpha = alpha)
             }
 
             SkeletonBox(
@@ -1023,68 +1202,161 @@ private fun SkeletonSection() {
         Spacer(modifier = Modifier.height(14.dp))
 
         repeat(2) {
-            SkeletonTaskCard(alpha = alpha, index = it)
+            SkeletonTaskCard(alpha = alpha)
             if (it == 0) Spacer(modifier = Modifier.height(10.dp))
         }
     }
 }
 
 @Composable
-private fun SkeletonTaskCard(
-    alpha: Float,
-    index: Int
-) {
-    Box(
+private fun SkeletonHeaderCard() {
+    val alpha = skeletonAlpha()
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(132.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .background(if (index % 2 == 0) Color(0xFFFFF6EA) else Color(0xFFF7ECDA))
-            .padding(horizontal = 15.dp, vertical = 15.dp)
-    ) {
-        Column {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SkeletonBox(
-                    modifier = Modifier.size(8.dp),
-                    alpha = alpha,
-                    color = Color(0xFFC27A16),
-                    shape = CircleShape
+            .clip(RoundedCornerShape(30.dp))
+            .background(
+                Brush.linearGradient(
+                    colors = listOf(
+                        Color(0xFF082416),
+                        Color(0xFF103420),
+                        Color(0xFF16512A)
+                    )
                 )
+            )
+            .padding(horizontal = 20.dp, vertical = 22.dp)
+    ) {
+        SkeletonLine(widthFraction = 0.28f, height = 28.dp, alpha = alpha, color = Color.White.copy(alpha = 0.34f))
+        Spacer(modifier = Modifier.height(8.dp))
+        SkeletonLine(widthFraction = 0.82f, height = 12.dp, alpha = alpha, color = Color.White.copy(alpha = 0.24f))
 
-                Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-                SkeletonLine(widthFraction = 0.42f, height = 20.dp, alpha = alpha)
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                SkeletonLine(widthFraction = 0.18f, height = 20.dp, alpha = alpha)
-            }
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            SkeletonLine(widthFraction = 0.92f, height = 10.dp, alpha = alpha)
-
-            Spacer(modifier = Modifier.height(7.dp))
-
-            SkeletonLine(widthFraction = 0.68f, height = 10.dp, alpha = alpha)
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                SkeletonLine(widthFraction = 0.34f, height = 13.dp, alpha = alpha)
-                Spacer(modifier = Modifier.weight(1f))
-                SkeletonLine(widthFraction = 0.28f, height = 13.dp, alpha = alpha)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            repeat(3) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFFF8F5EF).copy(alpha = 0.92f))
+                        .border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(18.dp))
+                        .padding(horizontal = 10.dp, vertical = 11.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    SkeletonBox(
+                        modifier = Modifier.size(width = 22.dp, height = 3.dp),
+                        alpha = alpha,
+                        color = Color(0xFFCFC7B7),
+                        shape = RoundedCornerShape(999.dp)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    SkeletonLine(widthFraction = 0.28f, height = 20.dp, alpha = alpha, color = Color(0xFFDED7C8))
+                    Spacer(modifier = Modifier.height(3.dp))
+                    SkeletonLine(widthFraction = 0.44f, height = 10.dp, alpha = alpha, color = Color(0xFFD8D1C4))
+                }
             }
         }
     }
 }
 
 @Composable
+private fun SkeletonTaskCard(alpha: Float) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(132.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xFFFFFCF7))
+            .border(1.dp, Color(0xFFE6DDD0), RoundedCornerShape(22.dp))
+            .padding(horizontal = 15.dp, vertical = 15.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SkeletonBox(
+                modifier = Modifier.size(8.dp),
+                alpha = alpha,
+                color = Color(0xFFD9D2C6),
+                shape = CircleShape
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            SkeletonBox(
+                modifier = Modifier
+                    .fillMaxWidth(0.46f)
+                    .height(20.dp),
+                alpha = alpha,
+                color = Color(0xFFD9D2C6),
+                shape = RoundedCornerShape(999.dp)
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            SkeletonBox(
+                modifier = Modifier
+                    .width(54.dp)
+                    .height(20.dp),
+                alpha = alpha,
+                color = Color(0xFFE4DCCF),
+                shape = RoundedCornerShape(999.dp)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        SkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth(0.88f)
+                .height(10.dp),
+            alpha = alpha,
+            color = Color(0xFFD9D2C6),
+            shape = RoundedCornerShape(999.dp)
+        )
+
+        Spacer(modifier = Modifier.height(7.dp))
+
+        SkeletonBox(
+            modifier = Modifier
+                .fillMaxWidth(0.64f)
+                .height(10.dp),
+            alpha = alpha,
+            color = Color(0xFFD9D2C6),
+            shape = RoundedCornerShape(999.dp)
+        )
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SkeletonBox(
+                modifier = Modifier
+                    .fillMaxWidth(0.34f)
+                    .height(13.dp),
+                alpha = alpha,
+                color = Color(0xFFD9D2C6),
+                shape = RoundedCornerShape(999.dp)
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+
+            SkeletonBox(
+                modifier = Modifier
+                    .width(76.dp)
+                    .height(13.dp),
+                alpha = alpha,
+                color = Color(0xFFE4DCCF),
+                shape = RoundedCornerShape(999.dp)
+            )
+        }
+    }
+}
+
+
+@Composable
 private fun skeletonAlpha(): Float {
     val transition = rememberInfiniteTransition(label = "taskSkeleton")
     val alpha by transition.animateFloat(
-        initialValue = 0.34f,
-        targetValue = 0.82f,
+        initialValue = 0.28f,
+        targetValue = 0.62f,
         animationSpec = infiniteRepeatable(
             animation = tween(900, easing = FastOutSlowInEasing),
             repeatMode = RepeatMode.Reverse
@@ -1114,7 +1386,7 @@ private fun SkeletonLine(
 private fun SkeletonBox(
     modifier: Modifier,
     alpha: Float,
-    color: Color = Color(0xFFDAD4C8),
+    color: Color = Color(0xFFD9D2C6),
     shape: Shape = RoundedCornerShape(16.dp)
 ) {
     Box(

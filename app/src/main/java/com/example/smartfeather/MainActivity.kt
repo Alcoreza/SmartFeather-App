@@ -555,7 +555,6 @@ fun SmartFeatherApp() {
 
                         result.onSuccess {
                             TaskBackendService.clearTaskCache(employeeId)
-                            currentScreen = AppScreen.TASKS
                         }.map { Unit }
                     }
                 )

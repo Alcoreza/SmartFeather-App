@@ -543,7 +543,7 @@ private fun PhotoPanel(
                 AsyncImage(
                     model = photoUrl,
                     contentDescription = "Proof photo",
-                    contentScale = ContentScale.Crop,
+                    contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )
             } else {

@@ -916,6 +916,13 @@ fun PendingTaskDetailScreen(
                                         }
 
                                         onSubmit(notes, selectedPhotoUri)
+                                            .onSuccess {
+                                                showModal(
+                                                    title = "Task Submitted",
+                                                    message = "Task submitted for approval successfully.",
+                                                    action = onNavigateToTasks
+                                                )
+                                            }
                                             .onFailure {
                                                 val message = it.message ?: "Failed to submit task."
 
@@ -1315,7 +1322,7 @@ private fun PhotoUploadArea(selectedPhotoUri: Uri?) {
             AsyncImage(
                 model = selectedPhotoUri,
                 contentDescription = "Selected proof photo",
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
         } else {
