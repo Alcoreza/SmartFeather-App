@@ -191,7 +191,6 @@ fun PendingWeightMonitoringSection(
                             )
                         }
                     }
-
                     if (rowItems.size == 1) {
                         Spacer(modifier = Modifier.weight(1f))
                     }
