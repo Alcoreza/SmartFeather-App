@@ -22,7 +22,9 @@ import kotlinx.serialization.json.decodeFromJsonElement
 @Serializable
 data class FeedPenApiRow(
     @SerialName("id") val id: Long,
-    @SerialName("pen_name") val penName: String? = null
+    @SerialName("pen_name") val penName: String? = null,
+    @SerialName("feeder_count") val feederCount: Int? = null,
+    @SerialName("drinker_count") val drinkerCount: Int? = null
 )
 
 @Serializable
@@ -32,6 +34,13 @@ data class FeedContextResponse(
     @SerialName("house_id") val houseId: Long? = null,
     @SerialName("house_number") val houseNumber: String? = null,
     @SerialName("pen_options") val penOptions: List<FeedPenApiRow> = emptyList(),
+    @SerialName("message") val message: String? = null
+)
+
+@Serializable
+data class FeedFeederOptionsResponse(
+    @SerialName("success") val success: Boolean? = null,
+    @SerialName("feeder_options") val feederOptions: List<String> = emptyList(),
     @SerialName("message") val message: String? = null
 )
 
@@ -68,8 +77,16 @@ data class FeedHouseOption(
 
 data class FeedPenOption(
     val id: Long,
-    val penName: String
-)
+    val penName: String,
+    val feederCount: Int,
+    val drinkerCount: Int
+) {
+    val feederOptions: List<String>
+        get() = if (feederCount <= 0) emptyList() else (1..feederCount).map { it.toString() }
+
+    val drinkerOptions: List<String>
+        get() = if (drinkerCount <= 0) emptyList() else (1..drinkerCount).map { it.toString() }
+}
 
 data class FeedInventoryOption(
     val id: Int,
@@ -120,11 +137,36 @@ class FeedsRefillBackendService(
                     pens = response.penOptions.map {
                         FeedPenOption(
                             id = it.id,
-                            penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown"
+                            penName = it.penName?.ifBlank { "Unknown" } ?: "Unknown",
+                            feederCount = it.feederCount ?: 0,
+                            drinkerCount = it.drinkerCount ?: 0
                         )
                     },
                     message = response.message
                 )
+            }
+        }
+    }
+
+    suspend fun getFeederOptions(
+        houseId: Long,
+        penId: Long
+    ): Result<List<String>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/houses/$houseId/pens/$penId/feeders") {
+                    accept(ContentType.Application.Json)
+                }.bodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Failed to load feeder options.")
+                }
+
+                val response = json.decodeFromJsonElement<FeedFeederOptionsResponse>(parsed)
+                response.feederOptions
             }
         }
     }
@@ -224,6 +266,4 @@ class FeedsRefillBackendService(
             }
         }
     }
-
-    fun feederOptions(): List<String> = listOf("1", "2", "3")
 }

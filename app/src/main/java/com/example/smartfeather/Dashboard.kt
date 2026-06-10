@@ -94,6 +94,15 @@ import com.composables.icons.lucide.UserRound
 import com.composables.icons.lucide.Wheat
 import androidx.compose.ui.graphics.graphicsLayer
 import com.composables.icons.lucide.Zap
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 
 data class DashboardStat(
     val title: String,
@@ -238,6 +247,7 @@ private fun formatValue(value: Float, unit: String): String {
     return "$display$unit"
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardScreen(
     onNavigateToTasks: () -> Unit,
@@ -245,10 +255,17 @@ fun DashboardScreen(
     onQuickAccessVisitor: () -> Unit,
     uiState: DashboardUiState,
     isLoading: Boolean = false,
+    isRefreshing: Boolean = false,
+    isEnvironmentRefreshing: Boolean = false,
+    isResourceRefreshing: Boolean = false,
+    onRefresh: () -> Unit = {},
+    onEnvironmentRefresh: () -> Unit = {},
+    onResourceRefresh: () -> Unit = {},
     onEnvironmentFilterChange: (SensorFilterOption) -> Unit = {},
     onResourceFilterChange: (SensorFilterOption) -> Unit = {}
 ) {
     var contentVisible by remember { mutableStateOf(false) }
+    val refreshState = rememberPullToRefreshState()
 
     LaunchedEffect(Unit) {
         delay(120)
@@ -264,105 +281,126 @@ fun DashboardScreen(
             )
         }
     ) { innerPadding ->
-        BoxWithConstraints(
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            state = refreshState,
+            indicator = {
+                PullToRefreshDefaults.Indicator(
+                    modifier = Modifier.align(Alignment.TopCenter),
+                    isRefreshing = isRefreshing,
+                    state = refreshState,
+                    containerColor = Color.White,
+                    color = FarmGreen
+                )
+            },
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(Color(0xFFFBF8F1), FarmCream, Color(0xFFEDE7DA))
-                    )
-                )
                 .padding(innerPadding)
         ) {
-            val isTablet = maxWidth >= 700.dp
-            val pagePadding = if (isTablet) 30.dp else 18.dp
-
-            Column(
+            BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = pagePadding, vertical = 18.dp)
-            ) {
-                if (isLoading || !contentVisible) {
-                    DashboardSkeleton(isTablet = isTablet)
-                    Spacer(modifier = Modifier.height(20.dp))
-                    return@Column
-                }
-
-                AnimatedVisibility(
-                    visible = contentVisible,
-                    enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
-                        animationSpec = tween(420, easing = FastOutSlowInEasing),
-                        initialOffsetY = { it / 18 }
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(Color(0xFFFBF8F1), FarmCream, Color(0xFFEDE7DA))
+                        )
                     )
+            ) {
+                val isTablet = maxWidth >= 700.dp
+                val pagePadding = if (isTablet) 30.dp else 18.dp
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = pagePadding, vertical = 18.dp)
                 ) {
-                    Column {
-                        DashboardCommandCenter(
-                            welcomeText = uiState.welcomeText,
-                            overviewDateLabel = uiState.overviewDateLabel,
-                            pendingTaskCount = uiState.pendingTaskCount,
-                            isTablet = isTablet,
-                            onTasksClick = onNavigateToTasks
-                        )
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
-                        FarmOverviewCard(
-                            stats = uiState.stats,
-                            overviewDateLabel = uiState.overviewDateLabel,
-                            isTablet = isTablet
-                        )
-
-                        Spacer(modifier = Modifier.height(18.dp))
-
-                        PendingTaskBanner(
-                            count = uiState.pendingTaskCount,
-                            task = uiState.pendingTask,
-                            isTablet = isTablet,
-                            onClick = onNavigateToTasks
-                        )
-
-                        Spacer(modifier = Modifier.height(22.dp))
-
-                        SectionTitle(
-                            title = "House Conditions",
-                            icon = Lucide.Gauge,
-                            isTablet = isTablet
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        MonitoringSection(
-                            gauges = uiState.gauges,
-                            resources = uiState.resources,
-                            environmentFilter = uiState.environmentFilter,
-                            resourceFilter = uiState.resourceFilter,
-                            isTablet = isTablet,
-                            onEnvironmentFilterChange = onEnvironmentFilterChange,
-                            onResourceFilterChange = onResourceFilterChange
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        SectionTitle(
-                            title = "Access Management",
-                            icon = Lucide.ShieldCheck,
-                            isTablet = isTablet
-                        )
-
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        QuickAccessSection(
-                            items = uiState.quickAccess,
-                            isTablet = isTablet,
-                            onItemClick = { actionKey ->
-                                when (actionKey) {
-                                    "visitor" -> onQuickAccessVisitor()
-                                }
-                            }
-                        )
-
+                    if (isLoading || !contentVisible) {
+                        DashboardSkeleton(isTablet = isTablet)
                         Spacer(modifier = Modifier.height(20.dp))
+                        return@Column
+                    }
+
+                    AnimatedVisibility(
+                        visible = contentVisible,
+                        enter = fadeIn(animationSpec = tween(420)) + slideInVertically(
+                            animationSpec = tween(420, easing = FastOutSlowInEasing),
+                            initialOffsetY = { it / 18 }
+                        )
+                    ) {
+                        Column {
+                            DashboardCommandCenter(
+                                welcomeText = uiState.welcomeText,
+                                overviewDateLabel = uiState.overviewDateLabel,
+                                pendingTaskCount = uiState.pendingTaskCount,
+                                isTablet = isTablet,
+                                onTasksClick = onNavigateToTasks
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            FarmOverviewCard(
+                                stats = uiState.stats,
+                                overviewDateLabel = uiState.overviewDateLabel,
+                                isTablet = isTablet
+                            )
+
+                            Spacer(modifier = Modifier.height(18.dp))
+
+                            PendingTaskBanner(
+                                count = uiState.pendingTaskCount,
+                                task = uiState.pendingTask,
+                                isTablet = isTablet,
+                                onClick = onNavigateToTasks
+                            )
+
+                            Spacer(modifier = Modifier.height(22.dp))
+
+                            SectionTitle(
+                                title = "House Conditions",
+                                icon = Lucide.Gauge,
+                                isTablet = isTablet
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            MonitoringSection(
+                                gauges = uiState.gauges,
+                                resources = uiState.resources,
+                                environmentFilter = uiState.environmentFilter,
+                                resourceFilter = uiState.resourceFilter,
+                                isTablet = isTablet,
+                                isEnvironmentRefreshing = isEnvironmentRefreshing,
+                                isResourceRefreshing = isResourceRefreshing,
+                                onEnvironmentRefresh = onEnvironmentRefresh,
+                                onResourceRefresh = onResourceRefresh,
+                                onEnvironmentFilterChange = onEnvironmentFilterChange,
+                                onResourceFilterChange = onResourceFilterChange
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            SectionTitle(
+                                title = "Access Management",
+                                icon = Lucide.ShieldCheck,
+                                isTablet = isTablet
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            QuickAccessSection(
+                                items = uiState.quickAccess,
+                                isTablet = isTablet,
+                                onItemClick = { actionKey ->
+                                    when (actionKey) {
+                                        "visitor" -> onQuickAccessVisitor()
+                                    }
+                                }
+                            )
+
+                            Spacer(modifier = Modifier.height(20.dp))
+                        }
                     }
                 }
             }
@@ -708,6 +746,10 @@ private fun MonitoringSection(
     environmentFilter: SensorFilterState,
     resourceFilter: SensorFilterState,
     isTablet: Boolean,
+    isEnvironmentRefreshing: Boolean,
+    isResourceRefreshing: Boolean,
+    onEnvironmentRefresh: () -> Unit,
+    onResourceRefresh: () -> Unit,
     onEnvironmentFilterChange: (SensorFilterOption) -> Unit,
     onResourceFilterChange: (SensorFilterOption) -> Unit
 ) {
@@ -722,6 +764,8 @@ private fun MonitoringSection(
                 filterState = environmentFilter,
                 modifier = Modifier.weight(1f),
                 cardHeight = 350.dp,
+                isRefreshing = isEnvironmentRefreshing,
+                onRefreshClick = onEnvironmentRefresh,
                 onFilterChange = onEnvironmentFilterChange
             ) {
                 SensorReadingRow(
@@ -736,12 +780,11 @@ private fun MonitoringSection(
                 filterState = resourceFilter,
                 modifier = Modifier.weight(1f),
                 cardHeight = 350.dp,
+                isRefreshing = isResourceRefreshing,
+                onRefreshClick = onResourceRefresh,
                 onFilterChange = onResourceFilterChange
             ) {
-                SensorReadingRow(
-                    first = { resources.getOrNull(0)?.let { ResourceBlock(it, Modifier.weight(1f)) } },
-                    second = { resources.getOrNull(1)?.let { ResourceBlock(it, Modifier.weight(1f)) } }
-                )
+                ResourceGroupedRow(resources = resources)
             }
         }
     } else {
@@ -752,6 +795,8 @@ private fun MonitoringSection(
                 filterState = environmentFilter,
                 modifier = Modifier.fillMaxWidth(),
                 cardHeight = 350.dp,
+                isRefreshing = isEnvironmentRefreshing,
+                onRefreshClick = onEnvironmentRefresh,
                 onFilterChange = onEnvironmentFilterChange
             ) {
                 SensorReadingRow(
@@ -766,12 +811,11 @@ private fun MonitoringSection(
                 filterState = resourceFilter,
                 modifier = Modifier.fillMaxWidth(),
                 cardHeight = 350.dp,
+                isRefreshing = isResourceRefreshing,
+                onRefreshClick = onResourceRefresh,
                 onFilterChange = onResourceFilterChange
             ) {
-                SensorReadingRow(
-                    first = { resources.getOrNull(0)?.let { ResourceBlock(it, Modifier.weight(1f)) } },
-                    second = { resources.getOrNull(1)?.let { ResourceBlock(it, Modifier.weight(1f)) } }
-                )
+                ResourceGroupedRow(resources = resources)
             }
         }
     }
@@ -788,12 +832,226 @@ private fun RowScope.SensorReadingRow(
 }
 
 @Composable
+private fun RowScope.ResourceSwipeRow(
+    resources: List<ResourceData>
+) {
+    if (resources.isEmpty()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No recent resource reading",
+                fontFamily = DashboardPoppins,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                color = FarmMuted,
+                textAlign = TextAlign.Center
+            )
+        }
+        return
+    }
+
+    Row(
+        modifier = Modifier
+            .weight(1f)
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        resources.forEach { resource ->
+            ResourceBlock(
+                data = resource,
+                modifier = Modifier.width(118.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RowScope.ResourceGroupedRow(
+    resources: List<ResourceData>
+) {
+    val feeders = resources.filter {
+        val label = it.label.trim().lowercase()
+        label.contains("feed") || label.contains("feeder")
+    }
+
+    val drinkers = resources.filter {
+        val label = it.label.trim().lowercase()
+        label.contains("water") || label.contains("drinker")
+    }
+
+    Row(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ResourceSwipePager(
+            title = "Feeder",
+            items = feeders,
+            emptyColor = Color(0xFFC88A3D),
+            modifier = Modifier.weight(1f)
+        )
+
+        DividerLine()
+
+        ResourceSwipePager(
+            title = "Drinker",
+            items = drinkers,
+            emptyColor = Color(0xFF3EA7B3),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun ResourceSwipePager(
+    title: String,
+    items: List<ResourceData>,
+    emptyColor: Color,
+    modifier: Modifier = Modifier
+) {
+    if (items.isEmpty()) {
+        ResourceEmptyBlock(
+            title = title,
+            color = emptyColor,
+            modifier = modifier
+        )
+        return
+    }
+
+    val pagerState = rememberPagerState(pageCount = { items.size })
+
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalAlignment = Alignment.CenterVertically
+        ) { page ->
+            ResourceBlock(
+                data = items[page],
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        if (items.size > 1) {
+            ResourceDots(
+                count = items.size,
+                selectedIndex = pagerState.currentPage,
+                activeColor = items[pagerState.currentPage].color
+            )
+        } else {
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+    }
+}
+
+@Composable
+private fun ResourceDots(
+    count: Int,
+    selectedIndex: Int,
+    activeColor: Color
+) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(count) { index ->
+            val selected = index == selectedIndex
+
+            Box(
+                modifier = Modifier
+                    .width(if (selected) 18.dp else 6.dp)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(
+                        if (selected) {
+                            activeColor.copy(alpha = 0.82f)
+                        } else {
+                            FarmLine.copy(alpha = 0.85f)
+                        }
+                    )
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResourceEmptyBlock(
+    title: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .fillMaxHeight()
+            .padding(horizontal = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .width(66.dp)
+                .height(106.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(Color(0xFFEFF3EC))
+                .border(1.dp, Color(0xFFDDE5D9), RoundedCornerShape(20.dp)),
+            contentAlignment = Alignment.BottomCenter
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.70f)
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(color.copy(alpha = 0.35f))
+            )
+        }
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        Text(
+            text = title,
+            fontFamily = DashboardPoppins,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.ExtraBold,
+            color = FarmInk
+        )
+
+        Spacer(modifier = Modifier.height(3.dp))
+
+        Text(
+            text = "No reading",
+            fontFamily = DashboardPoppins,
+            fontWeight = FontWeight.Medium,
+            fontSize = 10.sp,
+            color = FarmMuted,
+            textAlign = TextAlign.Center,
+            lineHeight = 11.sp
+        )
+    }
+}
+
+@Composable
 private fun MonitoringCard(
     title: String,
     icon: ImageVector,
     filterState: SensorFilterState,
     modifier: Modifier = Modifier,
     cardHeight: Dp,
+    isRefreshing: Boolean,
+    onRefreshClick: () -> Unit,
     onFilterChange: (SensorFilterOption) -> Unit,
     content: @Composable RowScope.() -> Unit
 ) {
@@ -824,10 +1082,16 @@ private fun MonitoringCard(
 
             Text(
                 text = title,
+                modifier = Modifier.weight(1f),
                 fontFamily = DashboardPoppins,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = FarmInk
+            )
+
+            SmallRefreshButton(
+                isRefreshing = isRefreshing,
+                onClick = onRefreshClick
             )
         }
 
@@ -846,6 +1110,36 @@ private fun MonitoringCard(
             verticalAlignment = Alignment.CenterVertically,
             content = content
         )
+    }
+}
+
+@Composable
+private fun SmallRefreshButton(
+    isRefreshing: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .size(34.dp)
+            .clip(CircleShape)
+            .background(FarmSurface)
+            .clickable(enabled = !isRefreshing) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (isRefreshing) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(15.dp),
+                strokeWidth = 2.dp,
+                color = FarmGreen
+            )
+        } else {
+            Icon(
+                imageVector = Icons.Outlined.Refresh,
+                contentDescription = "Refresh",
+                tint = FarmMuted.copy(alpha = 0.72f),
+                modifier = Modifier.size(16.dp)
+            )
+        }
     }
 }
 
@@ -1024,18 +1318,6 @@ private fun GaugeBlock(
             textAlign = TextAlign.Center,
             color = FarmInk
         )
-
-        Spacer(modifier = Modifier.height(4.dp))
-
-        Text(
-            text = data.recordedAt ?: "No recent reading",
-            fontFamily = DashboardPoppins,
-            fontWeight = FontWeight.Medium,
-            fontSize = 10.sp,
-            color = FarmMuted,
-            textAlign = TextAlign.Center,
-            lineHeight = 11.sp
-        )
     }
 }
 
@@ -1080,7 +1362,9 @@ private fun ResourceBlock(
             fontFamily = DashboardPoppins,
             fontSize = 13.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = FarmInk
+            color = FarmInk,
+            textAlign = TextAlign.Center,
+            lineHeight = 15.sp
         )
 
         Spacer(modifier = Modifier.height(3.dp))
@@ -1090,19 +1374,8 @@ private fun ResourceBlock(
             fontFamily = DashboardPoppins,
             fontSize = 16.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = data.color
-        )
-
-        Spacer(modifier = Modifier.height(3.dp))
-
-        Text(
-            text = data.recordedAt ?: "No recent reading",
-            fontFamily = DashboardPoppins,
-            fontWeight = FontWeight.Medium,
-            fontSize = 10.sp,
-            color = FarmMuted,
-            textAlign = TextAlign.Center,
-            lineHeight = 11.sp
+            color = data.color,
+            textAlign = TextAlign.Center
         )
     }
 }

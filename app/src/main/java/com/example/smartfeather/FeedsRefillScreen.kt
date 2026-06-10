@@ -170,7 +170,7 @@ fun FeedsRefillScreen(
     var requiredDialogMessage by remember { mutableStateOf("") }
     var showSuccessDialog by remember { mutableStateOf(false) }
 
-    val feederOptions = remember { feedsService.feederOptions() }
+    val feederOptions = selectedPen?.feederOptions ?: emptyList()
 
     fun showRequired(message: String) {
         requiredDialogMessage = message
@@ -372,6 +372,8 @@ fun FeedsRefillScreen(
                                         onValueSelected = { selectedValue ->
                                             pen = selectedValue
                                             selectedPen = pens.firstOrNull { it.penName == selectedValue }
+                                            feederNumber = ""
+                                            feederExpanded = false
                                             penExpanded = false
                                             errorMessage = null
                                         }
@@ -419,10 +421,12 @@ fun FeedsRefillScreen(
                             Spacer(modifier = Modifier.height(8.dp))
                             FeedsDropdownField(
                                 value = feederNumber,
-                                placeholder = "Select feeder",
+                                placeholder = if (selectedPen == null) "Select pen first" else "Select feeder",
                                 options = feederOptions,
                                 expanded = feederExpanded,
-                                onExpandedChange = { feederExpanded = it },
+                                onExpandedChange = {
+                                    feederExpanded = it && selectedPen != null && feederOptions.isNotEmpty()
+                                },
                                 onValueSelected = { selectedValue ->
                                     feederNumber = selectedValue
                                     feederExpanded = false

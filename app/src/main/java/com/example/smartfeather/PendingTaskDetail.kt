@@ -177,7 +177,11 @@ fun PendingTaskDetailScreen(
     val isWeightTask = remember(task.title) { isWeightMonitoringTask(task.title) }
     val isFeedTask = remember(task.title) { isFeedReplenishmentTask(task.title) }
     val isVitaminTask = remember(task.title) { isVitaminsSupplementationTask(task.title) }
-    val feederOptions = remember { feedsService.feederOptions() }
+    var feedPens by remember(task.id) { mutableStateOf<List<FeedPenOption>>(emptyList()) }
+
+    val feederOptions = remember(feedPens, task.penNumber) {
+        feedPens.firstOrNull { it.id == task.penNumber?.toLong() }?.feederOptions ?: emptyList()
+    }
     val isPenDisinfectionTaskType = remember(task.title) {
         isPendingPenDisinfectionTaskType(task.title)
     }
@@ -262,6 +266,17 @@ fun PendingTaskDetailScreen(
                     showModal(
                         title = "Feed Inventory Error",
                         message = it.message ?: "Failed to load active feed options."
+                    )
+                }
+
+            feedsService.getFeedsContext(employeeId)
+                .onSuccess { context ->
+                    feedPens = context.pens
+                }
+                .onFailure {
+                    showModal(
+                        title = "Feeder Options Error",
+                        message = it.message ?: "Failed to load feeder options."
                     )
                 }
         }
@@ -498,8 +513,8 @@ fun PendingTaskDetailScreen(
                                     feedType = option.itemName
                                     feedExpanded = false
                                 },
-                                onFeederSelected = { value ->
-                                    feederNumber = value
+                                onFeederSelected = { selected ->
+                                    feederNumber = selected
                                     feederExpanded = false
                                 },
                                 onKilogramsChange = { value ->

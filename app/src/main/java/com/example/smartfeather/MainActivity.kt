@@ -124,12 +124,64 @@ fun SmartFeatherApp() {
 
     var dashboardUiState by remember { mutableStateOf(emptyDashboardState()) }
     var isDashboardLoading by remember { mutableStateOf(false) }
+    var isDashboardRefreshing by remember { mutableStateOf(false) }
+    var isEnvironmentRefreshing by remember { mutableStateOf(false) }
+    var isResourceRefreshing by remember { mutableStateOf(false) }
     var hasLoadedDashboard by remember { mutableStateOf(false) }
 
     var selectedEnvironmentHouseId by remember { mutableStateOf<Int?>(null) }
     var selectedEnvironmentPenId by remember { mutableStateOf<Int?>(null) }
     var selectedResourceHouseId by remember { mutableStateOf<Int?>(null) }
     var selectedResourcePenId by remember { mutableStateOf<Int?>(null) }
+
+    fun refreshDashboard(
+        showFullSkeleton: Boolean = false,
+        showPullRefresh: Boolean = false,
+        showEnvironmentRefresh: Boolean = false,
+        showResourceRefresh: Boolean = false
+    ) {
+        val employeeId = loggedInEmployeeId ?: return
+
+        coroutineScope.launch {
+            if (showFullSkeleton && !hasLoadedDashboard) {
+                isDashboardLoading = true
+            }
+
+            if (showPullRefresh) {
+                isDashboardRefreshing = true
+            }
+
+            if (showEnvironmentRefresh) {
+                isEnvironmentRefreshing = true
+            }
+
+            if (showResourceRefresh) {
+                isResourceRefreshing = true
+            }
+
+            dashboardService.getDashboard(
+                employeeId = employeeId,
+                environmentHouseId = selectedEnvironmentHouseId,
+                environmentPenId = selectedEnvironmentPenId,
+                resourceHouseId = selectedResourceHouseId,
+                resourcePenId = selectedResourcePenId
+            ).onSuccess { state ->
+                dashboardUiState = state
+
+                selectedEnvironmentHouseId = state.environmentFilter.selectedHouseId
+                selectedEnvironmentPenId = state.environmentFilter.selectedPenId
+                selectedResourceHouseId = state.resourceFilter.selectedHouseId
+                selectedResourcePenId = state.resourceFilter.selectedPenId
+
+                hasLoadedDashboard = true
+            }
+
+            isDashboardLoading = false
+            isDashboardRefreshing = false
+            isEnvironmentRefreshing = false
+            isResourceRefreshing = false
+        }
+    }
 
     fun openCompletedTaskDetail(
         task: TaskItem,
@@ -216,27 +268,10 @@ fun SmartFeatherApp() {
 
         if (currentScreen == AppScreen.DASHBOARD && employeeId != null) {
             if (!hasLoadedDashboard) {
-                isDashboardLoading = true
+                refreshDashboard(showFullSkeleton = true)
+            } else {
+                refreshDashboard()
             }
-
-            dashboardService.getDashboard(
-                employeeId = employeeId,
-                environmentHouseId = selectedEnvironmentHouseId,
-                environmentPenId = selectedEnvironmentPenId,
-                resourceHouseId = selectedResourceHouseId,
-                resourcePenId = selectedResourcePenId
-            ).onSuccess { state ->
-                dashboardUiState = state
-
-                selectedEnvironmentHouseId = state.environmentFilter.selectedHouseId
-                selectedEnvironmentPenId = state.environmentFilter.selectedPenId
-                selectedResourceHouseId = state.resourceFilter.selectedHouseId
-                selectedResourcePenId = state.resourceFilter.selectedPenId
-
-                hasLoadedDashboard = true
-            }
-
-            isDashboardLoading = false
         }
     }
 
@@ -403,6 +438,18 @@ fun SmartFeatherApp() {
             },
             uiState = dashboardUiState,
             isLoading = isDashboardLoading,
+            isRefreshing = isDashboardRefreshing,
+            isEnvironmentRefreshing = isEnvironmentRefreshing,
+            isResourceRefreshing = isResourceRefreshing,
+            onRefresh = {
+                refreshDashboard(showPullRefresh = true)
+            },
+            onEnvironmentRefresh = {
+                refreshDashboard(showEnvironmentRefresh = true)
+            },
+            onResourceRefresh = {
+                refreshDashboard(showResourceRefresh = true)
+            },
             onEnvironmentFilterChange = { option: SensorFilterOption ->
                 selectedEnvironmentHouseId = option.houseId
                 selectedEnvironmentPenId = option.penId
@@ -753,6 +800,9 @@ fun SmartFeatherApp() {
                 biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
                 dashboardUiState = emptyDashboardState()
                 isDashboardLoading = false
+                isDashboardRefreshing = false
+                isEnvironmentRefreshing = false
+                isResourceRefreshing = false
                 hasLoadedDashboard = false
                 selectedEnvironmentHouseId = null
                 selectedEnvironmentPenId = null
