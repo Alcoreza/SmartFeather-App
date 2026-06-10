@@ -134,13 +134,21 @@ fun SmartFeatherApp() {
     var selectedResourceHouseId by remember { mutableStateOf<Int?>(null) }
     var selectedResourcePenId by remember { mutableStateOf<Int?>(null) }
 
+    var dashboardRequestId by remember { mutableStateOf(0) }
+
     fun refreshDashboard(
+        environmentHouseId: Int? = selectedEnvironmentHouseId,
+        environmentPenId: Int? = selectedEnvironmentPenId,
+        resourceHouseId: Int? = selectedResourceHouseId,
+        resourcePenId: Int? = selectedResourcePenId,
         showFullSkeleton: Boolean = false,
         showPullRefresh: Boolean = false,
         showEnvironmentRefresh: Boolean = false,
         showResourceRefresh: Boolean = false
     ) {
         val employeeId = loggedInEmployeeId ?: return
+        val requestId = dashboardRequestId + 1
+        dashboardRequestId = requestId
 
         coroutineScope.launch {
             if (showFullSkeleton && !hasLoadedDashboard) {
@@ -161,11 +169,15 @@ fun SmartFeatherApp() {
 
             dashboardService.getDashboard(
                 employeeId = employeeId,
-                environmentHouseId = selectedEnvironmentHouseId,
-                environmentPenId = selectedEnvironmentPenId,
-                resourceHouseId = selectedResourceHouseId,
-                resourcePenId = selectedResourcePenId
+                environmentHouseId = environmentHouseId,
+                environmentPenId = environmentPenId,
+                resourceHouseId = resourceHouseId,
+                resourcePenId = resourcePenId
             ).onSuccess { state ->
+                if (requestId != dashboardRequestId) {
+                    return@launch
+                }
+
                 dashboardUiState = state
 
                 selectedEnvironmentHouseId = state.environmentFilter.selectedHouseId
@@ -176,10 +188,12 @@ fun SmartFeatherApp() {
                 hasLoadedDashboard = true
             }
 
-            isDashboardLoading = false
-            isDashboardRefreshing = false
-            isEnvironmentRefreshing = false
-            isResourceRefreshing = false
+            if (requestId == dashboardRequestId) {
+                isDashboardLoading = false
+                isDashboardRefreshing = false
+                isEnvironmentRefreshing = false
+                isResourceRefreshing = false
+            }
         }
     }
 
@@ -256,22 +270,11 @@ fun SmartFeatherApp() {
         }
     }
 
-    LaunchedEffect(
-        currentScreen,
-        loggedInEmployeeId,
-        selectedEnvironmentHouseId,
-        selectedEnvironmentPenId,
-        selectedResourceHouseId,
-        selectedResourcePenId
-    ) {
+    LaunchedEffect(currentScreen, loggedInEmployeeId) {
         val employeeId = loggedInEmployeeId
 
-        if (currentScreen == AppScreen.DASHBOARD && employeeId != null) {
-            if (!hasLoadedDashboard) {
-                refreshDashboard(showFullSkeleton = true)
-            } else {
-                refreshDashboard()
-            }
+        if (currentScreen == AppScreen.DASHBOARD && employeeId != null && !hasLoadedDashboard) {
+            refreshDashboard(showFullSkeleton = true)
         }
     }
 
@@ -460,6 +463,12 @@ fun SmartFeatherApp() {
                         selectedPenId = option.penId
                     )
                 )
+
+                refreshDashboard(
+                    environmentHouseId = option.houseId,
+                    environmentPenId = option.penId,
+                    showEnvironmentRefresh = true
+                )
             },
             onResourceFilterChange = { option: SensorFilterOption ->
                 selectedResourceHouseId = option.houseId
@@ -470,6 +479,12 @@ fun SmartFeatherApp() {
                         selectedHouseId = option.houseId,
                         selectedPenId = option.penId
                     )
+                )
+
+                refreshDashboard(
+                    resourceHouseId = option.houseId,
+                    resourcePenId = option.penId,
+                    showResourceRefresh = true
                 )
             }
         )
@@ -804,6 +819,7 @@ fun SmartFeatherApp() {
                 isEnvironmentRefreshing = false
                 isResourceRefreshing = false
                 hasLoadedDashboard = false
+                dashboardRequestId = 0
                 selectedEnvironmentHouseId = null
                 selectedEnvironmentPenId = null
                 selectedResourceHouseId = null
