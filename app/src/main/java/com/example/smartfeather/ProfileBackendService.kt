@@ -23,6 +23,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 import io.ktor.client.request.header
 import io.ktor.http.HttpHeaders
+import io.ktor.client.statement.bodyAsText
 
 @Serializable
 data class MobileProfileResponse(
@@ -99,7 +100,7 @@ class ProfileBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/profile") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -133,7 +134,7 @@ class ProfileBackendService(
                             )
                         )
                     )
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 

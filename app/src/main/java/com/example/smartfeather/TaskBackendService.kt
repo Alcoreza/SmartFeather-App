@@ -28,6 +28,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 import java.util.Locale
+import io.ktor.client.statement.bodyAsText
 
 @Serializable
 data class FlockmanTasksRequest(
@@ -267,7 +268,7 @@ class TaskBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -321,7 +322,7 @@ class TaskBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(SubmittedTaskDetailRequest(taskId = taskId)))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -355,7 +356,7 @@ class TaskBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -402,7 +403,7 @@ class TaskBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -443,7 +444,7 @@ class TaskBackendService(
                     )
                 )
             )
-        }.bodyAsText()
+        }.mobileBodyAsText()
 
         val signedUrlParsed = json.parseToJsonElement(signedUrlResponseText)
 

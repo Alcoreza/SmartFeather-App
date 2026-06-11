@@ -103,7 +103,7 @@ class VitaminsRefillBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/context") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -141,7 +141,7 @@ class VitaminsRefillBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/options") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 

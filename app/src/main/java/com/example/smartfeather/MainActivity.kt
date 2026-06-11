@@ -44,18 +44,10 @@ enum class AppScreen {
     LOGIN,
     DASHBOARD,
     TASKS,
-    FARM_MANAGEMENT,
     TASK_DETAIL,
     COMPLETED_TASK_DETAIL,
-    POPULATION,
-    WEIGHT,
-    FEEDS_REFILL,
-    VITAMINS_REFILL,
-    BIOSECURITY,
-    DISINFECTION,
     PERSONNEL_LOGS,
     VISITOR,
-    NEW_BIRD_BATCH,
     PROFILE,
 }
 
@@ -139,6 +131,8 @@ fun SmartFeatherApp() {
 
     var mobileAccessToken by remember { mutableStateOf<String?>(null) }
 
+    var showSessionExpiredDialog by remember { mutableStateOf(false) }
+
     fun refreshDashboard(
         environmentHouseId: Int? = selectedEnvironmentHouseId,
         environmentPenId: Int? = selectedEnvironmentPenId,
@@ -198,6 +192,32 @@ fun SmartFeatherApp() {
                 isResourceRefreshing = false
             }
         }
+    }
+
+    fun clearMobileSession() {
+        loggedInEmployeeId = null
+        selectedPendingTask = null
+        selectedCompletedTask = null
+        pendingTaskWaitingForBiosecurity = null
+        showBiosecurityRequiredDialog = false
+        isCheckingTaskAccess = false
+        isLoadingSubmittedTaskDetail = false
+        biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
+        dashboardUiState = emptyDashboardState()
+        isDashboardLoading = false
+        isDashboardRefreshing = false
+        isEnvironmentRefreshing = false
+        isResourceRefreshing = false
+        hasLoadedDashboard = false
+        dashboardRequestId = 0
+        selectedEnvironmentHouseId = null
+        selectedEnvironmentPenId = null
+        selectedResourceHouseId = null
+        selectedResourcePenId = null
+        mobileAccessToken = null
+        authService.clearSession()
+        TaskBackendService.clearTaskCache()
+        currentScreen = AppScreen.LOGIN
     }
 
     fun openCompletedTaskDetail(
@@ -423,6 +443,46 @@ fun SmartFeatherApp() {
         )
     }
 
+    if (showSessionExpiredDialog) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = Color(0xFFFFFCF7),
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Session Expired",
+                    fontFamily = MainManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFF121A14)
+                )
+            },
+            text = {
+                Text(
+                    text = "Please log in again to continue.",
+                    fontFamily = MainManrope,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF677168),
+                    lineHeight = 21.sp
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showSessionExpiredDialog = false
+                        clearMobileSession()
+                    }
+                ) {
+                    Text(
+                        text = "Log In",
+                        fontFamily = MainManrope,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF1F7A3A)
+                    )
+                }
+            }
+        )
+    }
+
     when (currentScreen) {
         AppScreen.LOGIN -> LoginScreen(
             onLoginClick = { username, password ->
@@ -543,9 +603,13 @@ fun SmartFeatherApp() {
                         pendingTaskWaitingForBiosecurity = null
                         currentScreen = AppScreen.TASK_DETAIL
                     }.onFailure {
-                        biosecurityRequiredMessage = it.message
-                            ?: "Complete the biosecurity log first before opening this task."
-                        showBiosecurityRequiredDialog = true
+                        if (it.isMobileSessionExpired()) {
+                            showSessionExpiredDialog = true
+                        } else {
+                            biosecurityRequiredMessage = it.message
+                                ?: "Complete the biosecurity log first before opening this task."
+                            showBiosecurityRequiredDialog = true
+                        }
                     }
 
                     isCheckingTaskAccess = false
@@ -569,6 +633,10 @@ fun SmartFeatherApp() {
                         accessToken = mobileAccessToken.orEmpty(),
                         taskId = task.id
                     ).getOrElse {
+                        if (it.isMobileSessionExpired()) {
+                            showSessionExpiredDialog = true
+                        }
+
                         task.submittedFields
                     }
 
@@ -626,6 +694,10 @@ fun SmartFeatherApp() {
 
                         result.onSuccess {
                             TaskBackendService.clearTaskCache(employeeId)
+                        }.onFailure {
+                            if (it.isMobileSessionExpired()) {
+                                showSessionExpiredDialog = true
+                            }
                         }.map { Unit }
                     }
                 )
@@ -643,110 +715,6 @@ fun SmartFeatherApp() {
                 )
             }
         }
-
-        AppScreen.POPULATION -> PopulationScreen(
-            employeeId = loggedInEmployeeId ?: 0,
-            onBackToFarm = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
-            },
-            onNavigateToDashboard = {
-                currentScreen = AppScreen.DASHBOARD
-            },
-            onNavigateToTasks = {
-                currentScreen = AppScreen.TASKS
-            },
-            onGoToBiosecurity = {
-                currentScreen = AppScreen.PERSONNEL_LOGS
-            }
-        )
-
-        AppScreen.WEIGHT -> WeightScreen(
-            employeeId = loggedInEmployeeId ?: 0,
-            onBackToFarm = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
-            },
-            onNavigateToDashboard = {
-                currentScreen = AppScreen.DASHBOARD
-            },
-            onNavigateToTasks = {
-                currentScreen = AppScreen.TASKS
-            },
-            onNavigateToProfile = {
-                currentScreen = AppScreen.PROFILE
-            },
-            onGoToBiosecurity = {
-                currentScreen = AppScreen.PERSONNEL_LOGS
-            }
-        )
-
-        AppScreen.FEEDS_REFILL -> FeedsRefillScreen(
-            employeeId = loggedInEmployeeId ?: 0,
-            onBackToFarm = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
-            },
-            onNavigateToDashboard = {
-                currentScreen = AppScreen.DASHBOARD
-            },
-            onNavigateToTasks = {
-                currentScreen = AppScreen.TASKS
-            },
-            onGoToBiosecurity = {
-                currentScreen = AppScreen.PERSONNEL_LOGS
-            }
-        )
-
-        AppScreen.VITAMINS_REFILL -> VitaminsRefillScreen(
-            employeeId = loggedInEmployeeId ?: 0,
-            onBackToFarm = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
-            },
-            onNavigateToDashboard = {
-                currentScreen = AppScreen.DASHBOARD
-            },
-            onNavigateToTasks = {
-                currentScreen = AppScreen.TASKS
-            },
-            onGoToBiosecurity = {
-                currentScreen = AppScreen.PERSONNEL_LOGS
-            }
-        )
-
-        AppScreen.BIOSECURITY -> BiosecurityScreen(
-            onBackToFarm = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
-            },
-            onNavigateToDashboard = {
-                currentScreen = AppScreen.DASHBOARD
-            },
-            onNavigateToTasks = {
-                currentScreen = AppScreen.TASKS
-            },
-            onDisinfectionClick = {
-                currentScreen = AppScreen.DISINFECTION
-            },
-            onPersonnelLogsClick = {
-                currentScreen = AppScreen.PERSONNEL_LOGS
-            },
-            onVisitorClick = {
-                currentScreen = AppScreen.VISITOR
-            }
-        )
-
-        AppScreen.DISINFECTION -> DisinfectionScreen(
-            employeeId = loggedInEmployeeId ?: 0,
-            onBackToBiosecurity = {
-                currentScreen = AppScreen.BIOSECURITY
-            },
-            onNavigateToDashboard = {
-                currentScreen = AppScreen.DASHBOARD
-            },
-            onNavigateToTasks = {
-                currentScreen = AppScreen.TASKS
-            },
-            onGoToBiosecurity = {
-                currentScreen = AppScreen.PERSONNEL_LOGS
-            }
-        )
 
         AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
             employeeId = loggedInEmployeeId ?: 0,
@@ -791,22 +759,6 @@ fun SmartFeatherApp() {
             }
         )
 
-        AppScreen.NEW_BIRD_BATCH -> NewBirdBatchScreen(
-            employeeId = loggedInEmployeeId ?: 0,
-            onBackToFarm = {
-                currentScreen = AppScreen.FARM_MANAGEMENT
-            },
-            onNavigateToDashboard = {
-                currentScreen = AppScreen.DASHBOARD
-            },
-            onNavigateToTasks = {
-                currentScreen = AppScreen.TASKS
-            },
-            onGoToBiosecurity = {
-                currentScreen = AppScreen.PERSONNEL_LOGS
-            }
-        )
-
         AppScreen.PROFILE -> ProfileScreen(
             employeeId = loggedInEmployeeId ?: 0,
             accessToken = mobileAccessToken.orEmpty(),
@@ -817,59 +769,7 @@ fun SmartFeatherApp() {
                 currentScreen = AppScreen.TASKS
             },
             onLogout = {
-                loggedInEmployeeId = null
-                selectedPendingTask = null
-                selectedCompletedTask = null
-                pendingTaskWaitingForBiosecurity = null
-                showBiosecurityRequiredDialog = false
-                isCheckingTaskAccess = false
-                isLoadingSubmittedTaskDetail = false
-                biosecurityRequiredMessage = "Complete the biosecurity log first before opening this task."
-                dashboardUiState = emptyDashboardState()
-                isDashboardLoading = false
-                isDashboardRefreshing = false
-                isEnvironmentRefreshing = false
-                isResourceRefreshing = false
-                hasLoadedDashboard = false
-                dashboardRequestId = 0
-                selectedEnvironmentHouseId = null
-                selectedEnvironmentPenId = null
-                selectedResourceHouseId = null
-                selectedResourcePenId = null
-                mobileAccessToken = null
-                authService.clearSession()
-                TaskBackendService.clearTaskCache()
-                currentScreen = AppScreen.LOGIN
-            }
-        )
-
-        AppScreen.FARM_MANAGEMENT -> FarmManagementScreen(
-            onNavigateToDashboard = {
-                currentScreen = AppScreen.DASHBOARD
-            },
-            onNavigateToTasks = {
-                currentScreen = AppScreen.TASKS
-            },
-            onNavigateToProfile = {
-                currentScreen = AppScreen.PROFILE
-            },
-            onPopulationClick = {
-                currentScreen = AppScreen.POPULATION
-            },
-            onWeightClick = {
-                currentScreen = AppScreen.WEIGHT
-            },
-            onFeedsRefillClick = {
-                currentScreen = AppScreen.FEEDS_REFILL
-            },
-            onVitaminsRefillClick = {
-                currentScreen = AppScreen.VITAMINS_REFILL
-            },
-            onBiosecurityClick = {
-                currentScreen = AppScreen.BIOSECURITY
-            },
-            onNewBirdBatchClick = {
-                currentScreen = AppScreen.NEW_BIRD_BATCH
+                clearMobileSession()
             }
         )
     }

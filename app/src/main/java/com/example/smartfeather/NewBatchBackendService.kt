@@ -119,7 +119,7 @@ class NewBatchBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/new-batch/context") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -184,7 +184,7 @@ class NewBatchBackendService(
                         )
                     )
                 )
-            }.bodyAsText()
+            }.mobileBodyAsText()
 
             val parsed: JsonElement = json.parseToJsonElement(responseText)
 

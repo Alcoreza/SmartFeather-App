@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import io.ktor.client.statement.bodyAsText
 
 @Serializable
 data class PersonnelHouseApiRow(
@@ -108,7 +109,7 @@ class PersonnelLogsBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/personnel-logs/context") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -175,7 +176,7 @@ class PersonnelLogsBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 

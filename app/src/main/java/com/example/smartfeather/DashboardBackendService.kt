@@ -166,7 +166,7 @@ class DashboardBackendService(
             val responseText = httpClient.get(url) {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $accessToken")
-            }.bodyAsText()
+            }.mobileBodyAsText()
 
             val parsed = json.parseToJsonElement(responseText)
             if (parsed is JsonObject && parsed["success"] == null) {

@@ -99,7 +99,7 @@ class WeightBackendService(
             val responseText = httpClient.get("$baseUrl/api/mobile/weight-sampling/context") {
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $accessToken")
-            }.bodyAsText()
+            }.mobileBodyAsText()
 
             val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -194,7 +194,7 @@ class WeightBackendService(
                 accept(ContentType.Application.Json)
                 header(HttpHeaders.Authorization, "Bearer $accessToken")
                 setBody(json.encodeToString(request))
-            }.bodyAsText()
+            }.mobileBodyAsText()
 
             val parsed = json.parseToJsonElement(responseText)
 

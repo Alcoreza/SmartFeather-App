@@ -24,6 +24,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import io.ktor.client.statement.bodyAsText
 
 @Serializable
 data class VisitorTimeInRequest(
@@ -173,7 +174,7 @@ class VisitorBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -197,7 +198,7 @@ class VisitorBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/visitor/open") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -243,7 +244,7 @@ class VisitorBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -276,7 +277,7 @@ class VisitorBackendService(
                     )
                 )
             )
-        }.bodyAsText()
+        }.mobileBodyAsText()
 
         val signedUrlParsed = json.parseToJsonElement(signedUrlResponseText)
         if (signedUrlParsed is JsonObject && signedUrlParsed["success"] == null) {

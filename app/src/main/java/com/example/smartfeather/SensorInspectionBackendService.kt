@@ -87,7 +87,7 @@ class SensorInspectionBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 

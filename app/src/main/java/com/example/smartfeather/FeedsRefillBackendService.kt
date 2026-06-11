@@ -121,7 +121,7 @@ class FeedsRefillBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/context") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -163,7 +163,7 @@ class FeedsRefillBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/houses/$houseId/pens/$penId/feeders") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -186,7 +186,7 @@ class FeedsRefillBackendService(
                 val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/feed-options") {
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 
@@ -266,7 +266,7 @@ class FeedsRefillBackendService(
                     accept(ContentType.Application.Json)
                     header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
 

@@ -19,6 +19,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
+import io.ktor.client.statement.bodyAsText
 
 @Serializable
 data class MobileDeviceTokenRequest(
@@ -66,7 +67,7 @@ class MobileDeviceTokenBackendService(
                             )
                         )
                     )
-                }.bodyAsText()
+                }.mobileBodyAsText()
 
                 println("FCM TOKEN SAVE RESPONSE: $responseText")
 
