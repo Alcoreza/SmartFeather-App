@@ -3,10 +3,12 @@ package com.example.smartfeather
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -20,8 +22,6 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 data class MobileDeviceTokenRequest(
-    @SerialName("employee_id")
-    val employeeId: Int,
     @SerialName("fcm_token")
     val fcmToken: String,
     @SerialName("platform")
@@ -48,7 +48,7 @@ class MobileDeviceTokenBackendService(
     }
 
     suspend fun saveDeviceToken(
-        employeeId: Int,
+        accessToken: String,
         fcmToken: String,
         deviceName: String?
     ): Result<Boolean> {
@@ -57,10 +57,10 @@ class MobileDeviceTokenBackendService(
                 val responseText = httpClient.post("$baseUrl/api/mobile/device-token") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(
                         json.encodeToString(
                             MobileDeviceTokenRequest(
-                                employeeId = employeeId,
                                 fcmToken = fcmToken,
                                 deviceName = deviceName
                             )

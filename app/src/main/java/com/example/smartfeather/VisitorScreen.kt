@@ -131,6 +131,7 @@ private enum class VisitorMode {
 @Composable
 fun VisitorScreen(
     employeeId: Int,
+    accessToken: String,
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit,
     onNavigateToProfile: () -> Unit
@@ -241,7 +242,10 @@ fun VisitorScreen(
             selectedPhotoUrl = null
         } else {
             isLoadingOpenVisitors = true
-            visitorService.getOpenVisitors(employeeId)
+            visitorService.getOpenVisitors(
+                employeeId = employeeId,
+                accessToken = accessToken
+            )
                 .onSuccess { visitors ->
                     openVisitors = visitors
                     selectedVisitorId = null
@@ -674,6 +678,7 @@ fun VisitorScreen(
                                             visitorService.submitVisitorTimeIn(
                                                 context = context,
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 date = date,
                                                 timeIn = timeIn,
                                                 name = name.trim(),
@@ -725,6 +730,7 @@ fun VisitorScreen(
 
                                             visitorService.submitVisitorTimeOut(
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 visitorLogId = selectedVisitorId!!,
                                                 timeOut = timeOut
                                             ).onSuccess { success ->

@@ -4,10 +4,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -43,7 +45,6 @@ data class NewBatchContextResponse(
 
 @Serializable
 data class NewBatchSubmitRequest(
-    @SerialName("employee_id") val employeeId: Int,
     @SerialName("task_id") val taskId: Int? = null,
     @SerialName("batch_code") val batchCode: String,
     @SerialName("house_id") val houseId: Long,
@@ -109,11 +110,15 @@ class NewBatchBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getNewBatchContext(employeeId: Int): Result<NewBatchAccessContext> {
+    suspend fun getNewBatchContext(
+        employeeId: Int,
+        accessToken: String = ""
+    ): Result<NewBatchAccessContext> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/new-batch/context?employee_id=$employeeId") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/new-batch/context") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -152,6 +157,7 @@ class NewBatchBackendService(
 
     suspend fun submitNewBatch(
         employeeId: Int,
+        accessToken: String = "",
         batchCode: String,
         houseId: Long,
         penId: Long,
@@ -164,10 +170,10 @@ class NewBatchBackendService(
             val responseText = httpClient.post("$baseUrl/api/mobile/new-batch") {
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
                 setBody(
                     json.encodeToString(
                         NewBatchSubmitRequest(
-                            employeeId = employeeId,
                             taskId = taskId,
                             batchCode = batchCode,
                             houseId = houseId,
@@ -202,6 +208,7 @@ class NewBatchBackendService(
 
     suspend fun submitChickPlacementTask(
         employeeId: Int,
+        accessToken: String = "",
         taskId: Int,
         batchCode: String,
         houseId: Long,
@@ -217,6 +224,7 @@ class NewBatchBackendService(
 
             val result = submitNewBatch(
                 employeeId = employeeId,
+                accessToken = accessToken,
                 taskId = taskId,
                 batchCode = batchCode,
                 houseId = houseId,

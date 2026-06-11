@@ -44,6 +44,12 @@ data class MobileLoginUser(
 data class MobileLoginResponse(
     @SerialName("message")
     val message: String? = null,
+    @SerialName("access_token")
+    val accessToken: String? = null,
+    @SerialName("token_type")
+    val tokenType: String? = null,
+    @SerialName("expires_in_days")
+    val expiresInDays: Int? = null,
     @SerialName("user")
     val user: MobileLoginUser? = null
 )
@@ -73,6 +79,9 @@ class SupabaseAuthService(
         ignoreUnknownKeys = true
     }
 
+    var currentAccessToken: String? = null
+        private set
+
     suspend fun signInFlockman(username: String, password: String): Result<Int> {
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -96,13 +105,20 @@ class SupabaseAuthService(
 
                 val loginResponse = json.decodeFromJsonElement<MobileLoginResponse>(parsed)
                 val user = loginResponse.user ?: error("Invalid username or password.")
+                val token = loginResponse.accessToken ?: error("Missing mobile access token.")
 
                 if (!user.role.equals("Flockman", ignoreCase = true)) {
                     error("Only Flockman accounts can sign in on mobile.")
                 }
 
+                currentAccessToken = token
+
                 user.employeeId
             }
         }
+    }
+
+    fun clearSession() {
+        currentAccessToken = null
     }
 }

@@ -4,10 +4,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -45,7 +47,6 @@ data class VitaminInventoryApiRow(
 
 @Serializable
 data class VitaminRefillRequest(
-    @SerialName("employee_id") val employeeId: Int,
     @SerialName("task_id") val taskId: Int? = null,
     @SerialName("inventory_id") val inventoryId: Int,
     @SerialName("house_id") val houseId: Long,
@@ -93,11 +94,15 @@ class VitaminsRefillBackendService(
     private val httpClient = HttpClient(Android)
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getVitaminsContext(employeeId: Int): Result<VitaminAccessContext> {
+    suspend fun getVitaminsContext(
+        employeeId: Int,
+        accessToken: String = ""
+    ): Result<VitaminAccessContext> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/context?employee_id=$employeeId") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/context") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -128,11 +133,14 @@ class VitaminsRefillBackendService(
         }
     }
 
-    suspend fun getVitaminInventoryOptions(): Result<List<VitaminInventoryOption>> {
+    suspend fun getVitaminInventoryOptions(
+        accessToken: String = ""
+    ): Result<List<VitaminInventoryOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val responseText = httpClient.get("$baseUrl/api/mobile/vitamin-refill/options") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -156,6 +164,7 @@ class VitaminsRefillBackendService(
 
     suspend fun submitVitaminRefill(
         employeeId: Int,
+        accessToken: String = "",
         inventoryId: Int,
         houseId: Long,
         penId: Long,
@@ -163,8 +172,8 @@ class VitaminsRefillBackendService(
         recordedAt: String
     ): Result<Boolean> {
         return submitVitaminRefillRequest(
-            VitaminRefillRequest(
-                employeeId = employeeId,
+            accessToken = accessToken,
+            requestBody = VitaminRefillRequest(
                 inventoryId = inventoryId,
                 houseId = houseId,
                 penId = penId,
@@ -176,6 +185,7 @@ class VitaminsRefillBackendService(
 
     suspend fun submitVitaminsSupplementationTask(
         employeeId: Int,
+        accessToken: String = "",
         taskId: Int,
         inventoryId: Int,
         houseId: Long,
@@ -184,8 +194,8 @@ class VitaminsRefillBackendService(
         recordedAt: String
     ): Result<Boolean> {
         return submitVitaminRefillRequest(
-            VitaminRefillRequest(
-                employeeId = employeeId,
+            accessToken = accessToken,
+            requestBody = VitaminRefillRequest(
                 taskId = taskId,
                 inventoryId = inventoryId,
                 houseId = houseId,
@@ -197,6 +207,7 @@ class VitaminsRefillBackendService(
     }
 
     private suspend fun submitVitaminRefillRequest(
+        accessToken: String,
         requestBody: VitaminRefillRequest
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
@@ -204,6 +215,7 @@ class VitaminsRefillBackendService(
                 val responseText = httpClient.post("$baseUrl/api/mobile/vitamin-refill") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 

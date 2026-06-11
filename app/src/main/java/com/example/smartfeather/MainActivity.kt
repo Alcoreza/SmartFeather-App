@@ -39,6 +39,7 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.launch
 
+
 enum class AppScreen {
     LOGIN,
     DASHBOARD,
@@ -136,6 +137,8 @@ fun SmartFeatherApp() {
 
     var dashboardRequestId by remember { mutableStateOf(0) }
 
+    var mobileAccessToken by remember { mutableStateOf<String?>(null) }
+
     fun refreshDashboard(
         environmentHouseId: Int? = selectedEnvironmentHouseId,
         environmentPenId: Int? = selectedEnvironmentPenId,
@@ -146,7 +149,7 @@ fun SmartFeatherApp() {
         showEnvironmentRefresh: Boolean = false,
         showResourceRefresh: Boolean = false
     ) {
-        val employeeId = loggedInEmployeeId ?: return
+        val accessToken = mobileAccessToken ?: return
         val requestId = dashboardRequestId + 1
         dashboardRequestId = requestId
 
@@ -168,7 +171,7 @@ fun SmartFeatherApp() {
             }
 
             dashboardService.getDashboard(
-                employeeId = employeeId,
+                accessToken = accessToken,
                 environmentHouseId = environmentHouseId,
                 environmentPenId = environmentPenId,
                 resourceHouseId = resourceHouseId,
@@ -242,7 +245,7 @@ fun SmartFeatherApp() {
         currentScreen = AppScreen.COMPLETED_TASK_DETAIL
     }
 
-    LaunchedEffect(loggedInEmployeeId) {
+    LaunchedEffect(loggedInEmployeeId, mobileAccessToken) {
         val employeeId = loggedInEmployeeId ?: return@LaunchedEffect
 
         if (
@@ -259,8 +262,10 @@ fun SmartFeatherApp() {
             val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}"
 
             coroutineScope.launch {
+                val accessToken = mobileAccessToken ?: return@launch
+
                 deviceTokenService.saveDeviceToken(
-                    employeeId = employeeId,
+                    accessToken = accessToken,
                     fcmToken = token,
                     deviceName = deviceName
                 )
@@ -425,6 +430,7 @@ fun SmartFeatherApp() {
             },
             onLoginSuccess = { employeeId ->
                 loggedInEmployeeId = employeeId
+                mobileAccessToken = authService.currentAccessToken
                 currentScreen = AppScreen.DASHBOARD
             }
         )
@@ -491,6 +497,7 @@ fun SmartFeatherApp() {
 
         AppScreen.TASKS -> TasksScreen(
             employeeId = loggedInEmployeeId ?: 0,
+            accessToken = mobileAccessToken.orEmpty(),
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
             },
@@ -530,8 +537,8 @@ fun SmartFeatherApp() {
                     isCheckingTaskAccess = true
 
                     taskService.checkTaskAccess(
-                        taskId = task.id,
-                        employeeId = employeeId
+                        accessToken = mobileAccessToken.orEmpty(),
+                        taskId = task.id
                     ).onSuccess {
                         pendingTaskWaitingForBiosecurity = null
                         currentScreen = AppScreen.TASK_DETAIL
@@ -559,8 +566,8 @@ fun SmartFeatherApp() {
                     isLoadingSubmittedTaskDetail = true
 
                     val submittedFields = taskService.getSubmittedTaskFields(
-                        taskId = task.id,
-                        employeeId = employeeId
+                        accessToken = mobileAccessToken.orEmpty(),
+                        taskId = task.id
                     ).getOrElse {
                         task.submittedFields
                     }
@@ -579,6 +586,7 @@ fun SmartFeatherApp() {
             selectedPendingTask?.let { task ->
                 PendingTaskDetailScreen(
                     employeeId = loggedInEmployeeId ?: 0,
+                    accessToken = mobileAccessToken.orEmpty(),
                     task = task,
                     onBackClick = {
                         currentScreen = AppScreen.TASKS
@@ -609,8 +617,9 @@ fun SmartFeatherApp() {
 
                         val result = taskService.submitTaskForApproval(
                             context = context,
-                            taskId = taskId,
+                            accessToken = mobileAccessToken.orEmpty(),
                             employeeId = employeeId,
+                            taskId = taskId,
                             notes = notes,
                             photoUri = photoUri
                         )
@@ -741,6 +750,7 @@ fun SmartFeatherApp() {
 
         AppScreen.PERSONNEL_LOGS -> PersonnelLogsScreen(
             employeeId = loggedInEmployeeId ?: 0,
+            accessToken = mobileAccessToken.orEmpty(),
             lockedTaskId = pendingTaskWaitingForBiosecurity?.id,
             lockedHouseId = pendingTaskWaitingForBiosecurity?.houseId,
             lockedPenId = pendingTaskWaitingForBiosecurity?.penNumber,
@@ -769,6 +779,7 @@ fun SmartFeatherApp() {
 
         AppScreen.VISITOR -> VisitorScreen(
             employeeId = loggedInEmployeeId ?: 0,
+            accessToken = mobileAccessToken.orEmpty(),
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
             },
@@ -798,6 +809,7 @@ fun SmartFeatherApp() {
 
         AppScreen.PROFILE -> ProfileScreen(
             employeeId = loggedInEmployeeId ?: 0,
+            accessToken = mobileAccessToken.orEmpty(),
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
             },
@@ -824,6 +836,8 @@ fun SmartFeatherApp() {
                 selectedEnvironmentPenId = null
                 selectedResourceHouseId = null
                 selectedResourcePenId = null
+                mobileAccessToken = null
+                authService.clearSession()
                 TaskBackendService.clearTaskCache()
                 currentScreen = AppScreen.LOGIN
             }

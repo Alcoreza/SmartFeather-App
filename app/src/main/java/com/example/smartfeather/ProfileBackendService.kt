@@ -21,6 +21,8 @@ import kotlinx.serialization.json.decodeFromJsonElement
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 
 @Serializable
 data class MobileProfileResponse(
@@ -88,11 +90,15 @@ class ProfileBackendService(
         ignoreUnknownKeys = true
     }
 
-    suspend fun getFlockmanProfile(employeeId: Int): Result<FlockmanProfileUiState> {
+    suspend fun getFlockmanProfile(
+        employeeId: Int,
+        accessToken: String = ""
+    ): Result<FlockmanProfileUiState> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/profile/$employeeId") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/profile") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -109,14 +115,16 @@ class ProfileBackendService(
 
     suspend fun updateFlockmanProfile(
         employeeId: Int,
+        accessToken: String = "",
         phoneNumber: String,
         address: String
     ): Result<Pair<String, FlockmanProfileUiState>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.put("$baseUrl/api/mobile/profile/$employeeId") {
+                val responseText = httpClient.put("$baseUrl/api/mobile/profile") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(
                         json.encodeToString(
                             UpdateProfileRequest(

@@ -152,6 +152,7 @@ private fun decimalOnly(value: String): String {
 @Composable
 fun PendingTaskDetailScreen(
     employeeId: Int,
+    accessToken: String,
     task: PendingTaskDetailUiState,
     onBackClick: () -> Unit = {},
     onNavigateToDashboard: () -> Unit = {},
@@ -260,7 +261,9 @@ fun PendingTaskDetailScreen(
 
     LaunchedEffect(task.id, isFeedTask) {
         if (isFeedTask) {
-            feedsService.getFeedInventoryOptions()
+            feedsService.getFeedInventoryOptions(
+                accessToken = accessToken
+            )
                 .onSuccess { feedOptions = it }
                 .onFailure {
                     showModal(
@@ -269,7 +272,10 @@ fun PendingTaskDetailScreen(
                     )
                 }
 
-            feedsService.getFeedsContext(employeeId)
+            feedsService.getFeedsContext(
+                employeeId = employeeId,
+                accessToken = accessToken
+            )
                 .onSuccess { context ->
                     feedPens = context.pens
                 }
@@ -284,7 +290,9 @@ fun PendingTaskDetailScreen(
 
     LaunchedEffect(task.id, isVitaminTask) {
         if (isVitaminTask) {
-            vitaminsService.getVitaminInventoryOptions()
+            vitaminsService.getVitaminInventoryOptions(
+                accessToken = accessToken
+            )
                 .onSuccess { vitaminOptions = it }
                 .onFailure {
                     showModal(
@@ -806,7 +814,7 @@ fun PendingTaskDetailScreen(
                                     val formResult = when {
                                         isHatchTask -> {
                                             populationService.submitPopulation(
-                                                employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 houseId = task.houseId?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
                                                 penNumber = null,
@@ -822,6 +830,7 @@ fun PendingTaskDetailScreen(
                                         isWeightTask -> {
                                             weightService.submitWeightSamplingTask(
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 taskId = task.id,
                                                 houseId = task.houseId?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
@@ -838,6 +847,7 @@ fun PendingTaskDetailScreen(
                                         isFeedTask -> {
                                             feedsService.submitFeedReplenishmentTask(
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 taskId = task.id,
                                                 inventoryId = selectedFeed?.id
                                                     ?: return@launch showModal("Feed Required", "Please select the feed type."),
@@ -854,6 +864,7 @@ fun PendingTaskDetailScreen(
                                         isVitaminTask -> {
                                             vitaminsService.submitVitaminsSupplementationTask(
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 taskId = task.id,
                                                 inventoryId = selectedVitamin?.id
                                                     ?: return@launch showModal("Vitamins Required", "Please select the type of vitamins."),
@@ -869,6 +880,7 @@ fun PendingTaskDetailScreen(
                                         isPenDisinfectionTaskType -> {
                                             disinfectionService.submitPenDisinfectionTask(
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 taskId = task.id,
                                                 houseId = task.houseId?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
@@ -883,6 +895,7 @@ fun PendingTaskDetailScreen(
                                         isPenCleaningTaskType -> {
                                             penCleaningService.submitPenCleaningTask(
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 taskId = task.id,
                                                 houseId = task.houseId?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
@@ -896,6 +909,7 @@ fun PendingTaskDetailScreen(
                                         isSensorInspectionTaskType -> {
                                             sensorInspectionService.submitSensorInspectionTask(
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 taskId = task.id,
                                                 houseId = task.houseId?.toLong()
                                                     ?: return@launch showModal("Missing Assignment", "This task is missing its assigned house."),
@@ -909,6 +923,7 @@ fun PendingTaskDetailScreen(
                                         isChickPlacementTaskType -> {
                                             newBatchService.submitChickPlacementTask(
                                                 employeeId = employeeId,
+                                                accessToken = accessToken,
                                                 taskId = task.id,
                                                 batchCode = chickPlacementBatchCode.trim(),
                                                 houseId = task.houseId?.toLong()

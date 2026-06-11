@@ -136,6 +136,7 @@ private val CompletedColor = Color(0xFF3FA65A)
 @Composable
 fun TasksScreen(
     employeeId: Int,
+    accessToken: String,
     onNavigateToDashboard: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onPendingTaskClick: (TaskItem) -> Unit,
@@ -255,6 +256,7 @@ fun TasksScreen(
         completedPage = 1
 
         val pendingResult = taskService.getTasksForFlockman(
+            accessToken = accessToken,
             employeeId = employeeId,
             status = TaskStatus.PENDING,
             page = 1,
@@ -263,6 +265,7 @@ fun TasksScreen(
         )
 
         val forApprovalResult = taskService.getTasksForFlockman(
+            accessToken = accessToken,
             employeeId = employeeId,
             status = TaskStatus.FOR_APPROVAL,
             page = 1,
@@ -271,6 +274,7 @@ fun TasksScreen(
         )
 
         val completedResult = taskService.getTasksForFlockman(
+            accessToken = accessToken,
             employeeId = employeeId,
             status = TaskStatus.COMPLETED,
             page = 1,
@@ -307,6 +311,7 @@ fun TasksScreen(
             }
 
             taskService.getTasksForFlockman(
+                accessToken = accessToken,
                 employeeId = employeeId,
                 status = status,
                 page = nextPage,

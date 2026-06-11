@@ -107,6 +107,7 @@ private val PersonnelBlue = Color(0xFF3F6F88)
 @Composable
 fun PersonnelLogsScreen(
     employeeId: Int,
+    accessToken: String,
     lockedTaskId: Int? = null,
     lockedHouseId: Int? = null,
     lockedPenId: Int? = null,
@@ -162,8 +163,10 @@ fun PersonnelLogsScreen(
             isContextLoading = true
             contentVisible = false
         }
-
-        personnelService.getContext(employeeId)
+        personnelService.getContext(
+            employeeId = employeeId,
+            accessToken = accessToken
+        )
             .onSuccess { context ->
                 date = context.date
                 time = context.time
@@ -226,7 +229,7 @@ fun PersonnelLogsScreen(
         }
     )
 
-    LaunchedEffect(employeeId, lockedHouseId, lockedPenId, lockedTaskId) {
+    LaunchedEffect(employeeId, accessToken, lockedHouseId, lockedPenId, lockedTaskId) {
         loadPersonnelContext(showSkeleton = true)
     }
 
@@ -473,6 +476,7 @@ fun PersonnelLogsScreen(
 
                                         personnelService.submit(
                                             employeeId = employeeId,
+                                            accessToken = accessToken,
                                             personnelEntryLogId = currentEntryLogId,
                                             taskId = lockedTaskId,
                                             houseId = currentHouseId,

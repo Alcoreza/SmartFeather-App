@@ -4,10 +4,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,7 +42,6 @@ data class WeightContextResponse(
 
 @Serializable
 data class WeightSubmitRequest(
-    @SerialName("employee_id") val employeeId: Int,
     @SerialName("house_id") val houseId: Long,
     @SerialName("pen_id") val penId: Long,
     @SerialName("number_of_flocks") val numberOfFlocks: Int,
@@ -90,10 +91,14 @@ class WeightBackendService(
     private val httpClient = HttpClient(Android)
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getWeightContext(employeeId: Int): Result<WeightAccessContext> = withContext(Dispatchers.IO) {
+    suspend fun getWeightContext(
+        employeeId: Int,
+        accessToken: String = ""
+    ): Result<WeightAccessContext> = withContext(Dispatchers.IO) {
         runCatching {
-            val responseText = httpClient.get("$baseUrl/api/mobile/weight-sampling/context?employee_id=$employeeId") {
+            val responseText = httpClient.get("$baseUrl/api/mobile/weight-sampling/context") {
                 accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
             }.bodyAsText()
 
             val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -131,6 +136,7 @@ class WeightBackendService(
 
     suspend fun submitWeightSampling(
         employeeId: Int,
+        accessToken: String = "",
         houseId: Long,
         penId: Long,
         numberOfFlocks: Int,
@@ -140,8 +146,8 @@ class WeightBackendService(
         recordedDate: String,
         recordedTime: String
     ): Result<WeightSubmitResponse> = submitWeightSamplingRequest(
-        WeightSubmitRequest(
-            employeeId = employeeId,
+        accessToken = accessToken,
+        request = WeightSubmitRequest(
             houseId = houseId,
             penId = penId,
             numberOfFlocks = numberOfFlocks,
@@ -155,6 +161,7 @@ class WeightBackendService(
 
     suspend fun submitWeightSamplingTask(
         employeeId: Int,
+        accessToken: String = "",
         taskId: Int,
         houseId: Long,
         penId: Long,
@@ -164,8 +171,8 @@ class WeightBackendService(
         weights: List<Double>,
         recordedAt: String
     ): Result<WeightSubmitResponse> = submitWeightSamplingRequest(
-        WeightSubmitRequest(
-            employeeId = employeeId,
+        accessToken = accessToken,
+        request = WeightSubmitRequest(
             houseId = houseId,
             penId = penId,
             numberOfFlocks = numberOfFlocks,
@@ -178,12 +185,14 @@ class WeightBackendService(
     )
 
     private suspend fun submitWeightSamplingRequest(
+        accessToken: String,
         request: WeightSubmitRequest
     ): Result<WeightSubmitResponse> = withContext(Dispatchers.IO) {
         runCatching {
             val responseText = httpClient.post("$baseUrl/api/mobile/weight-sampling") {
                 contentType(ContentType.Application.Json)
                 accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
                 setBody(json.encodeToString(request))
             }.bodyAsText()
 

@@ -8,10 +8,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -25,8 +27,6 @@ import kotlinx.serialization.json.decodeFromJsonElement
 
 @Serializable
 data class VisitorTimeInRequest(
-    @SerialName("employee_id")
-    val employeeId: Int,
     @SerialName("date")
     val date: String,
     @SerialName("time_in")
@@ -47,8 +47,6 @@ data class VisitorTimeInRequest(
 
 @Serializable
 data class VisitorTimeOutRequest(
-    @SerialName("employee_id")
-    val employeeId: Int,
     @SerialName("visitor_log_id")
     val visitorLogId: Int,
     @SerialName("time_out")
@@ -57,8 +55,6 @@ data class VisitorTimeOutRequest(
 
 @Serializable
 data class CreateVisitorPhotoUploadUrlRequest(
-    @SerialName("employee_id")
-    val employeeId: Int,
     @SerialName("mime_type")
     val mimeType: String
 )
@@ -143,6 +139,7 @@ class VisitorBackendService(
     suspend fun submitVisitorTimeIn(
         context: Context,
         employeeId: Int,
+        accessToken: String = "",
         date: String,
         timeIn: String,
         name: String,
@@ -155,13 +152,12 @@ class VisitorBackendService(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val uploadedPath = if (photoUri != null) {
-                    uploadVisitorPhoto(context, employeeId, photoUri)
+                    uploadVisitorPhoto(context, accessToken, photoUri)
                 } else {
                     null
                 }
 
                 val requestBody = VisitorTimeInRequest(
-                    employeeId = employeeId,
                     date = date,
                     timeIn = timeIn,
                     name = name,
@@ -175,6 +171,7 @@ class VisitorBackendService(
                 val responseText = httpClient.post("$baseUrl/api/mobile/visitor/time-in") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 
@@ -191,11 +188,15 @@ class VisitorBackendService(
         }
     }
 
-    suspend fun getOpenVisitors(employeeId: Int): Result<List<OpenVisitorUiState>> {
+    suspend fun getOpenVisitors(
+        employeeId: Int,
+        accessToken: String = ""
+    ): Result<List<OpenVisitorUiState>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/visitor/open?employee_id=$employeeId") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/visitor/open") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -226,13 +227,13 @@ class VisitorBackendService(
 
     suspend fun submitVisitorTimeOut(
         employeeId: Int,
+        accessToken: String = "",
         visitorLogId: Int,
         timeOut: String
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val requestBody = VisitorTimeOutRequest(
-                    employeeId = employeeId,
                     visitorLogId = visitorLogId,
                     timeOut = timeOut
                 )
@@ -240,6 +241,7 @@ class VisitorBackendService(
                 val responseText = httpClient.post("$baseUrl/api/mobile/visitor/time-out") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 
@@ -258,7 +260,7 @@ class VisitorBackendService(
 
     private suspend fun uploadVisitorPhoto(
         context: Context,
-        employeeId: Int,
+        accessToken: String,
         photoUri: Uri
     ): String {
         val mimeType = context.contentResolver.getType(photoUri) ?: "image/jpeg"
@@ -266,10 +268,10 @@ class VisitorBackendService(
         val signedUrlResponseText = httpClient.post("$baseUrl/api/mobile/visitor/photo-upload-url") {
             contentType(ContentType.Application.Json)
             accept(ContentType.Application.Json)
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
             setBody(
                 json.encodeToString(
                     CreateVisitorPhotoUploadUrlRequest(
-                        employeeId = employeeId,
                         mimeType = mimeType
                     )
                 )

@@ -4,10 +4,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -51,7 +53,6 @@ data class PersonnelLogsContextResponse(
 
 @Serializable
 data class PersonnelLogsSubmitRequest(
-    @SerialName("employee_id") val employeeId: Int,
     @SerialName("personnel_entry_log_id") val personnelEntryLogId: Long,
     @SerialName("task_id") val taskId: Int? = null,
     @SerialName("house_id") val houseId: Long,
@@ -98,11 +99,15 @@ class PersonnelLogsBackendService(
     private val httpClient = HttpClient(Android)
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getContext(employeeId: Int): Result<PersonnelLogsContext> {
+    suspend fun getContext(
+        employeeId: Int,
+        accessToken: String = ""
+    ): Result<PersonnelLogsContext> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/personnel-logs/context?employee_id=$employeeId") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/personnel-logs/context") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -144,6 +149,7 @@ class PersonnelLogsBackendService(
 
     suspend fun submit(
         employeeId: Int,
+        accessToken: String = "",
         personnelEntryLogId: Long,
         taskId: Int? = null,
         houseId: Long,
@@ -155,7 +161,6 @@ class PersonnelLogsBackendService(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val requestBody = PersonnelLogsSubmitRequest(
-                    employeeId = employeeId,
                     personnelEntryLogId = personnelEntryLogId,
                     taskId = taskId,
                     houseId = houseId,
@@ -168,6 +173,7 @@ class PersonnelLogsBackendService(
                 val responseText = httpClient.post("$baseUrl/api/mobile/personnel-logs") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 

@@ -25,6 +25,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import com.composables.icons.lucide.UserRound
+import io.ktor.client.request.header
+import io.ktor.http.HttpHeaders
 
 @Serializable
 data class DashboardStatApiRow(
@@ -147,7 +149,7 @@ class DashboardBackendService(
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun getDashboard(
-        employeeId: Int,
+        accessToken: String,
         environmentHouseId: Int? = null,
         environmentPenId: Int? = null,
         resourceHouseId: Int? = null,
@@ -155,7 +157,6 @@ class DashboardBackendService(
     ): Result<DashboardUiState> = withContext(Dispatchers.IO) {
         runCatching {
             val url = URLBuilder("$baseUrl/api/mobile/dashboard").apply {
-                parameters.append("employee_id", employeeId.toString())
                 environmentHouseId?.let { parameters.append("environment_house_id", it.toString()) }
                 environmentPenId?.let { parameters.append("environment_pen_id", it.toString()) }
                 resourceHouseId?.let { parameters.append("resource_house_id", it.toString()) }
@@ -164,6 +165,7 @@ class DashboardBackendService(
 
             val responseText = httpClient.get(url) {
                 accept(ContentType.Application.Json)
+                header(HttpHeaders.Authorization, "Bearer $accessToken")
             }.bodyAsText()
 
             val parsed = json.parseToJsonElement(responseText)

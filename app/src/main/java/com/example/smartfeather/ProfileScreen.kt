@@ -107,6 +107,7 @@ private val ProfileDanger = Color(0xFFC62828)
 @Composable
 fun ProfileScreen(
     employeeId: Int,
+    accessToken: String,
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit,
     onLogout: () -> Unit
@@ -133,12 +134,15 @@ fun ProfileScreen(
     var confirmDialogMessage by remember { mutableStateOf("") }
     var successDialogMessage by remember { mutableStateOf("") }
 
-    LaunchedEffect(employeeId) {
+    LaunchedEffect(employeeId, accessToken) {
         isLoading = true
         contentVisible = false
         errorMessage = null
 
-        profileService.getFlockmanProfile(employeeId)
+        profileService.getFlockmanProfile(
+            employeeId = employeeId,
+            accessToken = accessToken
+        )
             .onSuccess {
                 profile = it
                 editablePhoneNumber = it.phoneNumber
@@ -195,6 +199,7 @@ fun ProfileScreen(
                             isSaving = true
                             profileService.updateFlockmanProfile(
                                 employeeId = employeeId,
+                                accessToken = accessToken,
                                 phoneNumber = editablePhoneNumber.trim(),
                                 address = editableAddress.trim()
                             ).onSuccess { result ->
@@ -1152,6 +1157,7 @@ private fun ProfileBottomNavItem(
 fun ProfileScreenPreview() {
     ProfileScreen(
         employeeId = 2,
+        accessToken = "",
         onNavigateToDashboard = {},
         onNavigateToTasks = {},
         onLogout = {}

@@ -7,10 +7,12 @@ import io.github.jan.supabase.storage.uploadToSignedUrl
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -29,8 +31,6 @@ import java.util.Locale
 
 @Serializable
 data class FlockmanTasksRequest(
-    @SerialName("employee_id")
-    val employeeId: Int,
     @SerialName("status")
     val status: String,
     @SerialName("page")
@@ -74,9 +74,7 @@ data class FlockmanTasksResponse(
 @Serializable
 data class SubmittedTaskDetailRequest(
     @SerialName("task_id")
-    val taskId: Int,
-    @SerialName("employee_id")
-    val employeeId: Int
+    val taskId: Int
 )
 
 @Serializable
@@ -98,9 +96,7 @@ data class TaskSubmittedFieldApiRow(
 @Serializable
 data class TaskAccessCheckRequest(
     @SerialName("task_id")
-    val taskId: Int,
-    @SerialName("employee_id")
-    val employeeId: Int
+    val taskId: Int
 )
 
 @Serializable
@@ -117,8 +113,6 @@ data class TaskAccessCheckResponse(
 data class CompleteTaskRequest(
     @SerialName("task_id")
     val taskId: Int,
-    @SerialName("employee_id")
-    val employeeId: Int,
     @SerialName("notes")
     val notes: String? = null,
     @SerialName("photo_path")
@@ -129,8 +123,6 @@ data class CompleteTaskRequest(
 data class CreateTaskPhotoUploadUrlRequest(
     @SerialName("task_id")
     val taskId: Int,
-    @SerialName("employee_id")
-    val employeeId: Int,
     @SerialName("mime_type")
     val mimeType: String
 )
@@ -251,6 +243,7 @@ class TaskBackendService(
     }
 
     suspend fun getTasksForFlockman(
+        accessToken: String,
         employeeId: Int,
         status: TaskStatus,
         page: Int = 1,
@@ -264,7 +257,6 @@ class TaskBackendService(
                 }
 
                 val requestBody = FlockmanTasksRequest(
-                    employeeId = employeeId,
                     status = status.toApiStatus(),
                     page = page,
                     perPage = perPage
@@ -273,6 +265,7 @@ class TaskBackendService(
                 val responseText = httpClient.post("$baseUrl/api/mobile/tasks") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 
@@ -297,8 +290,7 @@ class TaskBackendService(
                 val mergedTasks = if (page == 1 || existingCache == null) {
                     pageItems
                 } else {
-                    (existingCache.tasks + pageItems)
-                        .distinctBy { it.id }
+                    (existingCache.tasks + pageItems).distinctBy { it.id }
                 }
 
                 taskCache[key] = CachedTaskPage(
@@ -319,22 +311,16 @@ class TaskBackendService(
     }
 
     suspend fun getSubmittedTaskFields(
-        taskId: Int,
-        employeeId: Int
+        accessToken: String,
+        taskId: Int
     ): Result<List<TaskSubmittedField>> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val responseText = httpClient.post("$baseUrl/api/mobile/tasks/submitted-detail") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
-                    setBody(
-                        json.encodeToString(
-                            SubmittedTaskDetailRequest(
-                                taskId = taskId,
-                                employeeId = employeeId
-                            )
-                        )
-                    )
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
+                    setBody(json.encodeToString(SubmittedTaskDetailRequest(taskId = taskId)))
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -357,19 +343,17 @@ class TaskBackendService(
     }
 
     suspend fun checkTaskAccess(
-        taskId: Int,
-        employeeId: Int
+        accessToken: String,
+        taskId: Int
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val requestBody = TaskAccessCheckRequest(
-                    taskId = taskId,
-                    employeeId = employeeId
-                )
+                val requestBody = TaskAccessCheckRequest(taskId = taskId)
 
                 val responseText = httpClient.post("$baseUrl/api/mobile/tasks/access-check") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 
@@ -393,22 +377,22 @@ class TaskBackendService(
 
     suspend fun submitTaskForApproval(
         context: Context,
-        taskId: Int,
+        accessToken: String,
         employeeId: Int,
+        taskId: Int,
         notes: String,
         photoUri: Uri? = null
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val uploadedPath = if (photoUri != null) {
-                    uploadTaskPhoto(context, taskId, employeeId, photoUri)
+                    uploadTaskPhoto(context, accessToken, taskId, photoUri)
                 } else {
                     null
                 }
 
                 val requestBody = CompleteTaskRequest(
                     taskId = taskId,
-                    employeeId = employeeId,
                     notes = notes.ifBlank { null },
                     photoPath = uploadedPath
                 )
@@ -416,6 +400,7 @@ class TaskBackendService(
                 val responseText = httpClient.post("$baseUrl/api/mobile/tasks/submit") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 
@@ -440,8 +425,8 @@ class TaskBackendService(
 
     private suspend fun uploadTaskPhoto(
         context: Context,
+        accessToken: String,
         taskId: Int,
-        employeeId: Int,
         photoUri: Uri
     ): String {
         val mimeType = context.contentResolver.getType(photoUri) ?: "image/jpeg"
@@ -449,11 +434,11 @@ class TaskBackendService(
         val signedUrlResponseText = httpClient.post("$baseUrl/api/mobile/tasks/photo-upload-url") {
             contentType(ContentType.Application.Json)
             accept(ContentType.Application.Json)
+            header(HttpHeaders.Authorization, "Bearer $accessToken")
             setBody(
                 json.encodeToString(
                     CreateTaskPhotoUploadUrlRequest(
                         taskId = taskId,
-                        employeeId = employeeId,
                         mimeType = mimeType
                     )
                 )
@@ -461,6 +446,7 @@ class TaskBackendService(
         }.bodyAsText()
 
         val signedUrlParsed = json.parseToJsonElement(signedUrlResponseText)
+
         if (signedUrlParsed is JsonObject && signedUrlParsed["success"] == null) {
             val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(signedUrlParsed)
             error(errorResponse.message ?: "Failed to create signed upload URL.")
@@ -482,10 +468,7 @@ class TaskBackendService(
         return path
     }
 
-    private fun cacheKey(
-        employeeId: Int,
-        status: TaskStatus
-    ): String {
+    private fun cacheKey(employeeId: Int, status: TaskStatus): String {
         return "$employeeId|${status.name}"
     }
 
@@ -511,39 +494,20 @@ class TaskBackendService(
             else -> TaskPriority.MID
         }
 
-        val descriptionText =
-            detailedTask?.takeIf { it.isNotBlank() } ?: "No task details provided."
-
         return TaskItem(
             id = taskId,
             title = taskType,
-            description = descriptionText,
+            description = detailedTask?.takeIf { it.isNotBlank() } ?: "No task details provided.",
             houseId = houseId,
             penNumber = penNumber,
             houseLabel = houseNumber ?: "-",
             penLabel = penName ?: "-",
-            assignedLabel = if (!timeAssigned.isNullOrBlank()) {
-                formatTaskTimestamp(timeAssigned)
-            } else {
-                ""
-            },
-            finishByLabel = if (!finishBy.isNullOrBlank()) {
-                "Finish by: ${formatTaskTimestamp(finishBy)}"
-            } else {
-                ""
-            },
-            submittedLabel = if (!submittedAt.isNullOrBlank()) {
-                "Submitted: ${formatTaskTimestamp(submittedAt)}"
-            } else if (!timeCompleted.isNullOrBlank()) {
-                "Submitted: ${formatTaskTimestamp(timeCompleted)}"
-            } else {
-                ""
-            },
-            completedLabel = if (!timeCompleted.isNullOrBlank()) {
-                "Completed: ${formatTaskTimestamp(timeCompleted)}"
-            } else {
-                ""
-            },
+            assignedLabel = timeAssigned?.takeIf { it.isNotBlank() }?.let { formatTaskTimestamp(it) } ?: "",
+            finishByLabel = finishBy?.takeIf { it.isNotBlank() }?.let { "Finish by: ${formatTaskTimestamp(it)}" } ?: "",
+            submittedLabel = submittedAt?.takeIf { it.isNotBlank() }?.let { "Submitted: ${formatTaskTimestamp(it)}" }
+                ?: timeCompleted?.takeIf { it.isNotBlank() }?.let { "Submitted: ${formatTaskTimestamp(it)}" }
+                ?: "",
+            completedLabel = timeCompleted?.takeIf { it.isNotBlank() }?.let { "Completed: ${formatTaskTimestamp(it)}" } ?: "",
             priority = priorityEnum,
             status = statusEnum,
             notes = notes ?: "",

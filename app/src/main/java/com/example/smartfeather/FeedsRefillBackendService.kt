@@ -4,10 +4,12 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -54,7 +56,6 @@ data class FeedInventoryApiRow(
 
 @Serializable
 data class FeedRefillRequest(
-    @SerialName("employee_id") val employeeId: Int,
     @SerialName("task_id") val taskId: Int? = null,
     @SerialName("inventory_id") val inventoryId: Int,
     @SerialName("house_id") val houseId: Long,
@@ -111,11 +112,15 @@ class FeedsRefillBackendService(
     private val httpClient = HttpClient(Android)
     private val json = Json { ignoreUnknownKeys = true }
 
-    suspend fun getFeedsContext(employeeId: Int): Result<FeedAccessContext> {
+    suspend fun getFeedsContext(
+        employeeId: Int,
+        accessToken: String = ""
+    ): Result<FeedAccessContext> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/context?employee_id=$employeeId") {
+                val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/context") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -149,6 +154,7 @@ class FeedsRefillBackendService(
     }
 
     suspend fun getFeederOptions(
+        accessToken: String,
         houseId: Long,
         penId: Long
     ): Result<List<String>> {
@@ -156,6 +162,7 @@ class FeedsRefillBackendService(
             runCatching {
                 val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/houses/$houseId/pens/$penId/feeders") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -171,11 +178,14 @@ class FeedsRefillBackendService(
         }
     }
 
-    suspend fun getFeedInventoryOptions(): Result<List<FeedInventoryOption>> {
+    suspend fun getFeedInventoryOptions(
+        accessToken: String = ""
+    ): Result<List<FeedInventoryOption>> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val responseText = httpClient.get("$baseUrl/api/mobile/feed-refill/feed-options") {
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                 }.bodyAsText()
 
                 val parsed: JsonElement = json.parseToJsonElement(responseText)
@@ -199,6 +209,7 @@ class FeedsRefillBackendService(
 
     suspend fun submitFeedRefill(
         employeeId: Int,
+        accessToken: String = "",
         inventoryId: Int,
         houseId: Long,
         penId: Long,
@@ -207,8 +218,8 @@ class FeedsRefillBackendService(
         recordedAt: String
     ): Result<Boolean> {
         return submitFeedRefillRequest(
-            FeedRefillRequest(
-                employeeId = employeeId,
+            accessToken = accessToken,
+            requestBody = FeedRefillRequest(
                 inventoryId = inventoryId,
                 houseId = houseId,
                 penId = penId,
@@ -221,6 +232,7 @@ class FeedsRefillBackendService(
 
     suspend fun submitFeedReplenishmentTask(
         employeeId: Int,
+        accessToken: String = "",
         taskId: Int,
         inventoryId: Int,
         houseId: Long,
@@ -230,8 +242,8 @@ class FeedsRefillBackendService(
         recordedAt: String
     ): Result<Boolean> {
         return submitFeedRefillRequest(
-            FeedRefillRequest(
-                employeeId = employeeId,
+            accessToken = accessToken,
+            requestBody = FeedRefillRequest(
                 taskId = taskId,
                 inventoryId = inventoryId,
                 houseId = houseId,
@@ -244,6 +256,7 @@ class FeedsRefillBackendService(
     }
 
     private suspend fun submitFeedRefillRequest(
+        accessToken: String,
         requestBody: FeedRefillRequest
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
@@ -251,6 +264,7 @@ class FeedsRefillBackendService(
                 val responseText = httpClient.post("$baseUrl/api/mobile/feed-refill") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
                     setBody(json.encodeToString(requestBody))
                 }.bodyAsText()
 
