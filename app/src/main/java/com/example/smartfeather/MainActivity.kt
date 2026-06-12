@@ -183,6 +183,14 @@ fun SmartFeatherApp() {
                 selectedResourcePenId = state.resourceFilter.selectedPenId
 
                 hasLoadedDashboard = true
+            }.onFailure {
+                if (requestId != dashboardRequestId) {
+                    return@onFailure
+                }
+
+                if (it.isMobileSessionExpired()) {
+                    showSessionExpiredDialog = true
+                }
             }
 
             if (requestId == dashboardRequestId) {
@@ -285,6 +293,7 @@ fun SmartFeatherApp() {
                 val accessToken = mobileAccessToken ?: return@launch
 
                 deviceTokenService.saveDeviceToken(
+                    context = context,
                     accessToken = accessToken,
                     fcmToken = token,
                     deviceName = deviceName
@@ -468,8 +477,8 @@ fun SmartFeatherApp() {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showSessionExpiredDialog = false
                         clearMobileSession()
+                        showSessionExpiredDialog = false
                     }
                 ) {
                     Text(
@@ -486,7 +495,11 @@ fun SmartFeatherApp() {
     when (currentScreen) {
         AppScreen.LOGIN -> LoginScreen(
             onLoginClick = { username, password ->
-                authService.signInFlockman(username = username, password = password)
+                authService.signInFlockman(
+                    context = context,
+                    username = username,
+                    password = password
+                )
             },
             onLoginSuccess = { employeeId ->
                 loggedInEmployeeId = employeeId
@@ -560,6 +573,9 @@ fun SmartFeatherApp() {
             accessToken = mobileAccessToken.orEmpty(),
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
+            },
+            onSessionExpired = {
+                showSessionExpiredDialog = true
             },
             onNavigateToProfile = {
                 currentScreen = AppScreen.PROFILE
@@ -762,6 +778,9 @@ fun SmartFeatherApp() {
         AppScreen.PROFILE -> ProfileScreen(
             employeeId = loggedInEmployeeId ?: 0,
             accessToken = mobileAccessToken.orEmpty(),
+            onSessionExpired = {
+                showSessionExpiredDialog = true
+            },
             onNavigateToDashboard = {
                 currentScreen = AppScreen.DASHBOARD
             },

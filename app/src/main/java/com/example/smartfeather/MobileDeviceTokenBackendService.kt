@@ -1,12 +1,14 @@
 package com.example.smartfeather
 
+import android.content.Context
+import android.os.Build
+import android.provider.Settings
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
@@ -19,7 +21,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
-import io.ktor.client.statement.bodyAsText
 
 @Serializable
 data class MobileDeviceTokenRequest(
@@ -28,7 +29,9 @@ data class MobileDeviceTokenRequest(
     @SerialName("platform")
     val platform: String = "android",
     @SerialName("device_name")
-    val deviceName: String? = null
+    val deviceName: String? = null,
+    @SerialName("device_id")
+    val deviceId: String
 )
 
 @Serializable
@@ -49,12 +52,18 @@ class MobileDeviceTokenBackendService(
     }
 
     suspend fun saveDeviceToken(
+        context: Context,
         accessToken: String,
         fcmToken: String,
         deviceName: String?
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
+                val deviceId = Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.ANDROID_ID
+                ) ?: "android-${Build.MANUFACTURER}-${Build.MODEL}"
+
                 val responseText = httpClient.post("$baseUrl/api/mobile/device-token") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
@@ -63,7 +72,8 @@ class MobileDeviceTokenBackendService(
                         json.encodeToString(
                             MobileDeviceTokenRequest(
                                 fcmToken = fcmToken,
-                                deviceName = deviceName
+                                deviceName = deviceName,
+                                deviceId = deviceId
                             )
                         )
                     )

@@ -110,7 +110,8 @@ fun ProfileScreen(
     accessToken: String,
     onNavigateToDashboard: () -> Unit,
     onNavigateToTasks: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSessionExpired: () -> Unit = {}
 ) {
     val profileService = remember { ProfileBackendService() }
     val coroutineScope = rememberCoroutineScope()
@@ -149,7 +150,11 @@ fun ProfileScreen(
                 editableAddress = it.address
             }
             .onFailure {
-                errorMessage = it.message ?: "Failed to load profile."
+                if (it.isMobileSessionExpired()) {
+                    onSessionExpired()
+                } else {
+                    errorMessage = it.message ?: "Failed to load profile."
+                }
             }
 
         isLoading = false
@@ -210,7 +215,11 @@ fun ProfileScreen(
                                 isEditing = false
                                 showSaveSuccessDialog = true
                             }.onFailure {
-                                errorMessage = it.message ?: "Failed to update profile."
+                                if (it.isMobileSessionExpired()) {
+                                    onSessionExpired()
+                                } else {
+                                    errorMessage = it.message ?: "Failed to update profile."
+                                }
                             }
                             isSaving = false
                         }
@@ -405,11 +414,6 @@ fun ProfileScreen(
                             ProfileSectionPanel {
                                 ProfileSectionHeader(
                                     title = "Personal Information",
-                                    subtitle = if (isEditing) {
-                                        "Identity details are locked while editing contact info."
-                                    } else {
-                                        "Registered flockman details"
-                                    },
                                     accentColor = ProfileGreen
                                 )
 
@@ -474,11 +478,6 @@ fun ProfileScreen(
                             ProfileSectionPanel {
                                 ProfileSectionHeader(
                                     title = "Contact Details",
-                                    subtitle = if (isEditing) {
-                                        "Update verified contact information."
-                                    } else {
-                                        "Phone and address used for farm records"
-                                    },
                                     accentColor = if (isEditing) Color(0xFFD78A2B) else ProfileGreen
                                 )
 
@@ -676,7 +675,6 @@ private fun ProfileSectionPanel(
 @Composable
 private fun ProfileSectionHeader(
     title: String,
-    subtitle: String,
     accentColor: Color
 ) {
     Row(
@@ -685,34 +683,21 @@ private fun ProfileSectionHeader(
     ) {
         Box(
             modifier = Modifier
-                .padding(top = 4.dp)
-                .size(width = 4.dp, height = 38.dp)
+                .padding(top = 2.dp)
+                .size(width = 4.dp, height = 24.dp)
                 .clip(RoundedCornerShape(999.dp))
                 .background(accentColor)
         )
 
         Spacer(modifier = Modifier.size(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontFamily = ProfilePoppins,
-                fontWeight = FontWeight.ExtraBold,
-                fontSize = 18.sp,
-                color = ProfileInk
-            )
-
-            Spacer(modifier = Modifier.height(2.dp))
-
-            Text(
-                text = subtitle,
-                fontFamily = ProfilePoppins,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 12.sp,
-                color = ProfileMuted,
-                lineHeight = 16.sp
-            )
-        }
+        Text(
+            text = title,
+            fontFamily = ProfilePoppins,
+            fontWeight = FontWeight.ExtraBold,
+            fontSize = 18.sp,
+            color = ProfileInk
+        )
     }
 }
 

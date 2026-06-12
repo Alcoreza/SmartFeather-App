@@ -140,7 +140,8 @@ fun TasksScreen(
     onNavigateToDashboard: () -> Unit,
     onNavigateToProfile: () -> Unit,
     onPendingTaskClick: (TaskItem) -> Unit,
-    onCompletedTaskClick: (TaskItem) -> Unit
+    onCompletedTaskClick: (TaskItem) -> Unit,
+    onSessionExpired: () -> Unit = {}
 ) {
     val taskService = remember { TaskBackendService() }
     val coroutineScope = rememberCoroutineScope()
@@ -283,13 +284,31 @@ fun TasksScreen(
         )
 
         pendingResult.onSuccess { applyPageResult(TaskStatus.PENDING, 1, it) }
-            .onFailure { errorMessage = it.message ?: "Unable to load pending tasks." }
+            .onFailure {
+                if (it.isMobileSessionExpired()) {
+                    onSessionExpired()
+                } else {
+                    errorMessage = it.message ?: "Unable to load pending tasks."
+                }
+            }
 
         forApprovalResult.onSuccess { applyPageResult(TaskStatus.FOR_APPROVAL, 1, it) }
-            .onFailure { errorMessage = it.message ?: "Unable to load for approval tasks." }
+            .onFailure {
+                if (it.isMobileSessionExpired()) {
+                    onSessionExpired()
+                } else {
+                    errorMessage = it.message ?: "Unable to load for approval tasks."
+                }
+            }
 
         completedResult.onSuccess { applyPageResult(TaskStatus.COMPLETED, 1, it) }
-            .onFailure { errorMessage = it.message ?: "Unable to load completed tasks." }
+            .onFailure {
+                if (it.isMobileSessionExpired()) {
+                    onSessionExpired()
+                } else {
+                    errorMessage = it.message ?: "Unable to load completed tasks."
+                }
+            }
 
         isLoading = false
         isRefreshing = false
@@ -319,7 +338,11 @@ fun TasksScreen(
             ).onSuccess { result ->
                 applyPageResult(status, nextPage, result)
             }.onFailure { throwable ->
-                errorMessage = throwable.message ?: "Unable to load more tasks."
+                if (throwable.isMobileSessionExpired()) {
+                    onSessionExpired()
+                } else {
+                    errorMessage = throwable.message ?: "Unable to load more tasks."
+                }
             }
 
             when (status) {

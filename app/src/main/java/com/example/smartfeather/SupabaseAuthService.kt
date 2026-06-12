@@ -1,5 +1,8 @@
 package com.example.smartfeather
 
+import android.content.Context
+import android.os.Build
+import android.provider.Settings
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.android.Android
 import io.ktor.client.request.accept
@@ -23,7 +26,13 @@ data class MobileLoginRequest(
     @SerialName("username")
     val username: String,
     @SerialName("password")
-    val password: String
+    val password: String,
+    @SerialName("device_id")
+    val deviceId: String,
+    @SerialName("device_name")
+    val deviceName: String,
+    @SerialName("platform")
+    val platform: String = "android"
 )
 
 @Serializable
@@ -82,12 +91,25 @@ class SupabaseAuthService(
     var currentAccessToken: String? = null
         private set
 
-    suspend fun signInFlockman(username: String, password: String): Result<Int> {
+    suspend fun signInFlockman(
+        context: Context,
+        username: String,
+        password: String
+    ): Result<Int> {
         return withContext(Dispatchers.IO) {
             runCatching {
+                val deviceId = Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.ANDROID_ID
+                ) ?: "android-${Build.MANUFACTURER}-${Build.MODEL}"
+
+                val deviceName = "${Build.MANUFACTURER} ${Build.MODEL}"
+
                 val requestBody = MobileLoginRequest(
                     username = username,
-                    password = password
+                    password = password,
+                    deviceId = deviceId,
+                    deviceName = deviceName
                 )
 
                 val responseText = httpClient.post("$baseUrl/api/mobile/login") {
