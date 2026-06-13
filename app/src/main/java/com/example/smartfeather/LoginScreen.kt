@@ -160,7 +160,6 @@ fun LoginScreen(
         animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
         label = "loginFormPadding"
     )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
