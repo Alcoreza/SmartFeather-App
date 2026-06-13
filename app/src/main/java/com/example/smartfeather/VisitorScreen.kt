@@ -96,6 +96,7 @@ import com.composables.icons.lucide.House
 import com.composables.icons.lucide.LayoutDashboard
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
+import androidx.compose.material3.CircularProgressIndicator
 
 private val VisitorManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -294,6 +295,53 @@ fun VisitorScreen(
             calendar.get(Calendar.MINUTE),
             false
         ).show()
+    }
+
+    if (isLoading) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = VisitorSurface,
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = if (mode == VisitorMode.TIME_IN) {
+                        "Submitting Time In"
+                    } else {
+                        "Submitting Time Out"
+                    },
+                    fontFamily = VisitorManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = VisitorInk
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = if (mode == VisitorMode.TIME_IN) {
+                            "Please wait while the visitor time in is being submitted."
+                        } else {
+                            "Please wait while the visitor time out is being submitted."
+                        },
+                        fontFamily = VisitorManrope,
+                        fontWeight = FontWeight.Medium,
+                        color = VisitorMuted,
+                        lineHeight = 21.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp,
+                        color = VisitorGreen
+                    )
+                }
+            },
+            confirmButton = {}
+        )
     }
 
     if (showDialog) {

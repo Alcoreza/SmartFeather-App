@@ -78,6 +78,7 @@ import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import androidx.compose.material3.CircularProgressIndicator
 
 private val PersonnelManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -231,6 +232,45 @@ fun PersonnelLogsScreen(
 
     LaunchedEffect(employeeId, accessToken, lockedHouseId, lockedPenId, lockedTaskId) {
         loadPersonnelContext(showSkeleton = true)
+    }
+
+    if (isLoading) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = PersonnelSurface,
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Submitting Form",
+                    fontFamily = PersonnelManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = PersonnelInk
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Please wait while your biosecurity form is being submitted.",
+                        fontFamily = PersonnelManrope,
+                        fontWeight = FontWeight.Medium,
+                        color = PersonnelMuted,
+                        lineHeight = 21.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp,
+                        color = PersonnelGreen
+                    )
+                }
+            },
+            confirmButton = {}
+        )
     }
 
     if (showDialog) {

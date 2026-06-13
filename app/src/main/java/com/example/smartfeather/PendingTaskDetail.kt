@@ -91,6 +91,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import java.io.File
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.CircularProgressIndicator
 
 data class PendingTaskDetailUiState(
     val id: Int,
@@ -347,6 +348,45 @@ fun PendingTaskDetailScreen(
                 message = "Please allow camera access to take a proof photo."
             )
         }
+    }
+
+    if (isSubmitting) {
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = DetailSurface,
+            shape = RoundedCornerShape(28.dp),
+            title = {
+                Text(
+                    text = "Submitting Task",
+                    fontFamily = DetailManrope,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = DetailInk
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "Please wait while your task is being submitted.",
+                        fontFamily = DetailManrope,
+                        fontWeight = FontWeight.Medium,
+                        color = DetailMuted,
+                        lineHeight = 21.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(32.dp),
+                        strokeWidth = 3.dp,
+                        color = DetailGreen
+                    )
+                }
+            },
+            confirmButton = {}
+        )
     }
 
     if (showDialog) {

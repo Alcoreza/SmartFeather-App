@@ -382,7 +382,7 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(12.dp))
 
                             SectionTitle(
-                                title = "Access Management",
+                                title = "Visitor Management",
                                 icon = Lucide.ShieldCheck,
                                 isTablet = isTablet
                             )
@@ -1290,8 +1290,14 @@ private fun GaugeBlock(
     data: GaugeData,
     modifier: Modifier = Modifier
 ) {
+    val hasReading = !data.recordedAt.isNullOrBlank()
+
     val animatedProgress by animateFloatAsState(
-        targetValue = gaugeProgress(data.value, data.min, data.max),
+        targetValue = if (hasReading) {
+            gaugeProgress(data.value, data.min, data.max)
+        } else {
+            0f
+        },
         animationSpec = tween(850, easing = FastOutSlowInEasing),
         label = "gaugeProgress"
     )
@@ -1303,9 +1309,9 @@ private fun GaugeBlock(
     ) {
         CircularGauge(
             progress = animatedProgress,
-            color = data.color,
+            color = if (hasReading) data.color else FarmMuted.copy(alpha = 0.45f),
             modifier = Modifier.size(122.dp),
-            centerText = formatValue(data.value, data.unit)
+            centerText = if (hasReading) formatValue(data.value, data.unit) else "--"
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -1318,6 +1324,20 @@ private fun GaugeBlock(
             textAlign = TextAlign.Center,
             color = FarmInk
         )
+
+        if (!hasReading) {
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Text(
+                text = "No reading",
+                fontFamily = DashboardPoppins,
+                fontWeight = FontWeight.Medium,
+                fontSize = 10.sp,
+                color = FarmMuted,
+                textAlign = TextAlign.Center,
+                lineHeight = 11.sp
+            )
+        }
     }
 }
 

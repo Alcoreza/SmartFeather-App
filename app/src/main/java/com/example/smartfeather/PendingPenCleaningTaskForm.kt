@@ -66,7 +66,6 @@ private val PenCleaningGreen = Color(0xFF1F7A3A)
 
 private val PenCleaningMaterialOptions = listOf(
     "Broom",
-    "Dustpan",
     "Scraper",
     "Shovel",
     "Brush",

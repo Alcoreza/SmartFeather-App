@@ -79,6 +79,8 @@ import com.composables.icons.lucide.Lock
 import com.composables.icons.lucide.LogIn
 import com.composables.icons.lucide.User
 import com.composables.icons.lucide.Lucide
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 
 private val LoginPoppins = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -148,7 +150,7 @@ fun LoginScreen(
     )
 
     val brandGap by animateDpAsState(
-        targetValue = if (isKeyboardVisible) 8.dp else 6.dp,
+        targetValue = if (isKeyboardVisible) 12.dp else 34.dp,
         animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
         label = "loginBrandGap"
     )
@@ -352,6 +354,52 @@ fun LoginScreen(
                 }
             }
         }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.42f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(LoginSurface)
+                        .border(1.dp, LoginLine.copy(alpha = 0.85f), RoundedCornerShape(22.dp))
+                        .padding(horizontal = 22.dp, vertical = 20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(
+                        color = LoginGreen,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(32.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Signing in...",
+                        fontFamily = LoginPoppins,
+                        fontWeight = FontWeight.ExtraBold,
+                        fontSize = 15.sp,
+                        color = LoginInk,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Text(
+                        text = "Verifying your account",
+                        fontFamily = LoginPoppins,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 12.sp,
+                        color = LoginMuted,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -541,7 +589,7 @@ private fun LoginBrandBlock(compact: Boolean) {
     )
 
     val logoSize = if (compact) 58.dp else 76.dp
-    val glowSize = if (compact) 92.dp else 118.dp
+    val glowSize = if (compact) 76.dp else 72.dp
     val titleSize = if (compact) 24.sp else 31.sp
 
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -572,7 +620,7 @@ private fun LoginBrandBlock(compact: Boolean) {
             )
         }
 
-        Spacer(modifier = Modifier.height(if (compact) 4.dp else 8.dp))
+        Spacer(modifier = Modifier.height(0.dp))
 
         Text(
             text = "SmartFeather",
