@@ -132,7 +132,7 @@ fun PersonnelLogsScreen(
     var houseExpanded by remember { mutableStateOf(false) }
 
     var footBath by remember { mutableStateOf(false) }
-    var bootsChanged by remember { mutableStateOf(false) }
+    var sanitation by remember { mutableStateOf(false) }
     var protectiveClothing by remember { mutableStateOf(false) }
 
     var personnelEntryLogId by remember { mutableStateOf<Long?>(null) }
@@ -193,7 +193,7 @@ fun PersonnelLogsScreen(
                 }
 
                 footBath = context.previousBiosecurity?.footBath == true
-                bootsChanged = context.previousBiosecurity?.bootsChanged == true
+                sanitation = context.previousBiosecurity?.sanitation == true
                 protectiveClothing = context.previousBiosecurity?.protectiveClothing == true
 
                 personnelEntryLogId = context.personnelEntryLogId
@@ -206,7 +206,7 @@ fun PersonnelLogsScreen(
                 houses = emptyList()
                 selectedHouse = null
                 footBath = false
-                bootsChanged = false
+                sanitation = false
                 protectiveClothing = false
                 personnelEntryLogId = null
                 isPulledBiosecurity = false
@@ -444,11 +444,11 @@ fun PersonnelLogsScreen(
                             Spacer(modifier = Modifier.height(10.dp))
 
                             PersonnelChecklistItem(
-                                label = "Boots Changed",
-                                checked = bootsChanged,
+                                label = "Sanitation",
+                                checked = sanitation,
                                 accentColor = PersonnelTeal,
                                 readOnly = isPulledBiosecurity,
-                                onCheckedChange = { bootsChanged = it }
+                                onCheckedChange = { sanitation = it }
                             )
 
                             Spacer(modifier = Modifier.height(10.dp))
@@ -500,7 +500,7 @@ fun PersonnelLogsScreen(
 
                                     val uncheckedItems = mutableListOf<String>()
                                     if (!footBath) uncheckedItems.add("Foot Bath")
-                                    if (!bootsChanged) uncheckedItems.add("Boots Changed")
+                                    if (!sanitation) uncheckedItems.add("Sanitation")
                                     if (!protectiveClothing) uncheckedItems.add("Protective Clothing")
 
                                     if (uncheckedItems.isNotEmpty()) {
@@ -522,7 +522,7 @@ fun PersonnelLogsScreen(
                                             houseId = currentHouseId,
                                             penId = currentPenId,
                                             footBath = footBath,
-                                            bootsChanged = bootsChanged,
+                                            sanitation = sanitation,
                                             protectiveClothing = protectiveClothing
                                         ).onSuccess {
                                             if (isTaskLocked) {

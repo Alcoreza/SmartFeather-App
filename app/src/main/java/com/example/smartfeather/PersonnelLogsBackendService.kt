@@ -33,7 +33,7 @@ data class PersonnelPreviousBiosecurityResponse(
     @SerialName("house_id") val houseId: Long? = null,
     @SerialName("pen_id") val penId: Long? = null,
     @SerialName("foot_bath") val footBath: Boolean = false,
-    @SerialName("boots_changed") val bootsChanged: Boolean = false,
+    @SerialName("sanitation") val sanitation: Boolean = false,
     @SerialName("protective_clothing") val protectiveClothing: Boolean = false
 )
 
@@ -59,7 +59,8 @@ data class PersonnelLogsSubmitRequest(
     @SerialName("house_id") val houseId: Long,
     @SerialName("pen_id") val penId: Long? = null,
     @SerialName("foot_bath") val footBath: Boolean,
-    @SerialName("boots_changed") val bootsChanged: Boolean,
+    @SerialName("sanitation")
+    val sanitation: Boolean,
     @SerialName("protective_clothing") val protectiveClothing: Boolean
 )
 
@@ -78,7 +79,7 @@ data class PersonnelPreviousBiosecurity(
     val houseId: Long?,
     val penId: Long?,
     val footBath: Boolean,
-    val bootsChanged: Boolean,
+    val sanitation: Boolean,
     val protectiveClothing: Boolean
 )
 
@@ -139,7 +140,7 @@ class PersonnelLogsBackendService(
                             houseId = it.houseId,
                             penId = it.penId,
                             footBath = it.footBath,
-                            bootsChanged = it.bootsChanged,
+                            sanitation = it.sanitation,
                             protectiveClothing = it.protectiveClothing
                         )
                     }
@@ -156,7 +157,7 @@ class PersonnelLogsBackendService(
         houseId: Long,
         penId: Long? = null,
         footBath: Boolean,
-        bootsChanged: Boolean,
+        sanitation: Boolean,
         protectiveClothing: Boolean
     ): Result<String> {
         return withContext(Dispatchers.IO) {
@@ -167,7 +168,7 @@ class PersonnelLogsBackendService(
                     houseId = houseId,
                     penId = penId,
                     footBath = footBath,
-                    bootsChanged = bootsChanged,
+                    sanitation = sanitation,
                     protectiveClothing = protectiveClothing
                 )
 
