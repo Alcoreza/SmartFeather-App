@@ -264,7 +264,8 @@ class VisitorBackendService(
         accessToken: String,
         photoUri: Uri
     ): String {
-        val mimeType = context.contentResolver.getType(photoUri) ?: "image/jpeg"
+        val compressedPhotoUri = ImageCompressionUtils.compressImageForUpload(context, photoUri)
+        val mimeType = "image/jpeg"
 
         val signedUrlResponseText = httpClient.post("$baseUrl/api/mobile/visitor/photo-upload-url") {
             contentType(ContentType.Application.Json)
@@ -295,7 +296,7 @@ class VisitorBackendService(
             .uploadToSignedUrl(
                 path = path,
                 token = token,
-                uri = photoUri
+                uri = compressedPhotoUri
             )
 
         return path
