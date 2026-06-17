@@ -298,7 +298,6 @@ class VisitorBackendService(
                 token = token,
                 uri = compressedPhotoUri
             )
-
         return path
     }
 }
