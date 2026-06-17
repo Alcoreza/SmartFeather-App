@@ -35,6 +35,12 @@ data class MobileDeviceTokenRequest(
 )
 
 @Serializable
+data class MobileDeviceTokenDeactivateRequest(
+    @SerialName("device_id")
+    val deviceId: String
+)
+
+@Serializable
 data class MobileDeviceTokenResponse(
     @SerialName("success")
     val success: Boolean? = null,
@@ -59,11 +65,6 @@ class MobileDeviceTokenBackendService(
     ): Result<Boolean> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                val deviceId = Settings.Secure.getString(
-                    context.contentResolver,
-                    Settings.Secure.ANDROID_ID
-                ) ?: "android-${Build.MANUFACTURER}-${Build.MODEL}"
-
                 val responseText = httpClient.post("$baseUrl/api/mobile/device-token") {
                     contentType(ContentType.Application.Json)
                     accept(ContentType.Application.Json)
@@ -73,7 +74,7 @@ class MobileDeviceTokenBackendService(
                             MobileDeviceTokenRequest(
                                 fcmToken = fcmToken,
                                 deviceName = deviceName,
-                                deviceId = deviceId
+                                deviceId = deviceId(context)
                             )
                         )
                     )
@@ -92,5 +93,44 @@ class MobileDeviceTokenBackendService(
                 response.success == true
             }
         }
+    }
+
+    suspend fun deactivateDeviceToken(
+        context: Context,
+        accessToken: String
+    ): Result<Boolean> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val responseText = httpClient.post("$baseUrl/api/mobile/device-token/deactivate") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
+                    setBody(
+                        json.encodeToString(
+                            MobileDeviceTokenDeactivateRequest(
+                                deviceId = deviceId(context)
+                            )
+                        )
+                    )
+                }.mobileBodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["success"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Failed to deactivate notification token.")
+                }
+
+                val response = json.decodeFromJsonElement<MobileDeviceTokenResponse>(parsed)
+                response.success == true
+            }
+        }
+    }
+
+    private fun deviceId(context: Context): String {
+        return Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ANDROID_ID
+        ) ?: "android-${Build.MANUFACTURER}-${Build.MODEL}"
     }
 }

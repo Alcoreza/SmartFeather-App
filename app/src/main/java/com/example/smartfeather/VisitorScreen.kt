@@ -97,6 +97,10 @@ import com.composables.icons.lucide.LayoutDashboard
 import com.composables.icons.lucide.Lucide
 import com.composables.icons.lucide.UserRound
 import androidx.compose.material3.CircularProgressIndicator
+import java.text.SimpleDateFormat
+import java.util.Locale
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 
 private val VisitorManrope = FontFamily(
     Font(R.font.manrope_extralight, FontWeight.ExtraLight),
@@ -273,7 +277,8 @@ fun VisitorScreen(
 
     fun showDatePicker() {
         val calendar = Calendar.getInstance()
-        DatePickerDialog(
+
+        val datePickerDialog = DatePickerDialog(
             context,
             { _, year, month, dayOfMonth ->
                 date = String.format("%04d-%02d-%02d", year, month + 1, dayOfMonth)
@@ -281,15 +286,64 @@ fun VisitorScreen(
             calendar.get(Calendar.YEAR),
             calendar.get(Calendar.MONTH),
             calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
+        )
+
+        val todayStart = Calendar.getInstance().apply {
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+
+        datePickerDialog.datePicker.minDate = todayStart.timeInMillis
+        datePickerDialog.show()
     }
 
     fun showTimePicker(onTimeSelected: (String) -> Unit) {
         val calendar = Calendar.getInstance()
+
         TimePickerDialog(
             context,
             { _, hourOfDay, minute ->
-                onTimeSelected(String.format("%02d:%02d", hourOfDay, minute))
+                val selectedTime = String.format("%02d:%02d", hourOfDay, minute)
+
+                if (mode == VisitorMode.TIME_IN && date.isNotBlank()) {
+                    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
+                        .format(Calendar.getInstance().time)
+
+                    if (date == today) {
+                        val nowHour = calendar.get(Calendar.HOUR_OF_DAY)
+                        val nowMinute = calendar.get(Calendar.MINUTE)
+
+                        val selectedIsPast =
+                            hourOfDay < nowHour || (hourOfDay == nowHour && minute < nowMinute)
+
+                        if (selectedIsPast) {
+                            showModal(
+                                title = "Invalid Time",
+                                message = "Please select the current time or a later time."
+                            )
+                            return@TimePickerDialog
+                        }
+                    }
+                }
+
+                if (mode == VisitorMode.TIME_OUT && timeIn.isNotBlank()) {
+                    val selectedMinutes = hourOfDay * 60 + minute
+                    val timeInParts = timeIn.split(":")
+                    val timeInMinutes = (timeInParts.getOrNull(0)?.toIntOrNull() ?: 0) * 60 +
+                            (timeInParts.getOrNull(1)?.toIntOrNull() ?: 0)
+
+                    if (selectedMinutes < timeInMinutes) {
+                        showModal(
+                            title = "Invalid Time Out",
+                            message = "Time out cannot be earlier than time in."
+                        )
+                        return@TimePickerDialog
+                    }
+                }
+
+                onTimeSelected(selectedTime)
             },
             calendar.get(Calendar.HOUR_OF_DAY),
             calendar.get(Calendar.MINUTE),
@@ -707,6 +761,11 @@ fun VisitorScreen(
                                                 return@Button
                                             }
 
+                                            selectedPhotoUri == null -> {
+                                                showModal("Missing Photo", "Please upload or capture a visitor photo.")
+                                                return@Button
+                                            }
+
                                             !footBath || !sanitation || !ppe -> {
                                                 val missingItems = mutableListOf<String>()
                                                 if (!footBath) missingItems.add("Foot Bath")
@@ -1014,32 +1073,23 @@ private fun VisitorChecklistItem(
                 }
             )
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
-            .padding(horizontal = 14.dp, vertical = 13.dp),
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(24.dp)
-                .clip(CircleShape)
-                .background(if (checked) accentColor else Color.Transparent)
-                .border(
-                    2.dp,
-                    if (checked) accentColor else VisitorLine,
-                    CircleShape
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            if (checked) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(Color.White)
-                )
-            }
-        }
+        Checkbox(
+            checked = checked,
+            onCheckedChange = if (enabled) onCheckedChange else null,
+            enabled = enabled,
+            colors = CheckboxDefaults.colors(
+                checkedColor = accentColor,
+                uncheckedColor = VisitorLine,
+                checkmarkColor = Color.White,
+                disabledCheckedColor = VisitorMuted.copy(alpha = 0.45f),
+                disabledUncheckedColor = VisitorMuted.copy(alpha = 0.30f)
+            )
+        )
 
-        Spacer(modifier = Modifier.size(12.dp))
+        Spacer(modifier = Modifier.size(8.dp))
 
         Text(
             text = label,

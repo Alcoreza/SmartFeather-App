@@ -788,7 +788,18 @@ fun SmartFeatherApp() {
                 currentScreen = AppScreen.TASKS
             },
             onLogout = {
-                clearMobileSession()
+                val accessToken = mobileAccessToken
+
+                coroutineScope.launch {
+                    if (!accessToken.isNullOrBlank()) {
+                        deviceTokenService.deactivateDeviceToken(
+                            context = context,
+                            accessToken = accessToken
+                        )
+                    }
+
+                    clearMobileSession()
+                }
             }
         )
     }
