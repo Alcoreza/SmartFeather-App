@@ -456,7 +456,7 @@ fun VisitorScreen(
                                 Spacer(modifier = Modifier.height(3.dp))
 
                                 Text(
-                                    text = "${visitor.date} | ${visitor.timeIn}",
+                                    text = "${visitor.date} | ${formatVisitorTimeDisplay(visitor.timeIn)}",
                                     fontFamily = VisitorManrope,
                                     fontWeight = FontWeight.Medium,
                                     fontSize = 12.sp,
@@ -610,7 +610,7 @@ fun VisitorScreen(
                                     VisitorLabel("Time In")
                                     Spacer(modifier = Modifier.height(8.dp))
                                     VisitorPickerField(
-                                        value = timeIn,
+                                        value = formatVisitorTimeDisplay(timeIn),
                                         placeholder = "Pick time",
                                         onClick = { if (mode == VisitorMode.TIME_IN) showTimePicker { timeIn = it } },
                                         enabled = mode == VisitorMode.TIME_IN,
@@ -625,7 +625,7 @@ fun VisitorScreen(
                                 VisitorLabel("Time Out")
                                 Spacer(modifier = Modifier.height(8.dp))
                                 VisitorPickerField(
-                                    value = timeOut,
+                                    value = formatVisitorTimeDisplay(timeOut),
                                     placeholder = "Pick time out",
                                     onClick = { showTimePicker { timeOut = it } },
                                     enabled = true,
@@ -1343,6 +1343,17 @@ private fun VisitorBottomNavBar(
         VisitorBottomNavItem(Lucide.ClipboardList, "Tasks", false, onTasksClick)
         VisitorBottomNavItem(Lucide.UserRound, "Profile", false, onProfileClick)
     }
+}
+
+private fun formatVisitorTimeDisplay(value: String): String {
+    if (value.isBlank()) return ""
+
+    return runCatching {
+        val input = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val output = SimpleDateFormat("h:mm a", Locale.getDefault())
+        val parsed = input.parse(value)
+        parsed?.let { output.format(it) } ?: value
+    }.getOrDefault(value)
 }
 
 @Composable
