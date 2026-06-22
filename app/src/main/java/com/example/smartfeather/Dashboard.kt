@@ -195,12 +195,7 @@ fun placeholderDashboardState(): DashboardUiState {
             )
         ),
         pendingTaskCount = 1,
-        pendingTask = PendingTaskSummary(
-            title = "Cleaning",
-            finishBy = "May 28, 4:30 PM",
-            houseLabel = "House 11",
-            penLabel = "Pen 25"
-        ),
+        pendingTask = null,
         quickAccess = listOf(
             QuickAccessItem("Visitor Log", Lucide.UserRound, Color(0xFF2E7D6B), "visitor")
         )
@@ -350,7 +345,6 @@ fun DashboardScreen(
 
                             PendingTaskBanner(
                                 count = uiState.pendingTaskCount,
-                                task = uiState.pendingTask,
                                 isTablet = isTablet,
                                 onClick = onNavigateToTasks
                             )
@@ -1466,17 +1460,22 @@ private fun DividerLine() {
 @Composable
 private fun PendingTaskBanner(
     count: Int,
-    task: PendingTaskSummary?,
     isTablet: Boolean,
     onClick: () -> Unit
 ) {
+    val hasPendingTasks = count > 0
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(26.dp))
             .background(
                 Brush.horizontalGradient(
-                    colors = listOf(Color(0xFF0B3A20), Color(0xFF1F7A3A))
+                    colors = if (hasPendingTasks) {
+                        listOf(Color(0xFF0B3A20), Color(0xFF1F7A3A))
+                    } else {
+                        listOf(Color(0xFF526057), Color(0xFF6E7A70))
+                    }
                 )
             )
             .clickable { onClick() }
@@ -1515,54 +1514,41 @@ private fun PendingTaskBanner(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = if (count <= 0 || task == null) "No Pending Task" else if (count == 1) "Pending Task" else "Pending Tasks",
+                    text = if (hasPendingTasks) {
+                        if (count == 1) "Pending Task" else "Pending Tasks"
+                    } else {
+                        "No Pending Tasks"
+                    },
                     fontFamily = DashboardPoppins,
                     fontSize = if (isTablet) 24.sp else 21.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = Color.White
                 )
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(5.dp))
 
-                if (count <= 0 || task == null) {
-                    Text(
-                        text = "You're clear for now.",
-                        fontFamily = DashboardPoppins,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp,
-                        color = Color.White.copy(alpha = 0.78f)
-                    )
-                } else {
-                    Text(
-                        text = task.title.ifBlank { "Task" },
-                        fontFamily = DashboardPoppins,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color.White
-                    )
-
-                    val meta = listOfNotNull(
-                        task.finishBy.takeIf { it.isNotBlank() }?.let { "Due $it" },
-                        listOf(task.houseLabel, task.penLabel)
-                            .filter { it.isNotBlank() }
-                            .joinToString(" | ")
-                            .takeIf { it.isNotBlank() }
-                    ).joinToString("  -  ")
-
-                    if (meta.isNotBlank()) {
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = meta,
-                            fontFamily = DashboardPoppins,
-                            fontWeight = FontWeight.Medium,
-                            fontSize = 11.sp,
-                            color = Color.White.copy(alpha = 0.78f),
-                            lineHeight = 13.sp
-                        )
-                    }
-                }
+                Text(
+                    text = if (hasPendingTasks) {
+                        "Tap to view your assigned tasks."
+                    } else {
+                        "You're clear for now."
+                    },
+                    fontFamily = DashboardPoppins,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 12.sp,
+                    color = Color.White.copy(alpha = 0.78f),
+                    lineHeight = 15.sp
+                )
             }
+
+            Icon(
+                imageVector = Lucide.ChevronDown,
+                contentDescription = "Open tasks",
+                tint = Color.White.copy(alpha = 0.82f),
+                modifier = Modifier
+                    .size(22.dp)
+                    .graphicsLayer(rotationZ = -90f)
+            )
         }
     }
 }

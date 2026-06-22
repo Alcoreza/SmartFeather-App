@@ -362,13 +362,19 @@ class TaskBackendService(
 
                 if (parsed is JsonObject && parsed["success"] == null) {
                     val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
-                    error(errorResponse.message ?: "Please complete biosecurity before opening this task.")
+                    error(
+                        errorResponse.message
+                            ?: "Biosecurity verification is required for this task. Please complete the biosecurity form before opening it."
+                    )
                 }
 
                 val result = json.decodeFromJsonElement<TaskAccessCheckResponse>(parsed)
 
                 if (result.accessGranted != true) {
-                    error(result.message ?: "Please complete biosecurity before opening this task.")
+                    error(
+                        result.message
+                            ?: "Biosecurity verification is required for this task. Please complete the biosecurity form before opening it."
+                    )
                 }
 
                 true

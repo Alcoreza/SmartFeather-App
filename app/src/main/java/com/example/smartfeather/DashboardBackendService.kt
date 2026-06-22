@@ -123,10 +123,10 @@ data class SensorFilterState(
 )
 
 data class PendingTaskSummary(
-    val title: String,
-    val finishBy: String,
-    val houseLabel: String,
-    val penLabel: String
+    val title: String = "",
+    val finishBy: String = "",
+    val houseLabel: String = "",
+    val penLabel: String = ""
 )
 
 data class DashboardUiState(
@@ -257,7 +257,7 @@ class DashboardBackendService(
 
     private fun dashboardStatIcon(key: String): ImageVector {
         return when (key.trim().lowercase()) {
-            "birds", "bird", "total_birds", "population" -> Lucide.Bird
+            "birds", "bird", "total_birds", "chickens", "chicken", "total_chickens", "population" -> Lucide.Bird
             "eggs", "egg", "total_eggs" -> Lucide.Egg
             "mortalities", "mortality", "dead", "deaths" -> Lucide.Skull
             else -> Lucide.Gauge
