@@ -1471,11 +1471,7 @@ private fun PendingTaskBanner(
             .clip(RoundedCornerShape(26.dp))
             .background(
                 Brush.horizontalGradient(
-                    colors = if (hasPendingTasks) {
-                        listOf(Color(0xFF0B3A20), Color(0xFF1F7A3A))
-                    } else {
-                        listOf(Color(0xFF526057), Color(0xFF6E7A70))
-                    }
+                    colors = listOf(Color(0xFF0B3A20), Color(0xFF1F7A3A))
                 )
             )
             .clickable { onClick() }
