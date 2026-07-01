@@ -422,7 +422,6 @@ fun PersonnelLogsScreen(
                                 )
                             }
                         }
-
                         Spacer(modifier = Modifier.height(18.dp))
 
                         PersonnelSectionPanel {
