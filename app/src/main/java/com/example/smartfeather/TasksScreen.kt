@@ -248,67 +248,26 @@ fun TasksScreen(
 
         errorMessage = null
 
-        if (forceRefresh) {
-            TaskBackendService.clearTaskCache(employeeId)
-        }
-
         pendingPage = 1
         forApprovalPage = 1
         completedPage = 1
 
-        val pendingResult = taskService.getTasksForFlockman(
+        taskService.getTasksOverviewForFlockman(
             accessToken = accessToken,
             employeeId = employeeId,
-            status = TaskStatus.PENDING,
-            page = 1,
             perPage = 10,
             forceRefresh = forceRefresh
-        )
-
-        val forApprovalResult = taskService.getTasksForFlockman(
-            accessToken = accessToken,
-            employeeId = employeeId,
-            status = TaskStatus.FOR_APPROVAL,
-            page = 1,
-            perPage = 10,
-            forceRefresh = forceRefresh
-        )
-
-        val completedResult = taskService.getTasksForFlockman(
-            accessToken = accessToken,
-            employeeId = employeeId,
-            status = TaskStatus.COMPLETED,
-            page = 1,
-            perPage = 10,
-            forceRefresh = forceRefresh
-        )
-
-        pendingResult.onSuccess { applyPageResult(TaskStatus.PENDING, 1, it) }
-            .onFailure {
-                if (it.isMobileSessionExpired()) {
-                    onSessionExpired()
-                } else {
-                    errorMessage = it.message ?: "Unable to load pending tasks."
-                }
+        ).onSuccess { overview ->
+            applyPageResult(TaskStatus.PENDING, 1, overview.pending)
+            applyPageResult(TaskStatus.FOR_APPROVAL, 1, overview.forApproval)
+            applyPageResult(TaskStatus.COMPLETED, 1, overview.completed)
+        }.onFailure {
+            if (it.isMobileSessionExpired()) {
+                onSessionExpired()
+            } else {
+                errorMessage = it.message ?: "Unable to load tasks."
             }
-
-        forApprovalResult.onSuccess { applyPageResult(TaskStatus.FOR_APPROVAL, 1, it) }
-            .onFailure {
-                if (it.isMobileSessionExpired()) {
-                    onSessionExpired()
-                } else {
-                    errorMessage = it.message ?: "Unable to load for approval tasks."
-                }
-            }
-
-        completedResult.onSuccess { applyPageResult(TaskStatus.COMPLETED, 1, it) }
-            .onFailure {
-                if (it.isMobileSessionExpired()) {
-                    onSessionExpired()
-                } else {
-                    errorMessage = it.message ?: "Unable to load completed tasks."
-                }
-            }
+        }
 
         isLoading = false
         isRefreshing = false

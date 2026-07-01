@@ -61,6 +61,39 @@ data class TaskPaginationApiRow(
 )
 
 @Serializable
+data class FlockmanTasksOverviewRequest(
+    @SerialName("per_page")
+    val perPage: Int = 10
+)
+
+@Serializable
+data class TaskStatusPageApiRow(
+    @SerialName("tasks")
+    val tasks: List<TaskApiRow> = emptyList(),
+    @SerialName("pagination")
+    val pagination: TaskPaginationApiRow = TaskPaginationApiRow()
+)
+
+@Serializable
+data class FlockmanTasksOverviewResponse(
+    @SerialName("success")
+    val success: Boolean? = null,
+    @SerialName("counts")
+    val counts: TaskCountsApiRow = TaskCountsApiRow(),
+    @SerialName("pending")
+    val pending: TaskStatusPageApiRow = TaskStatusPageApiRow(),
+    @SerialName("for_approval")
+    val forApproval: TaskStatusPageApiRow = TaskStatusPageApiRow(),
+    @SerialName("completed")
+    val completed: TaskStatusPageApiRow = TaskStatusPageApiRow()
+)
+
+data class TaskOverviewResult(
+    val pending: TaskPageResult,
+    val forApproval: TaskPageResult,
+    val completed: TaskPageResult
+)
+@Serializable
 data class FlockmanTasksResponse(
     @SerialName("success")
     val success: Boolean? = null,
@@ -306,6 +339,67 @@ class TaskBackendService(
                     tasks = pageItems,
                     counts = counts,
                     hasMore = response.pagination.hasMore
+                )
+            }
+        }
+    }
+
+    suspend fun getTasksOverviewForFlockman(
+        accessToken: String,
+        employeeId: Int,
+        perPage: Int = 10,
+        forceRefresh: Boolean = false
+    ): Result<TaskOverviewResult> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                if (forceRefresh) {
+                    clearTaskCache(employeeId)
+                }
+
+                val responseText = httpClient.post("$baseUrl/api/mobile/tasks/overview") {
+                    contentType(ContentType.Application.Json)
+                    accept(ContentType.Application.Json)
+                    header(HttpHeaders.Authorization, "Bearer $accessToken")
+                    setBody(json.encodeToString(FlockmanTasksOverviewRequest(perPage = perPage)))
+                }.mobileBodyAsText()
+
+                val parsed: JsonElement = json.parseToJsonElement(responseText)
+
+                if (parsed is JsonObject && parsed["pending"] == null) {
+                    val errorResponse = json.decodeFromJsonElement<LaravelErrorResponse>(parsed)
+                    error(errorResponse.message ?: "Failed to load tasks.")
+                }
+
+                val response = json.decodeFromJsonElement<FlockmanTasksOverviewResponse>(parsed)
+
+                val counts = TaskCounts(
+                    pending = response.counts.pending,
+                    forApproval = response.counts.forApproval,
+                    completed = response.counts.completed
+                )
+
+                fun buildResult(status: TaskStatus, page: TaskStatusPageApiRow): TaskPageResult {
+                    val tasks = page.tasks.map { it.toTaskItem() }
+
+                    taskCache[cacheKey(employeeId, status)] = CachedTaskPage(
+                        tasks = tasks,
+                        counts = counts,
+                        page = 1,
+                        hasMore = page.pagination.hasMore,
+                        cachedAtMillis = System.currentTimeMillis()
+                    )
+
+                    return TaskPageResult(
+                        tasks = tasks,
+                        counts = counts,
+                        hasMore = page.pagination.hasMore
+                    )
+                }
+
+                TaskOverviewResult(
+                    pending = buildResult(TaskStatus.PENDING, response.pending),
+                    forApproval = buildResult(TaskStatus.FOR_APPROVAL, response.forApproval),
+                    completed = buildResult(TaskStatus.COMPLETED, response.completed)
                 )
             }
         }
