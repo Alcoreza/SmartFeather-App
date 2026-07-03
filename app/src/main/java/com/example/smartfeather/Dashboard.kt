@@ -103,6 +103,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
+import kotlin.math.floor
 
 data class DashboardStat(
     val title: String,
@@ -124,7 +125,7 @@ data class GaugeData(
 
 data class ResourceData(
     val label: String,
-    val value: Float,
+    val value: Float?,
     val unit: String,
     val max: Float,
     val color: Color,
@@ -238,7 +239,13 @@ private fun resourceProgress(value: Float, max: Float): Float {
 }
 
 private fun formatValue(value: Float, unit: String): String {
-    val display = if (value % 1f == 0f) value.roundToInt().toString() else String.format("%.1f", value)
+    val cutValue = floor(value * 10f) / 10f
+    val display = if (cutValue % 1f == 0f) {
+        cutValue.toInt().toString()
+    } else {
+        String.format("%.1f", cutValue)
+    }
+
     return "$display$unit"
 }
 
@@ -1340,8 +1347,14 @@ private fun ResourceBlock(
     data: ResourceData,
     modifier: Modifier = Modifier
 ) {
+    val hasReading = data.value != null && !data.recordedAt.isNullOrBlank()
+
     val animatedProgress by animateFloatAsState(
-        targetValue = resourceProgress(data.value, data.max),
+        targetValue = if (hasReading) {
+            resourceProgress(data.value ?: 0f, data.max)
+        } else {
+            0f
+        },
         animationSpec = tween(850, easing = FastOutSlowInEasing),
         label = "resourceProgress"
     )
@@ -1365,7 +1378,7 @@ private fun ResourceBlock(
                     .fillMaxWidth(0.70f)
                     .fillMaxHeight(animatedProgress)
                     .clip(RoundedCornerShape(15.dp))
-                    .background(data.color)
+                    .background(if (hasReading) data.color else FarmMuted.copy(alpha = 0.35f))
             )
         }
 
@@ -1384,13 +1397,27 @@ private fun ResourceBlock(
         Spacer(modifier = Modifier.height(3.dp))
 
         Text(
-            text = formatValue(data.value, data.unit),
+            text = if (hasReading) formatValue(data.value ?: 0f, data.unit) else "--",
             fontFamily = DashboardPoppins,
             fontSize = 16.sp,
             fontWeight = FontWeight.ExtraBold,
-            color = data.color,
+            color = if (hasReading) data.color else FarmMuted,
             textAlign = TextAlign.Center
         )
+
+        if (!hasReading) {
+            Spacer(modifier = Modifier.height(3.dp))
+
+            Text(
+                text = "No reading",
+                fontFamily = DashboardPoppins,
+                fontWeight = FontWeight.Medium,
+                fontSize = 10.sp,
+                color = FarmMuted,
+                textAlign = TextAlign.Center,
+                lineHeight = 11.sp
+            )
+        }
     }
 }
 

@@ -51,7 +51,7 @@ data class GaugeApiRow(
 @Serializable
 data class ResourceApiRow(
     @SerialName("label") val label: String,
-    @SerialName("value") val value: Float,
+    @SerialName("value") val value: Float? = null,
     @SerialName("unit") val unit: String,
     @SerialName("max") val max: Float,
     @SerialName("color") val color: String,
