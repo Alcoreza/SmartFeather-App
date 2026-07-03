@@ -1396,14 +1396,18 @@ private fun ResourceBlock(
 
         Spacer(modifier = Modifier.height(3.dp))
 
-        Text(
-            text = if (hasReading) formatValue(data.value ?: 0f, data.unit) else "--",
-            fontFamily = DashboardPoppins,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.ExtraBold,
-            color = if (hasReading) data.color else FarmMuted,
-            textAlign = TextAlign.Center
-        )
+        if (hasReading) {
+            Text(
+                text = formatValue(data.value ?: 0f, data.unit),
+                fontFamily = DashboardPoppins,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = data.color,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(3.dp))
+        }
 
         if (!hasReading) {
             Spacer(modifier = Modifier.height(3.dp))
